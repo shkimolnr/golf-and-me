@@ -79,6 +79,7 @@
 | TASK-026 | P0 | 모바일 핵심 흐름 E2E 검증 | 검토 | 실제 PC·모바일 Google 로그인·온보딩·계정 동기화와 공개 주소 기본 동작은 확인. 실제 iPhone Safari에서 라운드 생성→18홀 기록→잠금·복귀→완료의 최종 통합 검증 필요 |
 | TASK-031 | P0 | 고정 HTTPS Alpha 배포 | 완료 | GitHub `main`과 Vercel Production을 연결하고 환경변수·Supabase Redirect·Google OAuth·기존 계정 데이터 복원을 실제 배포 주소에서 검증 |
 | TASK-032 | P0 | 공개 운영 정책과 계정 전체 삭제 | 대기 | 운영자·문의처·국외 이전·로그 보관 정보를 확정하고 최종 약관·개인정보 처리방침 링크와 계정 탈퇴·전체 데이터 삭제 경로를 제공 |
+| TASK-033 | P0 | 레거시 OpenAI Sites 운영 종료 | 완료 | 기존 Sites 공개 접근을 소유자 전용으로 전환하고 Supabase Redirect 허용 목록에서 레거시 주소를 제거해 Vercel 단일 운영 경로 확정 |
 
 ### TASK-016 UX 검토 메모
 

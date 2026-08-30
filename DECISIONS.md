@@ -47,9 +47,10 @@
 | DEC-039 | 2026-08-30 | 홈 누적 통계는 완료 기록의 유효 표본을 합산 | 확정 |
 | DEC-040 | 2026-08-30 | 날씨·감정·이메일은 Alpha 기록 흐름에서 제외 | 확정 |
 | DEC-041 | 2026-08-30 | Alpha 품질 검증은 실제 기기 확인과 자동 회귀를 함께 사용 | 확정 |
-| DEC-042 | 2026-08-30 | React·Vite·CSS와 OpenAI Sites로 HTTPS Alpha 임시 운영 | 재검토 |
+| DEC-042 | 2026-08-30 | React·Vite·CSS와 OpenAI Sites로 HTTPS Alpha 임시 운영 | DEC-044로 대체 |
 | DEC-043 | 2026-08-30 | 초기 정책 변경은 사용자 명시 결정 후 실행 | 확정 |
 | DEC-044 | 2026-08-30 | 정식 배포 경로를 Vercel로 복구 | 확정 |
+| DEC-045 | 2026-08-30 | OpenAI Sites 레거시 배포와 인증 주소 종료 | 확정 |
 
 ## DEC-001 — 모바일 웹(PWA) 우선
 
@@ -397,7 +398,7 @@
 
 ## DEC-042 — React·Vite·CSS와 OpenAI Sites로 HTTPS Alpha 임시 운영
 
-- 상태: 재검토
+- 상태: DEC-044로 대체
 - 맥락: 실제 구현은 Tailwind가 아니라 React·Vite·일반 CSS로 구성됐고, 로컬 네트워크 주소는 현장 사용·OAuth·기기 간 검증에 적합하지 않습니다.
 - 결정: 프론트엔드 기술 기준은 실제 구현에 맞춰 React + Vite + CSS로 바로잡습니다. OpenAI Sites의 `https://golf-and-me.kimseungha.chatgpt.site` 배포는 현재 Alpha 기능 검증에 사용하는 임시 주소로 유지합니다.
 - 보정: OpenAI Sites를 장기 호스팅 정책으로 확정한 것은 사용자의 명시적 의사결정 없이 기존 Vercel 방향을 변경한 것이므로 유효한 영구 결정으로 보지 않습니다. Vercel 유지, OpenAI Sites 유지 또는 다른 호스팅 선택은 비교 검토 후 사용자가 새 결정을 시작·승인할 때 확정합니다.
@@ -421,3 +422,11 @@
 - 결정: GitHub `main` 브랜치를 Vercel Production에 연결하고 Vite 정적 빌드를 배포합니다. Supabase와 Google OAuth의 허용 주소는 검증된 Vercel Production 주소를 기준으로 갱신합니다.
 - 결정: 기존 OpenAI Sites 배포는 Vercel 로그인·저장·모바일 검증이 끝날 때까지 롤백 참고용으로 유지하며, 삭제는 별도 사용자 결정 없이 실행하지 않습니다.
 - 결과: `https://golf-and-me.vercel.app`에서 Google OAuth 로그인과 기존 계정의 작성 중·완료 기록 복원을 확인했습니다. 이후 정식 배포와 운영 문서는 Vercel을 기준으로 하며, 호스팅 제공자를 다시 변경하려면 `DEC-043`의 승인 절차를 따릅니다.
+
+## DEC-045 — OpenAI Sites 레거시 배포와 인증 주소 종료
+
+- 상태: 확정
+- 맥락: Vercel Production에서 Google OAuth 로그인, 기존 계정 데이터 복원, PC·모바일 접근을 검증해 이전 Alpha 주소를 롤백 경로로 유지할 필요가 없어졌습니다.
+- 결정: 사용자 명시 승인에 따라 OpenAI Sites 프로젝트의 공개 접근을 종료하고 소유자 전용으로 전환합니다. 현재 Sites 관리 API는 프로젝트 영구 삭제를 제공하지 않으므로 외부 방문자가 사용할 수 없는 상태를 삭제에 준하는 운영 종료로 봅니다.
+- 결정: Supabase Auth Redirect URL 허용 목록에서 `https://golf-and-me.kimseungha.chatgpt.site/**`를 제거하고, Vercel Production 주소와 로컬 개발 주소만 유지합니다.
+- 결과: 정식 배포·인증·롤백 기준은 Vercel로 단일화합니다. 코드와 배포 이력은 Git에 보존하며, 호스팅 제공자를 다시 변경할 때는 DEC-043에 따라 별도 승인을 받습니다.

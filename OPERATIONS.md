@@ -5,7 +5,6 @@
 ## 1. 환경과 주소
 
 - 프로덕션: `https://golf-and-me.vercel.app`
-- 이전 Alpha 임시 배포: `https://golf-and-me.kimseungha.chatgpt.site` (롤백 참고용)
 - 로컬 개발: `http://127.0.0.1:5190/`
 - 로그인 없는 프리뷰: 로컬 개발 주소에만 `?preview=1` 사용
 - 프로덕션에서는 프리뷰 우회를 활성화하지 않습니다.
@@ -20,7 +19,7 @@
 4. Vercel Production 주소에서 로그인 → 홈 → 라운드 열기 → 저장 → 재접속을 확인합니다.
 5. 인증 주소를 바꾸면 Supabase Auth의 Site URL·Redirect URL과 Google OAuth 설정을 함께 확인합니다.
 
-문제가 생기면 Vercel의 직전 정상 배포로 롤백합니다. 전환 검증 기간에는 기존 OpenAI Sites 주소도 참고할 수 있지만 임의로 삭제하지 않습니다. DB 마이그레이션은 대응하는 `supabase/rollback/` 파일을 먼저 검토하고, 사용자 데이터가 있는 운영 DB에는 자동 롤백하지 않습니다.
+문제가 생기면 Vercel의 직전 정상 배포로 롤백합니다. OpenAI Sites의 이전 Alpha 배포는 외부 접근을 종료했고 Supabase Redirect 허용 목록에서도 제거했으므로 운영·롤백 경로로 사용하지 않습니다. DB 마이그레이션은 대응하는 `supabase/rollback/` 파일을 먼저 검토하고, 사용자 데이터가 있는 운영 DB에는 자동 롤백하지 않습니다.
 
 ## 3. 저장과 장애 대응
 
