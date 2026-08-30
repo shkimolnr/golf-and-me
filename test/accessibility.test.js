@@ -1,0 +1,32 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+
+const appSource = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8')
+
+test('핵심 비동기 준비 상태는 스크린리더에 상태로 전달된다', () => {
+  assert.match(appSource, /로그인 상태를 확인하고 있어요.<\/p>/)
+  assert.match(appSource, /내 플레이 정보를 준비하고 있어요.<\/p>/)
+  assert.ok((appSource.match(/<p role="status">/g) || []).length >= 2)
+})
+
+test('골프백의 두 화면은 탭 관계와 현재 선택 상태를 제공한다', () => {
+  assert.match(appSource, /role="tablist" aria-label="골프백 관리 메뉴"/)
+  assert.match(appSource, /role="tab" aria-selected=\{clubStage === 'composition'\}/)
+  assert.match(appSource, /role="tab" aria-selected=\{clubStage === 'distance'\}/)
+})
+
+test('홈은 기록이 전혀 없을 때 중복 통계 빈 상태를 만들지 않는다', () => {
+  assert.match(appSource, /\{rounds\.length > 0 && <section className="home-report"/)
+})
+
+test('모달은 열린 뒤 초점을 받고 Escape로 닫을 수 있다', () => {
+  assert.match(appSource, /document\.querySelector\('\.account-layer \.close-button/)
+  assert.match(appSource, /event\.key !== 'Escape'/)
+  assert.match(appSource, /previouslyFocused instanceof HTMLElement/)
+})
+
+test('라운드 수정 화면은 잠금 여부와 관계없이 같은 제목을 사용한다', () => {
+  assert.match(appSource, /<h1>\{editingActiveRound \? '라운드 정보' : '새 라운드'\}<\/h1>/)
+  assert.doesNotMatch(appSource, /아직 \$\{missingHoleLabel\(\)\} 기록이 남았어요/)
+})
