@@ -80,6 +80,7 @@
 | TASK-031 | P0 | 고정 HTTPS Alpha 배포 | 완료 | GitHub `main`과 Vercel Production을 연결하고 환경변수·Supabase Redirect·Google OAuth·기존 계정 데이터 복원을 실제 배포 주소에서 검증 |
 | TASK-032 | P0 | 공개 운영 정책과 계정 전체 삭제 | 진행 중 | 앱 내 계정 탈퇴 확인 화면, 본인 계정 전용 Supabase 삭제 함수, 사용자별 로컬 데이터 정리와 자동 테스트를 구현하고 실제 DB에 적용. 운영자·문의처·국외 이전·로그 보관 정보 확정과 최종 약관·개인정보 처리방침 게시가 남음 |
 | TASK-033 | P0 | 레거시 OpenAI Sites 운영 종료 | 완료 | 기존 Sites 공개 접근을 소유자 전용으로 전환하고 Supabase Redirect 허용 목록에서 레거시 주소를 제거해 Vercel 단일 운영 경로 확정 |
+| TASK-034 | P0 | Supabase 백업·복구 모의훈련 | 진행 중 | Free 플랜의 수동 백업·장애 대응 원칙을 운영 문서에 확정. CLI와 DB 접속 정보를 준비해 roles·schema·data 백업을 만들고 새 테스트 프로젝트 복원·RLS 검증을 완료해야 함 |
 
 ### TASK-016 UX 검토 메모
 
