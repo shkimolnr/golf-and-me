@@ -1565,7 +1565,7 @@ export default function App() {
             }}>시작하기</button>
           </section>
         ) : (
-          <section className="onboarding-content">
+          <section className="onboarding-content onboarding-play-criteria">
             <button className="back" type="button" onClick={() => setOnboardingStep(1)}>← 이전</button>
             <p className="eyebrow">내 플레이 기준</p>
             <h1>주로 어떤 티에서<br />플레이하시나요?</h1>
