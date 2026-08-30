@@ -18,6 +18,7 @@ Golf & Me는 실력 향상에 관심 있는 아마추어 골퍼를 위한 모바
 | [PRD.md](./PRD.md) | 제품 목표, 범위, 요구사항과 성공 조건 |
 | [BACKLOG.md](./BACKLOG.md) | 우선순위별 실행 과제와 진행 상태 |
 | [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) | 서버 DB 마이그레이션과 동기화 검증 절차 |
+| [OPERATIONS.md](./OPERATIONS.md) | 배포, 장애 대응, 백업, 삭제와 출시 전 점검 절차 |
 | [DECISIONS.md](./DECISIONS.md) | 확정된 제품·기술 결정과 변경 이유 |
 | [PROJECT_RULES.md](./PROJECT_RULES.md) | 문서, 개발, 데이터 및 협업 원칙 |
 | [COMPETITOR_RESEARCH.md](./COMPETITOR_RESEARCH.md) | 네이버 N Golf·스윙크루 경쟁 서비스 관찰 데이터 |
@@ -52,12 +53,12 @@ Alpha 기록 화면은 퍼팅 시작 위치를 `그린/엣지`로 구분해 마�
 
 ## 기술 기준
 
-- Frontend: React + Tailwind CSS
+- Frontend: React + Vite + CSS
 - Backend / Database: Supabase (PostgreSQL)
 - Authentication: Google OAuth 2.0
-- Hosting: Vercel
-- Email: SendGrid
-- Push: Firebase Cloud Messaging (후속 활성화)
+- Hosting: OpenAI Sites
+- Production: https://golf-and-me.kimseungha.chatgpt.site
+- Email·Push: Alpha 범위에서 제외
 
 ## 문서 운영 방식
 

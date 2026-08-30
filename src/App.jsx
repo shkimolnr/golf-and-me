@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { isSupabaseConfigured, supabase } from './lib/supabase.js'
 import { deleteRemoteRound, loadRemoteProfile, loadRemoteRounds, mergeRoundCollections, resolveOnboardingProfile, saveRemoteProfile, saveRemoteRounds, sortRoundsForList } from './lib/roundRepository.js'
+import { excludePendingRoundDeletions, loadPendingRoundDeletions, savePendingRoundDeletions } from './lib/pendingRoundDeletions.js'
+import { isRoundStructureLocked, needsRoundStructureChoice } from './lib/roundPolicy.js'
 import { calculateHoleTotals, hasIncompleteOb, isRecordedShot, terminalLieForShot } from './lib/scoring.js'
 import { calculateCumulativeStats, calculateRoundStats, formatPercent } from './lib/roundStats.js'
 import { getRoundDistanceCoverage, holeNeedsManualDistance } from './lib/distanceCoverage.js'
@@ -145,6 +147,7 @@ export default function App() {
   const [remoteHydratedUserId, setRemoteHydratedUserId] = useState(null)
   const [isOnline, setIsOnline] = useState(() => navigator.onLine)
   const [syncRetryNonce, setSyncRetryNonce] = useState(0)
+  const [pendingDeletedRoundIds, setPendingDeletedRoundIds] = useState([])
   const [clubDrafts, setClubDrafts] = useState(initialClubDrafts)
   const [clubStage, setClubStage] = useState('composition')
   const [clubCompositionEditing, setClubCompositionEditing] = useState(false)
@@ -269,6 +272,7 @@ export default function App() {
       setActiveRound(null)
       setCourseHistory([])
       setNavigationReady(false)
+      setPendingDeletedRoundIds([])
       return
     }
 
@@ -280,6 +284,8 @@ export default function App() {
     setNavigationReady(false)
     setRestoreHoleNumber(null)
     setResumeNotice('')
+    const queuedDeletionIds = loadPendingRoundDeletions(window.localStorage, session.user.id)
+    setPendingDeletedRoundIds(queuedDeletionIds)
 
     const storageKey = `golf-and-me:onboarding:${session.user.id}`
     let savedProfile = window.localStorage.getItem(storageKey)
@@ -308,7 +314,8 @@ export default function App() {
       const savedRound = window.localStorage.getItem(`golf-and-me:active-round:${session.user.id}`)
       if (savedRound) savedRounds = JSON.stringify([JSON.parse(savedRound)])
     }
-    const loadedRounds = savedRounds ? JSON.parse(savedRounds) : []
+    const loadedRounds = excludePendingRoundDeletions(savedRounds ? JSON.parse(savedRounds) : [], queuedDeletionIds)
+    window.localStorage.setItem(roundsKey, JSON.stringify(loadedRounds))
     setRounds(loadedRounds)
     const navigationKey = `golf-and-me:navigation:${session.user.id}`
     let checkpoint = null
@@ -375,7 +382,7 @@ export default function App() {
         ])
         if (cancelled) return
         setRounds(currentRounds => {
-          const mergedRounds = mergeRoundCollections(currentRounds, remoteRounds)
+          const mergedRounds = excludePendingRoundDeletions(mergeRoundCollections(currentRounds, remoteRounds), pendingDeletedRoundIds)
           window.localStorage.setItem(`golf-and-me:rounds:${session.user.id}`, JSON.stringify(mergedRounds))
           setActiveRound(currentRound => currentRound ? mergedRounds.find(item => item.id === currentRound.id) || currentRound : currentRound)
           return mergedRounds
@@ -418,7 +425,7 @@ export default function App() {
 
     hydrateRemoteData()
     return () => { cancelled = true }
-  }, [session, clubBagHydrated, remoteHydratedUserId, isOnline])
+  }, [session, clubBagHydrated, remoteHydratedUserId, isOnline, pendingDeletedRoundIds])
 
   useEffect(() => {
     if (!session || !supabase || isPreviewMode || remoteHydratedUserId !== session.user.id) return
@@ -439,7 +446,12 @@ export default function App() {
             distanceUnit: clubDistanceUnit,
             updatedAt: clubBagUpdatedAt,
           }),
+          ...pendingDeletedRoundIds.map(roundId => deleteRemoteRound(supabase, session.user.id, roundId)),
         ])
+        if (pendingDeletedRoundIds.length) {
+          savePendingRoundDeletions(window.localStorage, session.user.id, [])
+          setPendingDeletedRoundIds([])
+        }
         setSyncError('')
         if (hadSyncIssueRef.current) {
           hadSyncIssueRef.current = false
@@ -455,7 +467,7 @@ export default function App() {
       window.clearTimeout(timer)
       if (retryTimer) window.clearTimeout(retryTimer)
     }
-  }, [rounds, clubDrafts, clubDistanceSets, clubCompositionCompleted, clubDistanceUnit, clubBagUpdatedAt, session, remoteHydratedUserId, isOnline, syncRetryNonce])
+  }, [rounds, clubDrafts, clubDistanceSets, clubCompositionCompleted, clubDistanceUnit, clubBagUpdatedAt, pendingDeletedRoundIds, session, remoteHydratedUserId, isOnline, syncRetryNonce])
 
   useEffect(() => {
     if (!restoreHoleNumber || !activeRound) return
@@ -581,7 +593,7 @@ export default function App() {
       || activeRound.backCourseName !== round.backCourseName.trim()
     ))
     if (structuralChange && roundStructureLocked) return
-    if (structuralChange && roundHasRecordedData) {
+    if (needsRoundStructureChoice(structuralChange, roundHasRecordedData, roundStructureLocked)) {
       setPendingStructureChange({ inputCount: enteredHoles.length + holeDraftProgress.length })
       return
     }
@@ -856,10 +868,15 @@ export default function App() {
       setScreen('home')
     }
     setRounds(nextRounds)
+    const deletedRoundId = String(roundPendingDeletion.id)
+    const nextPendingDeletedRoundIds = savePendingRoundDeletions(window.localStorage, session.user.id, [...pendingDeletedRoundIds, deletedRoundId])
+    setPendingDeletedRoundIds(nextPendingDeletedRoundIds)
     setRoundPendingDeletion(null)
     if (supabase && !isPreviewMode) {
-      deleteRemoteRound(supabase, session.user.id, roundPendingDeletion.id).catch(() => {
-        setSyncError('기기에서는 삭제했지만 서버 삭제가 지연되고 있어요. 연결 후 다시 시도합니다.')
+      deleteRemoteRound(supabase, session.user.id, deletedRoundId).then(() => {
+        setPendingDeletedRoundIds(current => savePendingRoundDeletions(window.localStorage, session.user.id, current.filter(id => id !== deletedRoundId)))
+      }).catch(() => {
+        setSyncError('기기에서는 삭제했어요. 계정 기록에서도 삭제될 때까지 자동으로 다시 시도할게요.')
       })
     }
   }
@@ -944,12 +961,7 @@ export default function App() {
 
   const holeDraftProgress = activeRound?.holes.map(hole => ({ holeNumber: hole.holeNumber, draft: meaningfulDraftForHole(hole) })).filter(item => item.draft) || []
   const roundHasRecordedData = enteredHoles.length > 0 || holeDraftProgress.length > 0
-  const fourthOrLaterStarted = Boolean(activeRound?.holes.slice(3).some(hole => (
-    Number.isFinite(hole.score) || holeDraftProgress.some(item => item.holeNumber === hole.holeNumber)
-  )))
-  const roundStructureLocked = Boolean(editingActiveRound && activeRound && (
-    activeRound.status === 'completed' || fourthOrLaterStarted
-  ))
+  const roundStructureLocked = Boolean(editingActiveRound && isRoundStructureLocked(activeRound, holeDraftProgress.map(item => item.holeNumber)))
   const latestDraftHoleNumber = holeDraftProgress.reduce((latest, item) => !latest || (item.draft.draftUpdatedAt || '') > (latest.draft.draftUpdatedAt || '') ? item : latest, null)?.holeNumber
   const inProgressHoleNumbers = new Set(holeDraftProgress.map(item => item.holeNumber))
 
