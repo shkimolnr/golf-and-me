@@ -30,7 +30,7 @@
 | **백엔드/DB** | Supabase (PostgreSQL) | 복잡한 통계 쿼리, Edge Functions으로 외부 연동 |
 | **푸시 알림** | Phase 2 검토 | Alpha에서는 기록·복구 흐름에 집중 |
 | **외부 알림 (Phase 2)** | 이메일 제공자 추후 선정 | 정기 리포트와 수신 동의 정책 확정 후 도입 |
-| **호스팅** | 장기 운영안 재검토 중 | 현재 OpenAI Sites 주소는 Alpha 검증용 임시 배포이며, 기존 Vercel 방향을 포함한 장기 운영안은 사용자 결정 후 확정 |
+| **호스팅** | Vercel | GitHub `main` 자동 배포, Preview/Production 분리와 고정 HTTPS 운영 |
 
 ### 기술 스택 주요 결정 배경
 ```
