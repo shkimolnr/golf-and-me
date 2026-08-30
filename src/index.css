@@ -496,21 +496,23 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .legal { margin-top: 24px; color: #9ca3af; font-size: 13px; line-height: 1.6; }
 .spinner { width: 36px; height: 36px; margin: 0 auto 14px; border: 3px solid #d1fae5; border-top-color: #059669; border-radius: 50%; animation: spin .8s linear infinite; }
 .onboarding-shell { display: flex; flex-direction: column; }
-.onboarding-progress { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 48px; }
+.onboarding-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 48px; }
 .onboarding-progress span { height: 4px; border-radius: 999px; background: #e5e7eb; }
 .onboarding-progress .active { background: #059669; }
+.club-onboarding-progress { margin-bottom: 30px; }
 .onboarding-content { display: flex; flex: 1; flex-direction: column; justify-content: center; }
 .welcome-mark { display: grid; place-items: center; width: 72px; height: 72px; margin-bottom: 24px; border-radius: 24px; color: white; background: #059669; font-size: 32px; font-weight: 800; transform: rotate(-3deg); }
 .tee-options { display: grid; gap: 10px; margin: 4px 0 14px; }
 .tee-option { display: grid; grid-template-columns: 28px 1fr 24px; align-items: center; width: 100%; padding: 14px 16px; border: 1px solid #dfe7e3; border-radius: 14px; color: #2d3748; background: white; text-align: left; }
 .tee-option.selected { border: 2px solid #059669; background: #ecfdf5; }
 .onboarding-distance-unit { display: flex; align-items: center; justify-content: space-between; margin: 0 0 18px; padding: 0; border: 0; }
-.onboarding-distance-unit legend { padding: 0; color: #4b5563; font-size: 14px; font-weight: 800; }
-.onboarding-distance-unit > div { display: grid; grid-template-columns: repeat(2, 48px); }
-.onboarding-distance-unit button { min-height: 38px; border: 1px solid #d1d5db; color: #6b7280; background: white; font-weight: 800; }
+.onboarding-distance-unit legend { padding: 0; color: #2d3748; font-size: 18px; font-weight: 800; }
+.onboarding-distance-unit > div { display: grid; grid-template-columns: repeat(2, minmax(88px, 1fr)); width: min(210px, 62vw); }
+.onboarding-distance-unit button { min-height: 48px; padding: 0 12px; border: 1px solid #d1d5db; color: #6b7280; background: white; font-size: 16px; font-weight: 800; white-space: nowrap; }
 .onboarding-distance-unit button:first-child { border-radius: 10px 0 0 10px; }
 .onboarding-distance-unit button:last-child { margin-left: -1px; border-radius: 0 10px 10px 0; }
 .onboarding-distance-unit button.selected { position: relative; border-color: #059669; color: #047857; background: #d1fae5; }
+.onboarding-distance-complete { margin-top: 10px; }
 .tee-color { font-size: 19px; line-height: 1; }
 .tee-color.black { color: #111827; }
 .tee-color.blue { color: #2563eb; }

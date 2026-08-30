@@ -43,10 +43,23 @@ test('샷 클럽은 현재 ID와 당시 표시명 스냅샷을 저장한다', ()
   assert.match(appSource, /과거 사용 클럽/)
 })
 
-test('신규 사용자는 클럽 구성을 확인한 뒤 첫 라운드로 이동한다', () => {
+test('신규 사용자는 클럽 구성과 선택형 비거리 단계를 확인한 뒤 시작한다', () => {
   assert.match(appSource, /clubSetupReturn === 'onboarding'/)
   assert.match(appSource, /clubSetupReturn === 'new-round'/)
   assert.match(appSource, /clubSetupReturn === 'onboarding' \? '클럽 구성 완료'/)
   assert.match(appSource, /<legend>거리 단위<\/legend>/)
   assert.match(appSource, /aria-label="기본 거리 단위"/)
+  assert.match(appSource, /미터 M/)
+  assert.match(appSource, /야드 YD/)
+  assert.match(appSource, /비거리는 나중에 입력하기/)
+  assert.match(appSource, /온보딩 3\/3 단계/)
+  assert.match(appSource, /클럽 정보가 부족해요/)
+})
+
+test('신규 골프백은 드라이버와 퍼터만 기본 선택한다', () => {
+  const defaultClubBlock = appSource.slice(appSource.indexOf('const initialClubDrafts'), appSource.indexOf('function emptyShot'))
+  assert.match(defaultClubBlock, /\['드라이버·우드', '1'\]/)
+  assert.match(defaultClubBlock, /퍼터:PT/)
+  assert.doesNotMatch(defaultClubBlock, /\['아이언'/)
+  assert.doesNotMatch(defaultClubBlock, /\['웨지'/)
 })
