@@ -147,6 +147,9 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .club-composition-heading div strong, .club-composition-heading div span { display: block; }
 .club-composition-heading div strong { font-size: 18px; }
 .club-composition-heading div span { margin-top: 3px; color: #6b7280; font-size: 12px; }
+.club-composition-heading .club-selection-guidance { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.club-composition-heading .club-selection-guidance i { display: grid; flex: 0 0 18px; place-items: center; width: 18px; height: 18px; border: 1px solid #6ee7b7; border-radius: 50%; color: #047857; background: #ecfdf5; font-family: var(--font-ui); font-size: 11px; font-style: normal; font-weight: 800; letter-spacing: 0; }
+.club-composition-heading .club-selection-guidance span { margin: 0; line-height: 1.4; }
 .club-composition-heading > b { flex: 0 0 auto; color: #047857; font-size: 25px; }
 .club-composition-heading > b small { color: #6b7280; font-size: 13px; }
 .club-limit-warning { margin: 0 0 9px; padding: 8px 10px; border-radius: 9px; color: #92400e; background: #fffbeb; font-size: 12px; font-weight: 700; }
@@ -507,7 +510,7 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .onboarding-progress .active { background: #059669; }
 .club-onboarding-progress { margin-bottom: 30px; }
 .onboarding-club-bag { display: flex; flex-direction: column; min-height: calc(100vh - 72px); }
-.onboarding-back { align-self: flex-start; margin-bottom: 8px; padding: 8px 4px; font-weight: 800; }
+.onboarding-back { width: 100%; margin-bottom: 8px; padding: 8px 4px; font-weight: 800; text-align: center; }
 .onboarding-club-intro { margin-bottom: 20px; }
 .onboarding-club-intro h1 { margin-top: 8px; margin-bottom: 12px; }
 .onboarding-club-intro .description { margin-bottom: 0; }
@@ -518,10 +521,10 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .tee-options { display: grid; gap: 10px; margin: 4px 0 14px; }
 .tee-option { display: grid; grid-template-columns: 28px 1fr 24px; align-items: center; width: 100%; padding: 14px 16px; border: 1px solid #dfe7e3; border-radius: 14px; color: #2d3748; background: white; text-align: left; }
 .tee-option.selected { border: 2px solid #059669; background: #ecfdf5; }
-.onboarding-distance-unit { display: flex; align-items: center; justify-content: space-between; margin: 0 0 18px; padding: 0; border: 0; }
-.onboarding-distance-unit legend { padding: 0; color: #2d3748; font-size: 18px; font-weight: 800; }
-.onboarding-distance-unit > div { display: grid; grid-template-columns: repeat(2, minmax(88px, 1fr)); width: min(210px, 62vw); }
-.onboarding-distance-unit button { min-height: 48px; padding: 0 12px; border: 1px solid #d1d5db; color: #6b7280; background: white; font-size: 16px; font-weight: 800; white-space: nowrap; }
+.onboarding-distance-unit { display: grid; grid-template-columns: minmax(112px, 1fr) minmax(188px, 1.25fr); align-items: end; gap: 10px; margin: 2px 0 20px; }
+.onboarding-distance-unit-label { color: #2d3748; font-size: 22px; font-weight: 800; line-height: 1.35; }
+.onboarding-distance-unit > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+.onboarding-distance-unit button { min-height: 58px; padding: 0 16px; border: 1px solid #d1d5db; color: #6b7280; background: white; font-size: 19px; font-weight: 800; white-space: nowrap; }
 .onboarding-distance-unit button:first-child { border-radius: 10px 0 0 10px; }
 .onboarding-distance-unit button:last-child { margin-left: -1px; border-radius: 0 10px 10px 0; }
 .onboarding-distance-unit button.selected { position: relative; border-color: #059669; color: #047857; background: #d1fae5; }

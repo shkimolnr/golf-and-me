@@ -1586,12 +1586,12 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <fieldset className="onboarding-distance-unit">
-              <legend>거리 단위</legend>
+            <div className="onboarding-distance-unit" role="group" aria-labelledby="onboarding-distance-unit-label">
+              <span className="onboarding-distance-unit-label" id="onboarding-distance-unit-label">주로 사용하는<br />거리 단위</span>
               <div role="radiogroup" aria-label="기본 거리 단위">
                 {['M', 'YD'].map(unit => <button type="button" role="radio" aria-checked={defaultDistanceUnit === unit} className={defaultDistanceUnit === unit ? 'selected' : ''} key={unit} onClick={() => setDefaultDistanceUnit(unit)}>{unit === 'M' ? '미터 M' : '야드 YD'}</button>)}
               </div>
-            </fieldset>
+            </div>
             <button className="primary" type="button" onClick={() => {
               setOnboardingStep(3)
               trackEvent('onboarding_step', { step: 2, status: 'complete' })
@@ -1732,7 +1732,7 @@ export default function App() {
             <button className="secondary-button club-edit-button" type="button" onClick={() => setClubCompositionEditing(true)}>클럽 수정하기</button>
           </> : clubStage === 'composition' ? <>
             <div className="club-composition-heading">
-              <div><strong>사용 중인 클럽</strong><span>클럽을 눌러 골프백에 넣거나 뺄 수 있어요.</span></div>
+              <div className="club-selection-guidance"><i aria-hidden="true">i</i><span>클럽을 눌러 골프백에 넣거나 뺄 수 있어요.</span></div>
               <b>{clubDrafts.length}<small>개</small></b>
             </div>
             <div className="club-selection-table">

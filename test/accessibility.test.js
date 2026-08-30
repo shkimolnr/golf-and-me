@@ -50,7 +50,7 @@ test('신규 사용자는 티 설정과 클럽 구성을 3단계로 마친다', 
   assert.match(appSource, /clubSetupReturn === 'onboarding'/)
   assert.match(appSource, /clubSetupReturn === 'new-round'/)
   assert.match(appSource, /clubSetupReturn === 'onboarding' \? '이 구성으로 시작하기'/)
-  assert.match(appSource, /<legend>거리 단위<\/legend>/)
+  assert.match(appSource, /id="onboarding-distance-unit-label">주로 사용하는<br \/>거리 단위<\/span>/)
   assert.match(appSource, /aria-label="기본 거리 단위"/)
   assert.match(appSource, /미터 M/)
   assert.match(appSource, /야드 YD/)
