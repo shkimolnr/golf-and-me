@@ -16,6 +16,7 @@ import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMete
 import { loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
 import { measureLoginStage, recordLoginFailure, startLoginMeasurement, trackEvent } from './lib/analytics.js'
+import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
 const previewSession = {
@@ -594,10 +595,12 @@ export default function App() {
 
   async function signOut() {
     if (!supabase) return
+    const signingOutUserId = session?.user?.id
     setAuthError('')
     const { error } = await supabase.auth.signOut({ scope: 'local' })
     if (error) setAuthError('로그아웃하지 못했습니다. 다시 시도해주세요.')
     else {
+      resetNavigationForExplicitSignOut(window.localStorage, signingOutUserId)
       setAccountOpen(false)
       setScreen('home')
     }
