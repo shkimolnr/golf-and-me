@@ -39,6 +39,7 @@ export function resolveOnboardingProfile(localProfile, remoteProfile) {
     return {
       completed: true,
       defaultTee: remoteProfile.defaultTee || '화이트',
+      defaultDistanceUnit: remoteProfile.defaultDistanceUnit || 'M',
       shouldSaveRemote: false,
     }
   }
@@ -47,11 +48,12 @@ export function resolveOnboardingProfile(localProfile, remoteProfile) {
     return {
       completed: true,
       defaultTee: localProfile.defaultTee,
+      defaultDistanceUnit: localProfile.defaultDistanceUnit || 'M',
       shouldSaveRemote: true,
     }
   }
 
-  return { completed: false, defaultTee: '화이트', shouldSaveRemote: false }
+  return { completed: false, defaultTee: '화이트', defaultDistanceUnit: 'M', shouldSaveRemote: false }
 }
 
 export function serializeRoundRow(userId, round) {
@@ -104,26 +106,46 @@ export async function deleteRemoteRound(client, userId, roundId) {
 }
 
 export async function loadRemoteProfile(client, userId) {
-  const { data, error } = await client
+  let { data, error } = await client
     .from('profiles')
-    .select('default_tee, onboarding_completed')
+    .select('default_tee, default_distance_unit, onboarding_completed')
     .eq('id', userId)
     .maybeSingle()
 
+  if (error?.code === '42703') {
+    const legacyResult = await client
+      .from('profiles')
+      .select('default_tee, onboarding_completed')
+      .eq('id', userId)
+      .maybeSingle()
+    data = legacyResult.data
+    error = legacyResult.error
+  }
   if (error) throw error
   if (!data) return null
-  return { defaultTee: data.default_tee || '화이트', onboardingCompleted: Boolean(data.onboarding_completed) }
+  return {
+    defaultTee: data.default_tee || '화이트',
+    defaultDistanceUnit: data.default_distance_unit || 'M',
+    onboardingCompleted: Boolean(data.onboarding_completed),
+  }
 }
 
 export async function saveRemoteProfile(client, userId, profile) {
-  const { error } = await client
+  const row = {
+    id: userId,
+    default_tee: profile.defaultTee || '화이트',
+    default_distance_unit: profile.defaultDistanceUnit || 'M',
+    onboarding_completed: true,
+    updated_at: new Date().toISOString(),
+  }
+  let { error } = await client
     .from('profiles')
-    .upsert({
-      id: userId,
-      default_tee: profile.defaultTee || '화이트',
-      onboarding_completed: true,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'id' })
+    .upsert(row, { onConflict: 'id' })
 
+  if (error?.code === '42703') {
+    const { default_distance_unit: _ignored, ...legacyRow } = row
+    const legacyResult = await client.from('profiles').upsert(legacyRow, { onConflict: 'id' })
+    error = legacyResult.error
+  }
   if (error) throw error
 }

@@ -15,6 +15,7 @@ import { clearRoundHoleDrafts, latestHoleDraft, removeRoundHoleDraft, upsertRoun
 import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMeters, pairClubsForColumnLayout } from './lib/clubBag.js'
 import { loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
+import { measureLoginStage, recordLoginFailure, startLoginMeasurement, trackEvent } from './lib/analytics.js'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
 const previewSession = {
@@ -43,8 +44,8 @@ function createLocalId() {
   return `local-${Date.now().toString(36)}-${randomPart}`
 }
 
-function newRoundForm(tee = '화이트') {
-  return { courseId: null, courseName: '', frontCourseName: '', backCourseName: '', tee, distanceUnit: 'M', playedAt: localDateTimeValue(), companionMemo: '' }
+function newRoundForm(tee = '화이트', distanceUnit = 'M') {
+  return { courseId: null, courseName: '', frontCourseName: '', backCourseName: '', tee, distanceUnit, playedAt: localDateTimeValue(), companionMemo: '' }
 }
 
 function emptyRoundHoles() {
@@ -68,7 +69,6 @@ const teeOptions = [
   { value: '골드', color: 'gold', symbol: '●' },
   { value: '레드', color: 'red', symbol: '●' },
 ]
-const defaultClubs = ['드라이버', '3우드', '5우드', '유틸리티', '5아이언', '6아이언', '7아이언', '8아이언', '9아이언', 'PW', 'AW', 'SW']
 const clubSelectionRows = [
   { category: '드라이버·우드', options: ['1', '2', '3', '5', '7', '9'] },
   { category: '유틸리티', options: ['2', '3', '4', '5', '6', '7'] },
@@ -92,7 +92,7 @@ const initialClubDrafts = [
 initialClubDrafts.push({ id: '퍼터:PT', category: '퍼터', value: 'PT', label: 'PT', custom: false })
 
 function emptyShot(sequence) {
-  return { sequence, club: '', remainingDistance: '', remainingDistanceSource: null, troubleDirection: null, troubleType: null, obRelief: null, provisionalFor: null }
+  return { sequence, club: '', clubId: null, clubSnapshot: null, remainingDistance: '', remainingDistanceSource: null, troubleDirection: null, troubleType: null, obRelief: null, provisionalFor: null }
 }
 
 function CalendarIcon() {
@@ -125,6 +125,7 @@ export default function App() {
   const [onboardingReady, setOnboardingReady] = useState(false)
   const [onboardingStep, setOnboardingStep] = useState(1)
   const [defaultTee, setDefaultTee] = useState('화이트')
+  const [defaultDistanceUnit, setDefaultDistanceUnit] = useState('M')
   const [screen, setScreen] = useState('home')
   const [round, setRound] = useState(() => newRoundForm())
   const [rounds, setRounds] = useState([])
@@ -166,6 +167,7 @@ export default function App() {
   const [clubBagHydrated, setClubBagHydrated] = useState(false)
   const [clubCompositionCompleted, setClubCompositionCompleted] = useState(false)
   const [clubBagUpdatedAt, setClubBagUpdatedAt] = useState(null)
+  const [clubSetupReturn, setClubSetupReturn] = useState(null)
   const courseNameInputRef = useRef(null)
   const hadSyncIssueRef = useRef(false)
   const clubDistanceCanonicalInputsRef = useRef({})
@@ -262,6 +264,7 @@ export default function App() {
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (nextSession) measureLoginStage('session_restored')
       setSession(nextSession)
       setAuthLoading(false)
     })
@@ -289,19 +292,23 @@ export default function App() {
     setNavigationReady(false)
     setRestoreHoleNumber(null)
     setResumeNotice('')
+    setDefaultTee('화이트')
+    setDefaultDistanceUnit('M')
+    setRound(newRoundForm())
     const queuedDeletionIds = loadPendingRoundDeletions(window.localStorage, session.user.id)
     setPendingDeletedRoundIds(queuedDeletionIds)
 
     const storageKey = `golf-and-me:onboarding:${session.user.id}`
     let savedProfile = window.localStorage.getItem(storageKey)
     if (isPreviewMode && !savedProfile) {
-      savedProfile = JSON.stringify({ defaultTee: '화이트' })
+      savedProfile = JSON.stringify({ defaultTee: '화이트', defaultDistanceUnit: 'M' })
       window.localStorage.setItem(storageKey, savedProfile)
     }
     const profile = savedProfile ? JSON.parse(savedProfile) : null
     if (profile) {
       setDefaultTee(profile.defaultTee || '화이트')
-      setRound(current => ({ ...current, tee: profile.defaultTee || '화이트' }))
+      setDefaultDistanceUnit(profile.defaultDistanceUnit || 'M')
+      setRound(current => ({ ...current, tee: profile.defaultTee || '화이트', distanceUnit: profile.defaultDistanceUnit || 'M' }))
     }
 
     const roundsKey = `golf-and-me:rounds:${session.user.id}`
@@ -362,18 +369,29 @@ export default function App() {
 
     async function hydrateRemoteData() {
       try {
+        const remoteRoundsPromise = loadRemoteRounds(supabase, session.user.id)
+          .then(value => ({ value }), error => ({ error }))
+        const remoteClubBagPromise = loadRemoteClubBag(supabase, session.user.id)
+          .then(value => ({ value }), error => ({ error }))
         const remoteProfile = await loadRemoteProfile(supabase, session.user.id)
         if (cancelled) return
         const localProfileValue = window.localStorage.getItem(`golf-and-me:onboarding:${session.user.id}`)
         const localProfile = localProfileValue ? JSON.parse(localProfileValue) : null
         const resolvedProfile = resolveOnboardingProfile(localProfile, remoteProfile)
         if (resolvedProfile.shouldSaveRemote) {
-          await saveRemoteProfile(supabase, session.user.id, { defaultTee: resolvedProfile.defaultTee })
+          await saveRemoteProfile(supabase, session.user.id, {
+            defaultTee: resolvedProfile.defaultTee,
+            defaultDistanceUnit: resolvedProfile.defaultDistanceUnit,
+          })
         }
         if (resolvedProfile.completed) {
-          window.localStorage.setItem(`golf-and-me:onboarding:${session.user.id}`, JSON.stringify({ defaultTee: resolvedProfile.defaultTee }))
+          window.localStorage.setItem(`golf-and-me:onboarding:${session.user.id}`, JSON.stringify({
+            defaultTee: resolvedProfile.defaultTee,
+            defaultDistanceUnit: resolvedProfile.defaultDistanceUnit,
+          }))
           setDefaultTee(resolvedProfile.defaultTee)
-          setRound(current => ({ ...current, tee: resolvedProfile.defaultTee }))
+          setDefaultDistanceUnit(resolvedProfile.defaultDistanceUnit)
+          setRound(current => ({ ...current, tee: resolvedProfile.defaultTee, distanceUnit: resolvedProfile.defaultDistanceUnit }))
           setScreen(current => current === 'onboarding' ? 'home' : current)
         } else {
           setScreen('onboarding')
@@ -381,10 +399,11 @@ export default function App() {
         }
         setOnboardingReady(true)
 
-        const [remoteRounds, remoteClubBag] = await Promise.all([
-          loadRemoteRounds(supabase, session.user.id),
-          loadRemoteClubBag(supabase, session.user.id),
-        ])
+        const [remoteRoundsResult, remoteClubBagResult] = await Promise.all([remoteRoundsPromise, remoteClubBagPromise])
+        if (remoteRoundsResult.error) throw remoteRoundsResult.error
+        if (remoteClubBagResult.error) throw remoteClubBagResult.error
+        const remoteRounds = remoteRoundsResult.value
+        const remoteClubBag = remoteClubBagResult.value
         if (cancelled) return
         setRounds(currentRounds => {
           const mergedRounds = excludePendingRoundDeletions(mergeRoundCollections(currentRounds, remoteRounds), pendingDeletedRoundIds)
@@ -412,8 +431,10 @@ export default function App() {
         if (hadSyncIssueRef.current) {
           hadSyncIssueRef.current = false
           setSyncRecoveredNotice('기록을 최신 상태로 저장했어요.')
+          trackEvent('save_recovered', { stage: 'remote_load', online: true })
         }
         setRemoteHydratedUserId(session.user.id)
+        measureLoginStage('records_ready')
       } catch {
         if (!cancelled) {
           const hasLocalProfile = Boolean(window.localStorage.getItem(`golf-and-me:onboarding:${session.user.id}`))
@@ -424,6 +445,7 @@ export default function App() {
           setOnboardingReady(true)
           hadSyncIssueRef.current = true
           setSyncError('계정에 저장된 기록을 불러오지 못했어요. 이 기기에 저장된 기록으로 계속할 수 있고, 잠시 후 자동으로 다시 시도할게요.')
+          recordLoginFailure('records_load')
         }
       }
     }
@@ -437,6 +459,7 @@ export default function App() {
     if (!isOnline) {
       hadSyncIssueRef.current = true
       setSyncError('인터넷 연결이 없어요. 입력은 이 기기에 안전하게 저장하고 있으며, 연결되면 계정에도 자동 저장됩니다.')
+      trackEvent('save_delayed', { stage: 'offline', online: false })
       return
     }
     let retryTimer = null
@@ -461,10 +484,12 @@ export default function App() {
         if (hadSyncIssueRef.current) {
           hadSyncIssueRef.current = false
           setSyncRecoveredNotice('기록을 최신 상태로 저장했어요.')
+          trackEvent('save_recovered', { stage: 'remote_save', online: true })
         }
       } catch {
         hadSyncIssueRef.current = true
         setSyncError('입력은 이 기기에 안전하게 저장됐어요. 계정 저장이 늦어지고 있지만 자동으로 다시 시도할게요. 계속 기록해도 괜찮아요.')
+        trackEvent('save_delayed', { stage: 'remote_save', online: navigator.onLine })
         retryTimer = window.setTimeout(() => setSyncRetryNonce(value => value + 1), 5000)
       }
     }, 500)
@@ -555,11 +580,13 @@ export default function App() {
     if (!supabase) return
     setAuthError('')
     setAuthLoading(true)
+    startLoginMeasurement()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: googleOAuthOptions(window.location.origin),
     })
     if (error) {
+      recordLoginFailure('oauth_request')
       setAuthError('Google 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해주세요.')
       setAuthLoading(false)
     }
@@ -602,15 +629,17 @@ export default function App() {
     setActiveRound(null)
     setSession(null)
     setScreen('home')
+    trackEvent('account_delete_complete', { status: 'success' })
   }
 
   function completeOnboarding() {
     const storageKey = `golf-and-me:onboarding:${session.user.id}`
-    window.localStorage.setItem(storageKey, JSON.stringify({ defaultTee }))
-    setRound(current => ({ ...current, tee: defaultTee }))
+    window.localStorage.setItem(storageKey, JSON.stringify({ defaultTee, defaultDistanceUnit }))
+    setRound(current => ({ ...current, tee: defaultTee, distanceUnit: defaultDistanceUnit }))
     setScreen('home')
+    trackEvent('onboarding_step', { step: 3, status: 'complete' })
     if (supabase && !isPreviewMode) {
-      saveRemoteProfile(supabase, session.user.id, { defaultTee }).catch(() => {
+      saveRemoteProfile(supabase, session.user.id, { defaultTee, defaultDistanceUnit }).catch(() => {
         setSyncError('기본 티 설정은 기기에 저장했지만 서버 동기화가 지연되고 있어요.')
       })
     }
@@ -721,6 +750,10 @@ export default function App() {
     setEditingActiveRound(false)
     setPendingStructureChange(null)
     setScreen(committedRound.status === 'completed' ? 'round-result' : 'scorecard')
+    if (!editingActiveRound) trackEvent('round_create', {
+      is_manual_course: !committedRound.courseId,
+      has_course_data: Boolean(committedRound.courseId),
+    })
   }
 
   function applyStructureChange(resetHoles) {
@@ -734,7 +767,14 @@ export default function App() {
   }
 
   function startNewRound() {
-    setRound(newRoundForm(defaultTee))
+    if (!clubCompositionCompleted) {
+      setClubSetupReturn('new-round')
+      setClubStage('composition')
+      setClubCompositionEditing(true)
+      setScreen('clubs')
+      return
+    }
+    setRound(newRoundForm(defaultTee, defaultDistanceUnit))
     setEditingActiveRound(false)
     setPendingRoundStart(null)
     setScreen('new-round')
@@ -747,6 +787,7 @@ export default function App() {
     setCustomClubCategory(null)
     setClubDistanceEditing(false)
     setRecentlyChangedClubIds([])
+    setClubSetupReturn(null)
     setScreen('clubs')
   }
 
@@ -785,10 +826,23 @@ export default function App() {
     const isFirstComposition = !clubCompositionCompleted
     setClubBagUpdatedAt(new Date().toISOString())
     setClubCompositionCompleted(true)
+    trackEvent('club_setup_complete', { status: 'saved' })
     setClubCompositionEditing(false)
     setClubStage(isFirstComposition ? 'distance' : 'composition')
     setCustomClubCategory(null)
     setClubDistanceEditing(false)
+    if (clubSetupReturn === 'onboarding') {
+      setClubSetupReturn(null)
+      completeOnboarding()
+      return
+    }
+    if (clubSetupReturn === 'new-round') {
+      setClubSetupReturn(null)
+      setRound(newRoundForm(defaultTee, defaultDistanceUnit))
+      setEditingActiveRound(false)
+      setPendingRoundStart(null)
+      setScreen('new-round')
+    }
   }
 
   function beginDistanceUpdate() {
@@ -881,6 +935,7 @@ export default function App() {
     setActiveRound(selectedRound)
     setEditingActiveRound(false)
     setScreen(selectedRound.status === 'completed' ? 'round-result' : 'scorecard')
+    if (selectedRound.status === 'completed') trackEvent('round_result_view', { completed_holes: 18 })
   }
 
   function requestRoundDeletion(selectedRound) {
@@ -1168,6 +1223,7 @@ export default function App() {
     setPuttMoreOpen(false)
     setCustomPutts(Number.isFinite(putts) && putts >= 5 ? String(putts) : '5')
     setScreen('hole-detail')
+    trackEvent('hole_start', { completed_holes: enteredHoles.length })
   }
 
   function leaveHoleDetail() {
@@ -1177,6 +1233,7 @@ export default function App() {
 
   function saveHoleDraft() {
     if (holeDraft) persistHoleDraft(holeDraft)
+    trackEvent('hole_draft_save', { completed_holes: enteredHoles.length })
     setScreen('scorecard')
   }
 
@@ -1219,6 +1276,26 @@ export default function App() {
       }
       return { ...current, shots }
     })
+  }
+
+  function updateShotClub(index, selectedValue) {
+    if (!selectedValue) {
+      updateShot(index, { club: '', clubId: null, clubSnapshot: null })
+      return
+    }
+    if (selectedValue.startsWith('legacy:')) return
+    const clubId = selectedValue.slice(3)
+    const selectedClub = orderedActiveClubs.find(club => String(club.id) === clubId)
+      || (String(holeDraft?.shots[index]?.clubId) === clubId ? holeDraft.shots[index].clubSnapshot : null)
+    if (!selectedClub) return
+    const clubSnapshot = {
+      id: selectedClub.id ?? clubId,
+      label: selectedClub.label || holeDraft?.shots[index]?.club || '',
+      category: selectedClub.category || '',
+      value: selectedClub.value || selectedClub.label || '',
+      custom: Boolean(selectedClub.custom),
+    }
+    updateShot(index, { club: clubSnapshot.label, clubId: String(clubSnapshot.id), clubSnapshot })
   }
 
   function updateTeeDistance(value) {
@@ -1339,6 +1416,11 @@ export default function App() {
     setActiveRound(nextRound)
     setRounds(nextRounds)
     setScreen(activeRound.status === 'completed' ? 'round-result' : 'scorecard')
+    const completedHoles = nextHoles.filter(hole => Number.isFinite(hole.score)).length
+    trackEvent('hole_complete', { completed_holes: completedHoles })
+    if ([1, 3, 9, 18].includes(completedHoles)) {
+      trackEvent('round_milestone', { milestone: completedHoles, completed_holes: completedHoles })
+    }
   }
 
   function completeRound() {
@@ -1352,6 +1434,10 @@ export default function App() {
     setRounds(nextRounds)
     setRoundCompletionOpen(false)
     setScreen('round-result')
+    const roundStartedAt = Date.parse(completedRound.createdAt || '')
+    const roundDurationMs = Number.isFinite(roundStartedAt) ? Math.max(0, Date.now() - roundStartedAt) : 0
+    trackEvent('round_complete', { completed_holes: 18, duration_ms: roundDurationMs })
+    trackEvent('round_result_view', { completed_holes: 18 })
   }
 
   if (authLoading) {
@@ -1393,7 +1479,20 @@ export default function App() {
   const clubCompositionGroups = [...clubSelectionRows.map(row => row.category), '퍼터']
     .map(category => ({ category, clubs: orderedClubDrafts.filter(club => club.category === category) }))
     .filter(group => group.clubs.length)
-  const activeClubLabels = orderedActiveClubs.map(club => club.label)
+  function shotClubOptions(shot) {
+    const options = orderedActiveClubs.map(club => ({ value: `id:${club.id}`, label: club.label }))
+    if (shot?.clubId && !orderedActiveClubs.some(club => String(club.id) === String(shot.clubId))) {
+      options.unshift({ value: `id:${shot.clubId}`, label: `${shot.clubSnapshot?.label || shot.club} · 과거 사용 클럽` })
+    } else if (!shot?.clubId && shot?.club) {
+      options.unshift({ value: `legacy:${shot.club}`, label: `${shot.club} · 이전 기록` })
+    }
+    return options
+  }
+
+  function shotClubValue(shot) {
+    if (shot?.clubId) return `id:${shot.clubId}`
+    return shot?.club ? `legacy:${shot.club}` : ''
+  }
   const latestDistanceSet = clubDistanceSets[0] || null
   const distanceClubs = orderedActiveClubs
   const distanceClubPairs = pairClubsForColumnLayout(distanceClubs)
@@ -1404,8 +1503,8 @@ export default function App() {
   if (screen === 'onboarding') {
     return (
       <main className="app-shell onboarding-shell">
-        <div className="onboarding-progress" aria-label={`온보딩 ${onboardingStep}/2 단계`}>
-          <span className="active" /><span className={onboardingStep === 2 ? 'active' : ''} />
+        <div className="onboarding-progress" aria-label={`온보딩 ${onboardingStep}/3 단계`}>
+          <span className="active" /><span className={onboardingStep >= 2 ? 'active' : ''} /><span className={onboardingStep >= 3 ? 'active' : ''} />
         </div>
         {onboardingStep === 1 ? (
           <section className="onboarding-content">
@@ -1413,7 +1512,10 @@ export default function App() {
             <p className="eyebrow">Welcome to Golf &amp; Me</p>
             <h1>골프와 나에<br />오신 것을 환영합니다.</h1>
             <p className="description">당신의 골프 성장 여정을 시작해볼게요.<br />기록은 가볍게, 변화는 선명하게.</p>
-            <button className="primary" type="button" onClick={() => setOnboardingStep(2)}>시작하기</button>
+            <button className="primary" type="button" onClick={() => {
+              setOnboardingStep(2)
+              trackEvent('onboarding_step', { step: 1, status: 'complete' })
+            }}>시작하기</button>
           </section>
         ) : (
           <section className="onboarding-content">
@@ -1424,7 +1526,6 @@ export default function App() {
             <div className="tee-options" role="radiogroup" aria-label="기본 티그라운드">
               {teeOptions.map(tee => (
                 <button
-                  type="button"
                   type="button"
                   role="radio"
                   aria-checked={defaultTee === tee.value}
@@ -1438,7 +1539,20 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <button className="primary" type="button" onClick={completeOnboarding}>설정 완료</button>
+            <fieldset className="onboarding-distance-unit">
+              <legend>거리 단위</legend>
+              <div role="radiogroup" aria-label="기본 거리 단위">
+                {['M', 'YD'].map(unit => <button type="button" role="radio" aria-checked={defaultDistanceUnit === unit} className={defaultDistanceUnit === unit ? 'selected' : ''} key={unit} onClick={() => setDefaultDistanceUnit(unit)}>{unit}</button>)}
+              </div>
+            </fieldset>
+            <button className="primary" type="button" onClick={() => {
+              setOnboardingStep(3)
+              trackEvent('onboarding_step', { step: 2, status: 'complete' })
+              setClubSetupReturn('onboarding')
+              setClubStage('composition')
+              setClubCompositionEditing(true)
+              setScreen('clubs')
+            }}>다음</button>
           </section>
         )}
       </main>
@@ -1522,20 +1636,27 @@ export default function App() {
         <section className="club-bag">
           <div className="compact-page-header">
             <button className="back" onClick={() => {
-              if (clubStage === 'composition' && clubCompositionCompleted && clubCompositionEditing) setClubCompositionEditing(false)
+              if (clubSetupReturn === 'onboarding') {
+                setClubSetupReturn(null)
+                setOnboardingStep(2)
+                setScreen('onboarding')
+              } else if (clubSetupReturn === 'new-round') {
+                setClubSetupReturn(null)
+                setScreen('home')
+              } else if (clubStage === 'composition' && clubCompositionCompleted && clubCompositionEditing) setClubCompositionEditing(false)
               else if (clubStage === 'composition' && clubCompositionCompleted) setClubStage('distance')
               else setScreen('home')
-            }} aria-label={clubStage === 'composition' && clubCompositionCompleted ? (clubCompositionEditing ? '클럽 구성 보기로 돌아가기' : '비거리로 돌아가기') : '홈으로 돌아가기'}>←</button>
+            }} aria-label={clubSetupReturn === 'onboarding' ? '티 설정으로 돌아가기' : clubSetupReturn === 'new-round' ? '홈으로 돌아가기' : clubStage === 'composition' && clubCompositionCompleted ? (clubCompositionEditing ? '클럽 구성 보기로 돌아가기' : '비거리로 돌아가기') : '홈으로 돌아가기'}>←</button>
             <div className="compact-page-title">
               <h1>내 골프백</h1>
               <span>{clubStage === 'composition' ? '라운드에서 사용하는 클럽을 선택해요' : '현재 내 클럽의 비거리를 세트로 관리해요'}</span>
             </div>
           </div>
 
-          <div className="club-stage-tabs" role="tablist" aria-label="골프백 관리 메뉴">
+          {!clubSetupReturn && <div className="club-stage-tabs" role="tablist" aria-label="골프백 관리 메뉴">
             <button type="button" role="tab" aria-selected={clubStage === 'composition'} className={clubStage === 'composition' ? 'active' : ''} onClick={() => { setClubStage('composition'); setClubCompositionEditing(false); setRecentlyChangedClubIds([]) }}>클럽 구성</button>
             <button type="button" role="tab" aria-selected={clubStage === 'distance'} className={clubStage === 'distance' ? 'active' : ''} disabled={!clubCompositionCompleted} onClick={() => { setClubStage('distance'); setClubCompositionEditing(false); setRecentlyChangedClubIds([]) }}>클럽별 비거리</button>
-          </div>
+          </div>}
 
           {clubStage === 'composition' && clubCompositionCompleted && !clubCompositionEditing ? <>
             <div className="club-composition-heading">
@@ -1583,7 +1704,7 @@ export default function App() {
               <button className="primary" type="submit" disabled={!customClubLabel.trim() || clubDrafts.some(club => club.label.toLocaleLowerCase() === customClubLabel.trim().toLocaleLowerCase())}>추가하기</button>
             </form>}
 
-            <button className="primary club-next-button" type="button" onClick={openClubDistances} disabled={!clubDrafts.length}>{clubCompositionCompleted ? '클럽 구성 저장' : '클럽 선택 완료'}</button>
+            <button className="primary club-next-button" type="button" onClick={openClubDistances} disabled={!clubDrafts.length}>{clubSetupReturn === 'onboarding' ? '클럽 구성 완료' : clubSetupReturn === 'new-round' ? '저장하고 라운드 만들기' : clubCompositionCompleted ? '클럽 구성 저장' : '클럽 선택 완료'}</button>
           </> : <>
             {clubDistanceEditing ? <form className="distance-edit-card" onSubmit={saveDistanceSet}>
               <div className="distance-set-heading distance-edit-heading"><div className="distance-edit-guidance"><span>필요한 클럽만 입력해도 됩니다.</span><span>입력하지 않은 클럽은 이전 거리를 유지해요.</span></div><div className="distance-preferences" aria-label="새 비거리 세트의 표시 기준">
@@ -1648,7 +1769,7 @@ export default function App() {
             {editingActiveRound && <p className={`structure-edit-note ${roundStructureLocked ? 'locked' : ''}`}>{roundStructureLocked ? '골프장과 코스는 홀 기록과 연결되어 변경할 수 없어요.' : '골프장과 코스는 세 번째 플레이 홀까지 변경할 수 있어요.'}</p>}
             <datalist id="front-course-history">{frontCourseSuggestions.map(name => <option key={name} value={name} />)}</datalist>
             <datalist id="back-course-history">{backCourseSuggestions.map(name => <option key={name} value={name} />)}</datalist>
-            <div className="tee-unit-fields"><label>티그라운드<select value={round.tee} onChange={e => setRound({...round, tee: e.target.value})}>{teeOptions.map(tee => <option key={tee.value}>{tee.value}</option>)}</select></label><fieldset><legend>단위</legend><div><button type="button" className={round.distanceUnit === 'M' ? 'selected' : ''} onClick={() => setRound({...round, distanceUnit: 'M'})}>M</button><button type="button" className={round.distanceUnit === 'YD' ? 'selected' : ''} onClick={() => setRound({...round, distanceUnit: 'YD'})}>YD</button></div></fieldset></div>
+            <div className="tee-unit-fields"><label>티그라운드<select value={round.tee} onChange={e => setRound({...round, tee: e.target.value})}>{teeOptions.map(tee => <option key={tee.value}>{tee.value}</option>)}</select></label><fieldset><legend>거리 단위</legend><div><button type="button" className={round.distanceUnit === 'M' ? 'selected' : ''} onClick={() => setRound({...round, distanceUnit: 'M'})}>M</button><button type="button" className={round.distanceUnit === 'YD' ? 'selected' : ''} onClick={() => setRound({...round, distanceUnit: 'YD'})}>YD</button></div></fieldset></div>
             <div className="field-group">
               <span className="field-label">날짜와 시간</span>
               <button type="button" className="date-time-trigger" onClick={openDateTimePicker} aria-haspopup="dialog">
@@ -1792,7 +1913,7 @@ export default function App() {
                 <div className={`shot-heading ${index >= 4 ? 'has-remove' : ''}`}>
                   <strong>{shotName(index, shot)}</strong>
                   <label className={`distance-field ${index === 0 && showHoleDistanceWarning ? 'needs-manual-distance' : ''}`}>{index === 0 ? '홀거리' : '남은거리'}<input inputMode="numeric" value={index === 0 ? (holeDraft.distance ?? '') : shot.remainingDistance} onChange={e => index === 0 ? updateTeeDistance(e.target.value) : updateShot(index, { remainingDistance: e.target.value })} placeholder={index === 0 && !activeRound?.courseId ? '—' : '0'} />{activeRound?.distanceUnit === 'YD' ? 'yd' : 'm'}</label>
-                  <label className="club-field">클럽<select value={shot.club} onChange={e => updateShot(index, { club: e.target.value })}><option value="">선택</option>{(activeClubLabels.length ? activeClubLabels : defaultClubs).map(club => <option key={club}>{club}</option>)}</select></label>
+                  <label className="club-field">클럽<select value={shotClubValue(shot)} onChange={e => updateShotClub(index, e.target.value)}><option value="">선택</option>{shotClubOptions(shot).map(club => <option key={club.value} value={club.value}>{club.label}</option>)}</select></label>
                   {index >= 4 && <button className="remove-shot" type="button" onClick={() => removeAddedShot(index)} aria-label={`${shotName(index, shot)} 삭제`}>×</button>}
                 </div>
                 {currentShotIndex === index && <p className="shot-task-hint"><span aria-hidden="true" />지금 입력 · {shotTaskLabel(index)}</p>}
@@ -1832,10 +1953,11 @@ export default function App() {
             <button className="primary save-hole" type="button" onClick={beginHoleEdit}>홀 기록 수정</button>
           ) : holeMode === 'edit' ? (
             <button className="primary save-hole" type="button" onClick={saveHole} disabled={!holeHasChanges || !holeCanFinalize}>변경사항 저장</button>
-          ) : holeCanFinalize ? (
-            <button className="primary save-hole" type="button" onClick={saveHole}>홀 기록 저장</button>
           ) : (
-            <button className="primary save-hole secondary-save" type="button" onClick={saveHoleDraft}>임시 저장</button>
+            <div className="hole-save-actions">
+              <button className="save-hole secondary-save" type="button" onClick={saveHoleDraft}>임시 저장</button>
+              <button className="primary save-hole" type="button" onClick={saveHole} disabled={!holeCanFinalize}>홀 기록 완료</button>
+            </div>
           )}
         </section>
       )}

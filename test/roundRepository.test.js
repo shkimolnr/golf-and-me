@@ -52,14 +52,16 @@ test('새 기기의 기존 사용자는 서버 온보딩 프로필로 바로 진
   assert.deepEqual(resolveOnboardingProfile(null, { defaultTee: '레드', onboardingCompleted: true }), {
     completed: true,
     defaultTee: '레드',
+    defaultDistanceUnit: 'M',
     shouldSaveRemote: false,
   })
 })
 
-test('서버 이전 로컬 프로필은 유지하고 서버 저장 대상으로 표시한다', () => {
-  assert.deepEqual(resolveOnboardingProfile({ defaultTee: '골드' }, { defaultTee: '화이트', onboardingCompleted: false }), {
+test('서버 이전 로컬 프로필은 거리 단위까지 유지하고 서버 저장 대상으로 표시한다', () => {
+  assert.deepEqual(resolveOnboardingProfile({ defaultTee: '골드', defaultDistanceUnit: 'YD' }, { defaultTee: '화이트', onboardingCompleted: false }), {
     completed: true,
     defaultTee: '골드',
+    defaultDistanceUnit: 'YD',
     shouldSaveRemote: true,
   })
 })
@@ -68,6 +70,7 @@ test('신규 사용자는 온보딩 미완료 상태로 진입한다', () => {
   assert.deepEqual(resolveOnboardingProfile(null, { defaultTee: '화이트', onboardingCompleted: false }), {
     completed: false,
     defaultTee: '화이트',
+    defaultDistanceUnit: 'M',
     shouldSaveRemote: false,
   })
 })

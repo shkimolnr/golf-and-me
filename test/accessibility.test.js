@@ -30,3 +30,23 @@ test('라운드 수정 화면은 잠금 여부와 관계없이 같은 제목을 
   assert.match(appSource, /<h1>\{editingActiveRound \? '라운드 정보' : '새 라운드'\}<\/h1>/)
   assert.doesNotMatch(appSource, /아직 \$\{missingHoleLabel\(\)\} 기록이 남았어요/)
 })
+
+test('신규 홀은 임시 저장과 명시적 완료 동작을 함께 제공한다', () => {
+  assert.match(appSource, /<div className="hole-save-actions">/)
+  assert.match(appSource, />임시 저장<\/button>/)
+  assert.match(appSource, /disabled=\{!holeCanFinalize\}>홀 기록 완료<\/button>/)
+})
+
+test('샷 클럽은 현재 ID와 당시 표시명 스냅샷을 저장한다', () => {
+  assert.match(appSource, /clubId: String\(clubSnapshot\.id\)/)
+  assert.match(appSource, /clubSnapshot \}/)
+  assert.match(appSource, /과거 사용 클럽/)
+})
+
+test('신규 사용자는 클럽 구성을 확인한 뒤 첫 라운드로 이동한다', () => {
+  assert.match(appSource, /clubSetupReturn === 'onboarding'/)
+  assert.match(appSource, /clubSetupReturn === 'new-round'/)
+  assert.match(appSource, /clubSetupReturn === 'onboarding' \? '클럽 구성 완료'/)
+  assert.match(appSource, /<legend>거리 단위<\/legend>/)
+  assert.match(appSource, /aria-label="기본 거리 단위"/)
+})
