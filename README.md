@@ -58,8 +58,9 @@ Alpha 기록 화면은 퍼팅 시작 위치를 `그린/엣지`로 구분해 마�
 - Frontend: React + Vite + CSS
 - Backend / Database: Supabase (PostgreSQL)
 - Authentication: Google OAuth 2.0
-- Hosting: OpenAI Sites
-- Production: https://golf-and-me.kimseungha.chatgpt.site
+- Alpha Hosting: OpenAI Sites (임시 검증용)
+- Alpha URL: https://golf-and-me.kimseungha.chatgpt.site
+- Long-term Hosting: 재검토 중이며 사용자 명시 결정 전에는 변경하지 않음
 - Email·Push: Alpha 범위에서 제외
 
 ## 문서 운영 방식

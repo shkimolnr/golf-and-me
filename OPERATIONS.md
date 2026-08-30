@@ -4,18 +4,19 @@
 
 ## 1. 환경과 주소
 
-- 프로덕션: `https://golf-and-me.kimseungha.chatgpt.site`
+- 현재 Alpha 임시 배포: `https://golf-and-me.kimseungha.chatgpt.site`
 - 로컬 개발: `http://127.0.0.1:5190/`
 - 로그인 없는 프리뷰: 로컬 개발 주소에만 `?preview=1` 사용
 - 프로덕션에서는 프리뷰 우회를 활성화하지 않습니다.
 - 제공된 `chatgpt.site` 주소에는 별도 DNS 설정이 필요하지 않습니다. 향후 독립 도메인을 연결할 때만 DNS와 OAuth 허용 주소를 함께 변경합니다.
+- 장기 호스팅은 재검토 중입니다. Vercel 유지, OpenAI Sites 유지 또는 다른 안을 사용자가 명시적으로 결정하기 전에는 배포 제공자·도메인·인증 주소를 추가 변경하지 않습니다.
 
 ## 2. 배포 절차
 
 1. `npm test`와 `npm run build`를 통과합니다.
 2. 비밀키와 개인정보가 Git 또는 빌드 결과에 포함되지 않았는지 확인합니다.
-3. OpenAI Sites에 새 버전을 저장하고 프로덕션에 배포합니다.
-4. 프로덕션에서 로그인 → 홈 → 라운드 열기 → 저장 → 재접속을 확인합니다.
+3. 현재 Alpha 기간에는 OpenAI Sites에 새 버전을 저장하고 임시 Alpha 주소에 배포합니다.
+4. Alpha 주소에서 로그인 → 홈 → 라운드 열기 → 저장 → 재접속을 확인합니다.
 5. 인증 주소를 바꾸면 Supabase Auth의 Site URL·Redirect URL과 Google OAuth 설정을 함께 확인합니다.
 
 문제가 생기면 직전 정상 Sites 버전을 다시 배포해 되돌립니다. DB 마이그레이션은 대응하는 `supabase/rollback/` 파일을 먼저 검토하고, 사용자 데이터가 있는 운영 DB에는 자동 롤백하지 않습니다.
