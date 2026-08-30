@@ -506,6 +506,13 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .onboarding-progress span { height: 4px; border-radius: 999px; background: #e5e7eb; }
 .onboarding-progress .active { background: #059669; }
 .club-onboarding-progress { margin-bottom: 30px; }
+.onboarding-club-bag { display: flex; flex-direction: column; min-height: calc(100vh - 72px); }
+.onboarding-back { align-self: flex-start; margin-bottom: 8px; padding: 8px 4px; font-weight: 800; }
+.onboarding-club-intro { margin-bottom: 20px; }
+.onboarding-club-intro h1 { margin-top: 8px; margin-bottom: 12px; }
+.onboarding-club-intro .description { margin-bottom: 0; }
+.onboarding-club-bag .club-composition-heading { margin-top: 2px; }
+.onboarding-club-bag .club-next-button { margin-top: 20px; }
 .onboarding-content { display: flex; flex: 1; flex-direction: column; justify-content: center; }
 .welcome-mark { display: grid; place-items: center; width: 72px; height: 72px; margin-bottom: 24px; border-radius: 24px; color: white; background: #059669; font-size: 32px; font-weight: 800; transform: rotate(-3deg); }
 .tee-options { display: grid; gap: 10px; margin: 4px 0 14px; }
@@ -519,6 +526,11 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .onboarding-distance-unit button:last-child { margin-left: -1px; border-radius: 0 10px 10px 0; }
 .onboarding-distance-unit button.selected { position: relative; border-color: #059669; color: #047857; background: #d1fae5; }
 .onboarding-distance-complete { margin-top: 10px; }
+.new-round-distance-hint { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid #d1fae5; border-radius: 12px; background: #ecfdf5; }
+.new-round-distance-hint strong, .new-round-distance-hint span { display: block; }
+.new-round-distance-hint strong { color: #047857; font-size: 13px; }
+.new-round-distance-hint span { margin-top: 3px; color: #6b7280; font-size: 11px; line-height: 1.45; }
+.new-round-distance-hint button { flex: 0 0 auto; padding: 7px 9px; border: 1px solid #a7f3d0; border-radius: 9px; color: #047857; background: white; font-size: 12px; font-weight: 800; white-space: nowrap; }
 .tee-color { font-size: 19px; line-height: 1; }
 .tee-color.black { color: #111827; }
 .tee-color.blue { color: #2563eb; }
@@ -570,6 +582,8 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 @media (max-height: 700px) { .hole { min-height: 52px; padding: 5px 9px; } .hole-meta { top: 4px; left: 8px; } .hole-score { right: 9px; } .nine-section + .nine-section { margin-top: 7px; } .score-summary { margin-top: 20px; } }
 @media (max-width: 480px) { .date-time-fields { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 8px; } }
 @media (max-width: 480px) {
+  .onboarding-club-bag { min-height: 100vh; }
+  .onboarding-club-intro h1 { font-size: clamp(30px, 9vw, 38px); }
   .hole-detail .compact-page-header { margin-bottom: 8px; }
   .shot-heading, .putting-heading { grid-template-columns: 18% 40% 42%; }
   .shot-heading .distance-field, .putting-distance-field { grid-template-columns: 44px minmax(0, 78px) auto; }

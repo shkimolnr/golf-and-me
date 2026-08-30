@@ -170,6 +170,7 @@ export default function App() {
   const [clubSetupPromptOpen, setClubSetupPromptOpen] = useState(false)
   const courseNameInputRef = useRef(null)
   const hadSyncIssueRef = useRef(false)
+  const clubOnboardingCompletedRef = useRef(false)
   const clubDistanceCanonicalInputsRef = useRef({})
 
   useEffect(() => {
@@ -213,8 +214,10 @@ export default function App() {
   useEffect(() => {
     if (!session) {
       setClubBagHydrated(false)
+      clubOnboardingCompletedRef.current = false
       return
     }
+    clubOnboardingCompletedRef.current = false
     setClubDrafts(initialClubDrafts)
     setInactiveClubDrafts([])
     setClubDistanceSets([])
@@ -269,7 +272,7 @@ export default function App() {
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (nextSession) measureLoginStage('session_restored')
-      setSession(nextSession)
+      setSession(currentSession => currentSession?.user?.id === nextSession?.user?.id ? currentSession : nextSession)
       setAuthLoading(false)
     })
 
@@ -424,14 +427,16 @@ export default function App() {
           window.localStorage.removeItem(clubStorageKey)
         }
         const resolvedClubBag = resolveClubBag(localClubBag, remoteClubBag)
-        setClubDrafts(resolvedClubBag.clubs)
-        setInactiveClubDrafts(resolvedClubBag.inactiveClubs)
-        setClubDistanceSets(resolvedClubBag.distanceSets)
-        setClubDistanceUnit(resolvedClubBag.distanceUnit)
-        setClubDistanceBasis(resolvedClubBag.distanceSets[0]?.basis ?? null)
-        setClubCompositionCompleted(resolvedClubBag.compositionCompleted)
-        setClubBagUpdatedAt(resolvedClubBag.updatedAt)
-        window.localStorage.setItem(clubStorageKey, JSON.stringify(resolvedClubBag))
+        if (!clubOnboardingCompletedRef.current) {
+          setClubDrafts(resolvedClubBag.clubs)
+          setInactiveClubDrafts(resolvedClubBag.inactiveClubs)
+          setClubDistanceSets(resolvedClubBag.distanceSets)
+          setClubDistanceUnit(resolvedClubBag.distanceUnit)
+          setClubDistanceBasis(resolvedClubBag.distanceSets[0]?.basis ?? null)
+          setClubCompositionCompleted(resolvedClubBag.compositionCompleted)
+          setClubBagUpdatedAt(resolvedClubBag.updatedAt)
+          window.localStorage.setItem(clubStorageKey, JSON.stringify(resolvedClubBag))
+        }
         setSyncError('')
         if (hadSyncIssueRef.current) {
           hadSyncIssueRef.current = false
@@ -652,6 +657,30 @@ export default function App() {
         setSyncError('기본 티 설정은 기기에 저장했지만 서버 동기화가 지연되고 있어요.')
       })
     }
+  }
+
+  function completeOnboardingWithClubs() {
+    const updatedAt = new Date().toISOString()
+    const nextClubBag = {
+      clubs: clubDrafts,
+      inactiveClubs: inactiveClubDrafts,
+      distanceUnit: clubDistanceUnit,
+      distanceSets: clubDistanceSets,
+      compositionCompleted: true,
+      updatedAt,
+    }
+    clubOnboardingCompletedRef.current = true
+    window.localStorage.setItem(`golf-and-me:club-bag:${session.user.id}`, JSON.stringify(nextClubBag))
+    setClubBagUpdatedAt(updatedAt)
+    setClubCompositionCompleted(true)
+    setClubCompositionEditing(false)
+    trackEvent('club_setup_complete', { status: 'saved', source: 'onboarding' })
+    if (supabase && !isPreviewMode) {
+      saveRemoteClubBag(supabase, session.user.id, nextClubBag).catch(() => {
+        setSyncError('클럽 구성은 이 기기에 저장했지만 계정 저장이 늦어지고 있어요. 잠시 후 자동으로 다시 시도할게요.')
+      })
+    }
+    completeOnboarding()
   }
 
   function createRound(event) {
@@ -1651,33 +1680,38 @@ export default function App() {
       )}
 
       {screen === 'clubs' && (
-        <section className="club-bag">
+        <section className={`club-bag ${clubSetupReturn === 'onboarding' ? 'onboarding-club-bag' : ''}`}>
           {clubSetupReturn === 'onboarding' && <div className="onboarding-progress club-onboarding-progress" aria-label="온보딩 3/3 단계">
             <span className="active" /><span className="active" /><span className="active" />
           </div>}
-          <div className="compact-page-header">
+          {clubSetupReturn === 'onboarding' ? <>
+            <button className="back onboarding-back" type="button" onClick={() => {
+              setClubSetupReturn(null)
+              setOnboardingStep(2)
+              setScreen('onboarding')
+            }}>← 이전</button>
+            <div className="onboarding-club-intro">
+              <p className="eyebrow">내 골프백</p>
+              <h1>사용하는 클럽을<br />알려주세요.</h1>
+              <p className="description">라운드에서 샷과 클럽별 기록을 남길 때 사용해요.<br />언제든 변경할 수 있습니다.</p>
+            </div>
+          </> : <div className="compact-page-header">
             <button className="back" onClick={() => {
-              if (clubSetupReturn === 'onboarding') {
-                if (clubStage === 'distance') {
-                  setClubStage('composition')
-                  setClubCompositionEditing(true)
-                } else {
-                  setClubSetupReturn(null)
-                  setOnboardingStep(2)
-                  setScreen('onboarding')
-                }
-              } else if (clubSetupReturn === 'new-round') {
+              if (clubSetupReturn === 'new-round') {
                 setClubSetupReturn(null)
                 setScreen('home')
+              } else if (clubSetupReturn === 'new-round-distance') {
+                setClubSetupReturn(null)
+                setScreen('new-round')
               } else if (clubStage === 'composition' && clubCompositionCompleted && clubCompositionEditing) setClubCompositionEditing(false)
               else if (clubStage === 'composition' && clubCompositionCompleted) setClubStage('distance')
               else setScreen('home')
-            }} aria-label={clubSetupReturn === 'onboarding' ? (clubStage === 'distance' ? '클럽 구성으로 돌아가기' : '티 설정으로 돌아가기') : clubSetupReturn === 'new-round' ? '홈으로 돌아가기' : clubStage === 'composition' && clubCompositionCompleted ? (clubCompositionEditing ? '클럽 구성 보기로 돌아가기' : '비거리로 돌아가기') : '홈으로 돌아가기'}>←</button>
+            }} aria-label={clubSetupReturn === 'new-round' ? '홈으로 돌아가기' : clubSetupReturn === 'new-round-distance' ? '새 라운드로 돌아가기' : clubStage === 'composition' && clubCompositionCompleted ? (clubCompositionEditing ? '클럽 구성 보기로 돌아가기' : '비거리로 돌아가기') : '홈으로 돌아가기'}>←</button>
             <div className="compact-page-title">
-              <h1>{clubSetupReturn === 'onboarding' && clubStage === 'composition' ? '사용하는 클럽을 알려주세요' : clubSetupReturn === 'onboarding' ? '클럽별 비거리' : '내 골프백'}</h1>
-              <span>{clubSetupReturn === 'onboarding' && clubStage === 'composition' ? '라운드에서 샷과 클럽별 기록을 남길 때 사용해요. 언제든 수정할 수 있어요.' : clubStage === 'composition' ? '라운드에서 사용하는 클럽을 선택해요' : '현재 내 클럽의 비거리를 세트로 관리해요'}</span>
+              <h1>내 골프백</h1>
+              <span>{clubStage === 'composition' ? '라운드에서 사용하는 클럽을 선택해요' : '현재 내 클럽의 비거리를 세트로 관리해요'}</span>
             </div>
-          </div>
+          </div>}
 
           {!clubSetupReturn && <div className="club-stage-tabs" role="tablist" aria-label="골프백 관리 메뉴">
             <button type="button" role="tab" aria-selected={clubStage === 'composition'} className={clubStage === 'composition' ? 'active' : ''} onClick={() => { setClubStage('composition'); setClubCompositionEditing(false); setRecentlyChangedClubIds([]) }}>클럽 구성</button>
@@ -1728,7 +1762,7 @@ export default function App() {
               <button className="primary" type="submit" disabled={!customClubLabel.trim() || clubDrafts.some(club => club.label.toLocaleLowerCase() === customClubLabel.trim().toLocaleLowerCase())}>추가하기</button>
             </form>}
 
-            <button className="primary club-next-button" type="button" onClick={openClubDistances} disabled={!clubDrafts.length}>{clubSetupReturn === 'onboarding' ? '클럽 구성 완료' : clubSetupReturn === 'new-round' ? '저장하고 라운드 만들기' : clubCompositionCompleted ? '클럽 구성 저장' : '클럽 선택 완료'}</button>
+            <button className="primary club-next-button" type="button" onClick={clubSetupReturn === 'onboarding' ? completeOnboardingWithClubs : openClubDistances} disabled={!clubDrafts.length}>{clubSetupReturn === 'onboarding' ? '이 구성으로 시작하기' : clubSetupReturn === 'new-round' ? '저장하고 라운드 만들기' : clubCompositionCompleted ? '클럽 구성 저장' : '클럽 선택 완료'}</button>
           </> : <>
             {clubDistanceEditing ? <form className="distance-edit-card" onSubmit={saveDistanceSet}>
               <div className="distance-set-heading distance-edit-heading"><div className="distance-edit-guidance"><span>필요한 클럽만 입력해도 됩니다.</span><span>입력하지 않은 클럽은 이전 거리를 유지해요.</span></div><div className="distance-preferences" aria-label="새 비거리 세트의 표시 기준">
@@ -1754,7 +1788,7 @@ export default function App() {
               <div className="distance-edit-actions"><button className="secondary-button" type="button" onClick={cancelDistanceUpdate}>취소</button><button className="primary" type="submit" disabled={!hasDistanceChanges}>비거리 저장</button></div>
             </form> : <>
               <section className="current-distance-set">
-                <div className="distance-set-heading distance-view-heading"><div><strong>최근 작성일 {latestDistanceSet && <time dateTime={latestDistanceSet.recordedAt}>{compactDate(latestDistanceSet.recordedAt)}</time>}</strong>{!latestDistanceSet && <span className="distance-empty-warning"><b aria-hidden="true">⚠</b> 아직 저장 기록이 없습니다</span>}</div>{latestDistanceSet && <div className="distance-record-meta"><span>단위 <b>{latestDistanceSet.unit}</b></span><span>기준 <b>{latestDistanceSet.basis === 'carry' ? '캐리' : latestDistanceSet.basis === 'total' ? '총거리' : '미지정'}</b></span></div>}</div>
+                <div className="distance-set-heading distance-view-heading"><div>{latestDistanceSet ? <strong>최근 작성일 <time dateTime={latestDistanceSet.recordedAt}>{compactDate(latestDistanceSet.recordedAt)}</time></strong> : <span className="distance-empty-warning"><b aria-hidden="true">⚠</b> 아직 저장 기록이 없습니다</span>}</div>{latestDistanceSet && <div className="distance-record-meta"><span>단위 <b>{latestDistanceSet.unit}</b></span><span>기준 <b>{latestDistanceSet.basis === 'carry' ? '캐리' : latestDistanceSet.basis === 'total' ? '총거리' : '미지정'}</b></span></div>}</div>
                 <div className="distance-pair-table view">
                   <div className="distance-pair-header"><span>클럽</span><span>비거리</span><span>클럽</span><span>비거리</span></div>
                   {distanceClubPairs.map((pair, rowIndex) => <div className="distance-pair-row" key={rowIndex}>
@@ -1766,8 +1800,6 @@ export default function App() {
               </section>
 
               <button className="primary distance-update-button" type="button" onClick={beginDistanceUpdate}>{latestDistanceSet ? '비거리 수정하기' : '비거리 입력하기'}</button>
-
-              {clubSetupReturn === 'onboarding' && <button className="secondary-button onboarding-distance-complete" type="button" onClick={completeOnboarding}>{latestDistanceSet ? '이 구성으로 시작하기' : '비거리는 나중에 입력하기'}</button>}
 
             </>}
           </>}
@@ -1781,6 +1813,10 @@ export default function App() {
             <h1>{editingActiveRound ? '라운드 정보' : '새 라운드'}</h1>
           </div>
           <form onSubmit={createRound} className="form-card">
+            {!editingActiveRound && !latestDistanceSet && <div className="new-round-distance-hint">
+              <div><strong>클럽별 비거리도 기록할 수 있어요</strong><span>미리 입력하면 라운드 중 클럽 선택에 참고하기 좋아요.</span></div>
+              <button type="button" onClick={() => { setClubSetupReturn('new-round-distance'); setClubStage('distance'); setClubCompositionEditing(false); setClubDistanceEditing(false); setScreen('clubs') }}>입력하기</button>
+            </div>}
             <div className="course-search-field">
               <label>골프장명<input ref={courseNameInputRef} required disabled={roundStructureLocked} autoComplete="off" value={round.courseName} onFocus={() => { if (!roundStructureLocked) setCourseSuggestionsOpen(true) }} onBlur={() => window.setTimeout(() => setCourseSuggestionsOpen(false), 120)} onChange={e => { setRound({...round, courseId: null, courseName: e.target.value}); setCourseSuggestionsOpen(true) }} placeholder="예: 레이크사이드" /></label>
               {!roundStructureLocked && courseSuggestionsOpen && !round.courseId && knownCourseSuggestions.length > 0 && <div className="course-suggestions" role="listbox" aria-label="홀 정보가 있는 골프장">

@@ -46,17 +46,18 @@ test('샷 클럽은 현재 ID와 당시 표시명 스냅샷을 저장한다', ()
   assert.match(appSource, /과거 사용 클럽/)
 })
 
-test('신규 사용자는 클럽 구성과 선택형 비거리 단계를 확인한 뒤 시작한다', () => {
+test('신규 사용자는 티 설정과 클럽 구성을 3단계로 마친다', () => {
   assert.match(appSource, /clubSetupReturn === 'onboarding'/)
   assert.match(appSource, /clubSetupReturn === 'new-round'/)
-  assert.match(appSource, /clubSetupReturn === 'onboarding' \? '클럽 구성 완료'/)
+  assert.match(appSource, /clubSetupReturn === 'onboarding' \? '이 구성으로 시작하기'/)
   assert.match(appSource, /<legend>거리 단위<\/legend>/)
   assert.match(appSource, /aria-label="기본 거리 단위"/)
   assert.match(appSource, /미터 M/)
   assert.match(appSource, /야드 YD/)
-  assert.match(appSource, /비거리는 나중에 입력하기/)
+  assert.doesNotMatch(appSource, /비거리는 나중에 입력하기/)
   assert.match(appSource, /온보딩 3\/3 단계/)
   assert.match(appSource, /클럽 정보가 부족해요/)
+  assert.match(appSource, /클럽별 비거리도 기록할 수 있어요/)
 })
 
 test('신규 골프백은 드라이버와 퍼터만 기본 선택한다', () => {
