@@ -30,6 +30,45 @@ export function calculateHoleTotals(shots = [], putts = null) {
   }
 }
 
+export function validateHoleCompletion({ par = null, distance = '', shots = [], putts = null } = {}) {
+  const totals = calculateHoleTotals(shots, putts)
+  const recordedIndexes = shots.reduce((indexes, shot, index) => {
+    if (isRecordedShot(shot)) indexes.push(index)
+    return indexes
+  }, [])
+  const blockingMessages = []
+
+  if (!Number.isFinite(par)) blockingMessages.push('PAR를 선택해주세요.')
+  if (!recordedIndexes.length || recordedIndexes[0] !== 0) {
+    blockingMessages.push('티샷 기록이 필요해요.')
+  } else {
+    const lastRecordedIndex = recordedIndexes[recordedIndexes.length - 1]
+    const hasSequenceGap = Array.from({ length: lastRecordedIndex + 1 }, (_, index) => index)
+      .some(index => !isRecordedShot(shots[index]))
+    if (hasSequenceGap) blockingMessages.push('샷 순서를 확인해주세요. 앞 샷부터 이어서 입력해야 해요.')
+  }
+  if (recordedIndexes.some(index => !String(shots[index]?.club || '').trim())) {
+    blockingMessages.push('사용한 샷의 클럽을 선택해주세요.')
+  }
+  if (hasIncompleteOb(shots)) blockingMessages.push('OB 처리 방법과 이어지는 재샷을 확인해주세요.')
+  if (!Number.isFinite(putts)) blockingMessages.push('퍼팅 수를 선택해주세요.')
+
+  const missingDistanceCount = recordedIndexes.filter(index => {
+    const value = index === 0 ? distance : shots[index]?.remainingDistance
+    return value === '' || value == null
+  }).length
+  const advisoryMessages = missingDistanceCount
+    ? [`거리 미입력 샷이 ${missingDistanceCount}개 있어요. 완료할 수 있지만 거리 분석에서는 제외돼요.`]
+    : []
+
+  return {
+    ...totals,
+    canFinalize: blockingMessages.length === 0,
+    blockingMessages,
+    advisoryMessages,
+  }
+}
+
 export function terminalLieForShot(shots = [], shotIndex, putts = null, puttingStartLie = 'green') {
   if (!Number.isFinite(putts)) return null
   let lastRecordedIndex = -1

@@ -24,9 +24,15 @@ export function resolveClubBag(localBag, remoteBag) {
   const useLocalConfiguration = !hasRemoteConfiguration || timestampValue(localBag?.updatedAt) > timestampValue(remoteBag?.updatedAt)
   const configuration = useLocalConfiguration ? localBag : remoteBag
   const distanceSets = mergeDistanceSets(localBag?.distanceSets, remoteBag?.distanceSets)
+  const activeClubIds = new Set((configuration?.clubs || []).map(club => String(club.id)))
+  const inactiveClubs = [...(remoteBag?.inactiveClubs || []), ...(localBag?.inactiveClubs || [])]
+    .filter((club, index, clubs) => club?.id && clubs.findIndex(item => String(item.id) === String(club.id)) === index)
+    .filter(club => !activeClubIds.has(String(club.id)))
+    .sort(compareClubOrder)
 
   return {
     clubs: configuration?.clubs || [],
+    inactiveClubs,
     compositionCompleted: Boolean(configuration?.compositionCompleted),
     distanceUnit: distanceSets[0]?.unit || configuration?.distanceUnit || 'M',
     distanceSets,
@@ -48,6 +54,7 @@ function restoreClub(row) {
 
 export function deserializeRemoteClubBag(clubRows = [], distanceRows = []) {
   const activeClubRows = clubRows.filter(row => row.active)
+  const inactiveClubRows = clubRows.filter(row => !row.active)
   const clubsByRemoteId = new Map(clubRows.map(row => [row.id, restoreClub(row)]))
   const groupedSets = new Map()
 
@@ -82,6 +89,7 @@ export function deserializeRemoteClubBag(clubRows = [], distanceRows = []) {
 
   return {
     clubs: activeClubRows.map(restoreClub).sort(compareClubOrder),
+    inactiveClubs: inactiveClubRows.map(restoreClub).sort(compareClubOrder),
     compositionCompleted: activeClubRows.length > 0,
     distanceUnit: distanceSets[0]?.unit || 'M',
     distanceSets,
@@ -103,6 +111,7 @@ export async function saveRemoteClubBag(client, userId, bag) {
   const activeIds = new Set(bag.compositionCompleted ? (bag.clubs || []).map(club => club.id) : [])
   const allClubs = new Map()
   ;(bag.clubs || []).forEach(club => allClubs.set(club.id, club))
+  ;(bag.inactiveClubs || []).forEach(club => allClubs.set(club.id, club))
   ;(bag.distanceSets || []).forEach(set => (set.clubs || []).forEach(club => allClubs.set(club.id, club)))
   if (!allClubs.size) return
 

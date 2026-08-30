@@ -29,8 +29,18 @@ test('서버 행에서 현재 클럽과 날짜별 비거리 세트를 복원한�
     { set_id: 'set-1', club_id: 'remote-iron', distance: 110, distance_unit: 'M', distance_basis: null, normalized_distance_m: 110, club_snapshot: iron, is_changed: false, recorded_at: '2026-08-30T12:00:00.000Z' },
   ])
   assert.deepEqual(result.clubs, [driver])
+  assert.deepEqual(result.inactiveClubs, [iron])
   assert.deepEqual(result.distanceSets[0].clubs, [driver, iron])
   assert.deepEqual(result.distanceSets[0].distances, { [driver.id]: 150, [iron.id]: 110 })
   assert.deepEqual(result.distanceSets[0].changedClubIds, [driver.id])
 })
 
+test('활성 해제한 클럽은 ID를 유지한 비활성 목록으로 병합한다', () => {
+  const customWedge = { id: 'custom-wedge', category: '웨지', value: '59', label: '59', custom: true }
+  const result = resolveClubBag(
+    { clubs: [driver], inactiveClubs: [customWedge], compositionCompleted: true, updatedAt: '2026-08-30T12:00:00.000Z', distanceSets: [] },
+    { clubs: [driver], inactiveClubs: [], compositionCompleted: true, updatedAt: '2026-08-29T12:00:00.000Z', distanceSets: [] },
+  )
+  assert.deepEqual(result.clubs, [driver])
+  assert.deepEqual(result.inactiveClubs, [customWedge])
+})

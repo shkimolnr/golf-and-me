@@ -393,6 +393,12 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .mini-counter > span { display: block; margin-bottom: 7px; font-weight: 800; }
 .mini-counter small { color: #9ca3af; font-size: 11px; }
 .save-hole { margin-top: 12px; }
+.hole-completion-check { margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: #f3f6f5; }
+.hole-completion-check p { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0; color: #4b5563; font-size: 13px; }
+.hole-completion-check p strong { color: #2d3748; }
+.hole-completion-check p span { text-align: right; }
+.hole-completion-check small { display: block; margin-top: 5px; color: #6b7280; font-size: 11px; line-height: 1.45; }
+.hole-completion-check small.blocking { color: #a34b12; }
 .hole-save-actions { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr); gap: 8px; margin-top: 12px; }
 .hole-save-actions .save-hole { min-height: 52px; margin-top: 0; border-radius: 14px; }
 .save-hole.secondary-save { border: 1px solid #a7f3d0; color: #047857; background: #ecfdf5; font-weight: 800; }

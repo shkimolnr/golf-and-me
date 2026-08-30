@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { calculateHoleTotals, hasIncompleteOb, terminalLieForShot } from '../src/lib/scoring.js'
+import { calculateHoleTotals, hasIncompleteOb, terminalLieForShot, validateHoleCompletion } from '../src/lib/scoring.js'
 
 function shot(club = '드라이버', changes = {}) {
   return { club, troubleType: null, obRelief: null, ...changes }
@@ -81,4 +81,37 @@ test('퍼팅 입력 후에만 마지막 샷의 종료 위치를 판정한다', (
   assert.equal(terminalLieForShot(shots, 1, 2, 'fringe'), '엣지')
   assert.equal(terminalLieForShot(shots, 1, 0, 'green'), '홀인')
   assert.equal(terminalLieForShot(shots, 0, 2, 'green'), null)
+})
+
+test('홀 완료는 티샷·연속된 샷·클럽·퍼팅과 해결된 OB를 요구한다', () => {
+  assert.equal(validateHoleCompletion({ par: 4, shots: [], putts: 2 }).canFinalize, false)
+  assert.match(validateHoleCompletion({ par: 4, shots: [], putts: 2 }).blockingMessages[0], /티샷/)
+
+  const sequenceGap = validateHoleCompletion({
+    par: 4,
+    shots: [shot('D'), shot(''), shot('7I')],
+    putts: 2,
+  })
+  assert.equal(sequenceGap.canFinalize, false)
+  assert.ok(sequenceGap.blockingMessages.some(message => message.includes('샷 순서')))
+
+  const missingClub = validateHoleCompletion({
+    par: 4,
+    shots: [shot('', { troubleType: 'rough' })],
+    putts: 2,
+  })
+  assert.equal(missingClub.canFinalize, false)
+  assert.ok(missingClub.blockingMessages.some(message => message.includes('클럽')))
+})
+
+test('거리 누락은 완료를 막지 않고 분석 제외 안내만 제공한다', () => {
+  const result = validateHoleCompletion({
+    par: 4,
+    distance: '',
+    shots: [shot('D'), shot('7I', { remainingDistance: '' })],
+    putts: 2,
+  })
+  assert.equal(result.canFinalize, true)
+  assert.equal(result.score, 4)
+  assert.match(result.advisoryMessages[0], /거리 미입력 샷이 2개/)
 })

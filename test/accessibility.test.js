@@ -35,6 +35,9 @@ test('신규 홀은 임시 저장과 명시적 완료 동작을 함께 제공한
   assert.match(appSource, /<div className="hole-save-actions">/)
   assert.match(appSource, />임시 저장<\/button>/)
   assert.match(appSource, /disabled=\{!holeCanFinalize\}>홀 기록 완료<\/button>/)
+  assert.match(appSource, /현재 기록/)
+  assert.match(appSource, /샷 \{holeCompletion\.swingCount\}/)
+  assert.match(appSource, /벌타 \{holeCompletion\.penaltyStrokes\}/)
 })
 
 test('샷 클럽은 현재 ID와 당시 표시명 스냅샷을 저장한다', () => {

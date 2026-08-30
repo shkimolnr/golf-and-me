@@ -3,7 +3,7 @@ import { isSupabaseConfigured, supabase } from './lib/supabase.js'
 import { deleteRemoteRound, loadRemoteProfile, loadRemoteRounds, mergeRoundCollections, resolveOnboardingProfile, saveRemoteProfile, saveRemoteRounds, sortRoundsForList } from './lib/roundRepository.js'
 import { excludePendingRoundDeletions, loadPendingRoundDeletions, savePendingRoundDeletions } from './lib/pendingRoundDeletions.js'
 import { isRoundStructureLocked, needsRoundStructureChoice } from './lib/roundPolicy.js'
-import { calculateHoleTotals, hasIncompleteOb, isRecordedShot, terminalLieForShot } from './lib/scoring.js'
+import { calculateHoleTotals, isRecordedShot, terminalLieForShot, validateHoleCompletion } from './lib/scoring.js'
 import { calculateCumulativeStats, calculateRoundStats, formatPercent } from './lib/roundStats.js'
 import { getRoundDistanceCoverage, holeNeedsManualDistance } from './lib/distanceCoverage.js'
 import { compactCoursePair } from './lib/roundPresentation.js'
@@ -152,6 +152,7 @@ export default function App() {
   const [syncRetryNonce, setSyncRetryNonce] = useState(0)
   const [pendingDeletedRoundIds, setPendingDeletedRoundIds] = useState([])
   const [clubDrafts, setClubDrafts] = useState(initialClubDrafts)
+  const [inactiveClubDrafts, setInactiveClubDrafts] = useState([])
   const [clubStage, setClubStage] = useState('composition')
   const [clubCompositionEditing, setClubCompositionEditing] = useState(false)
   const [customClubCategory, setCustomClubCategory] = useState(null)
@@ -215,6 +216,7 @@ export default function App() {
       return
     }
     setClubDrafts(initialClubDrafts)
+    setInactiveClubDrafts([])
     setClubDistanceSets([])
     setRecentlyChangedClubIds([])
     setClubDistanceBasis(null)
@@ -228,6 +230,7 @@ export default function App() {
       try {
         const stored = JSON.parse(storedValue)
         if (Array.isArray(stored.clubs)) setClubDrafts(stored.clubs)
+        if (Array.isArray(stored.inactiveClubs)) setInactiveClubDrafts(stored.inactiveClubs)
         if (Array.isArray(stored.distanceSets)) {
           setClubDistanceSets(stored.distanceSets)
           setClubDistanceBasis(stored.distanceSets[0]?.basis ?? null)
@@ -246,12 +249,13 @@ export default function App() {
     if (!session || !clubBagHydrated) return
     window.localStorage.setItem(`golf-and-me:club-bag:${session.user.id}`, JSON.stringify({
       clubs: clubDrafts,
+      inactiveClubs: inactiveClubDrafts,
       distanceUnit: clubDistanceUnit,
       distanceSets: clubDistanceSets,
       compositionCompleted: clubCompositionCompleted,
       updatedAt: clubBagUpdatedAt,
     }))
-  }, [session, clubBagHydrated, clubDrafts, clubDistanceUnit, clubDistanceSets, clubCompositionCompleted, clubBagUpdatedAt])
+  }, [session, clubBagHydrated, clubDrafts, inactiveClubDrafts, clubDistanceUnit, clubDistanceSets, clubCompositionCompleted, clubBagUpdatedAt])
 
   useEffect(() => {
     if (isPreviewMode) return
@@ -412,7 +416,7 @@ export default function App() {
           return mergedRounds
         })
         const clubStorageKey = `golf-and-me:club-bag:${session.user.id}`
-        let localClubBag = { clubs: [], distanceUnit: 'M', distanceSets: [], compositionCompleted: false, updatedAt: null }
+        let localClubBag = { clubs: [], inactiveClubs: [], distanceUnit: 'M', distanceSets: [], compositionCompleted: false, updatedAt: null }
         try {
           const storedClubBag = window.localStorage.getItem(clubStorageKey)
           if (storedClubBag) localClubBag = { ...localClubBag, ...JSON.parse(storedClubBag) }
@@ -421,6 +425,7 @@ export default function App() {
         }
         const resolvedClubBag = resolveClubBag(localClubBag, remoteClubBag)
         setClubDrafts(resolvedClubBag.clubs)
+        setInactiveClubDrafts(resolvedClubBag.inactiveClubs)
         setClubDistanceSets(resolvedClubBag.distanceSets)
         setClubDistanceUnit(resolvedClubBag.distanceUnit)
         setClubDistanceBasis(resolvedClubBag.distanceSets[0]?.basis ?? null)
@@ -469,6 +474,7 @@ export default function App() {
           saveRemoteRounds(supabase, session.user.id, rounds),
           saveRemoteClubBag(supabase, session.user.id, {
             clubs: clubDrafts,
+            inactiveClubs: inactiveClubDrafts,
             distanceSets: clubDistanceSets,
             compositionCompleted: clubCompositionCompleted,
             distanceUnit: clubDistanceUnit,
@@ -497,7 +503,7 @@ export default function App() {
       window.clearTimeout(timer)
       if (retryTimer) window.clearTimeout(retryTimer)
     }
-  }, [rounds, clubDrafts, clubDistanceSets, clubCompositionCompleted, clubDistanceUnit, clubBagUpdatedAt, pendingDeletedRoundIds, session, remoteHydratedUserId, isOnline, syncRetryNonce])
+  }, [rounds, clubDrafts, inactiveClubDrafts, clubDistanceSets, clubCompositionCompleted, clubDistanceUnit, clubBagUpdatedAt, pendingDeletedRoundIds, session, remoteHydratedUserId, isOnline, syncRetryNonce])
 
   useEffect(() => {
     if (!restoreHoleNumber || !activeRound) return
@@ -794,9 +800,15 @@ export default function App() {
   function toggleClubDraft(category, value) {
     const id = `${category}:${value}`
     setClubBagUpdatedAt(new Date().toISOString())
-    setClubDrafts(current => current.some(club => club.id === id)
-      ? current.filter(club => club.id !== id)
-      : [...current, { id, category, value, label: clubLabel(category, value), custom: false }])
+    const selectedClub = clubDrafts.find(club => club.id === id)
+    if (selectedClub) {
+      setClubDrafts(current => current.filter(club => club.id !== id))
+      setInactiveClubDrafts(current => [...current.filter(club => club.id !== id), selectedClub])
+      return
+    }
+    const inactiveClub = inactiveClubDrafts.find(club => club.id === id)
+    setInactiveClubDrafts(current => current.filter(club => club.id !== id))
+    setClubDrafts(current => [...current, inactiveClub || { id, category, value, label: clubLabel(category, value), custom: false }])
   }
 
   function addCustomClub(event) {
@@ -805,21 +817,31 @@ export default function App() {
     if (!label || !customClubCategory) return
     if (clubDrafts.some(club => club.label.toLocaleLowerCase() === label.toLocaleLowerCase())) return
     setClubBagUpdatedAt(new Date().toISOString())
-    setClubDrafts(current => [...current, { id: createLocalId(), category: customClubCategory, value: label, label, custom: true }])
+    const inactiveClub = inactiveClubDrafts.find(club => club.category === customClubCategory && club.label.toLocaleLowerCase() === label.toLocaleLowerCase())
+    if (inactiveClub) setInactiveClubDrafts(current => current.filter(club => club.id !== inactiveClub.id))
+    setClubDrafts(current => [...current, inactiveClub || { id: createLocalId(), category: customClubCategory, value: label, label, custom: true }])
     setCustomClubLabel('')
     setCustomClubCategory(null)
   }
 
   function removeCustomClub(id) {
     setClubBagUpdatedAt(new Date().toISOString())
+    const selectedClub = clubDrafts.find(club => club.id === id)
     setClubDrafts(current => current.filter(club => club.id !== id))
+    if (selectedClub) setInactiveClubDrafts(current => [...current.filter(club => club.id !== id), selectedClub])
   }
 
   function togglePutter() {
     setClubBagUpdatedAt(new Date().toISOString())
-    setClubDrafts(current => current.some(club => club.category === '퍼터')
-      ? current.filter(club => club.category !== '퍼터')
-      : [...current, { id: '퍼터:PT', category: '퍼터', value: 'PT', label: 'PT', custom: false }])
+    const selectedPutter = clubDrafts.find(club => club.category === '퍼터')
+    if (selectedPutter) {
+      setClubDrafts(current => current.filter(club => club.category !== '퍼터'))
+      setInactiveClubDrafts(current => [...current.filter(club => club.id !== selectedPutter.id), selectedPutter])
+      return
+    }
+    const inactivePutter = inactiveClubDrafts.find(club => club.category === '퍼터')
+    if (inactivePutter) setInactiveClubDrafts(current => current.filter(club => club.id !== inactivePutter.id))
+    setClubDrafts(current => [...current, inactivePutter || { id: '퍼터:PT', category: '퍼터', value: 'PT', label: 'PT', custom: false }])
   }
 
   function openClubDistances() {
@@ -1394,9 +1416,9 @@ export default function App() {
   }
 
   function saveHole() {
-    const totals = calculateHoleTotals(holeDraft?.shots, holeDraft?.putts)
+    const totals = validateHoleCompletion(holeDraft)
     const usedShots = totals.usedShots
-    if (!Number.isFinite(holeDraft?.par) || !usedShots.length || !Number.isFinite(holeDraft.putts) || hasIncompleteOb(holeDraft?.shots)) return
+    if (!totals.canFinalize) return
     const obCount = usedShots.filter(shot => shot.troubleType === 'ob').length
     const penaltyCount = usedShots.filter(shot => ['penalty', 'hazard'].includes(shot.troubleType)).length
     const teeShot = usedShots[0]
@@ -1466,7 +1488,8 @@ export default function App() {
   const currentShotIndex = holeDraft && Number.isFinite(holeDraft.par) && !Number.isFinite(holeDraft.putts) && !puttingHasStarted
     ? holeDraft.shots.findIndex((shot, index) => !shotEntryComplete(index, shot))
     : -1
-  const holeCanFinalize = Boolean(holeDraft && Number.isFinite(holeDraft.par) && calculateHoleTotals(holeDraft.shots, holeDraft.putts).usedShots.length && Number.isFinite(holeDraft.putts) && !hasIncompleteOb(holeDraft.shots))
+  const holeCompletion = holeDraft ? validateHoleCompletion(holeDraft) : null
+  const holeCanFinalize = Boolean(holeCompletion?.canFinalize)
   const showHoleDistanceWarning = Boolean(holeMode !== 'view' && holeNeedsManualDistance(activeRound, holeDraft))
   const holeHasChanges = Boolean(holeDraft && initialHoleDraft && JSON.stringify(holeDraft) !== JSON.stringify(initialHoleDraft))
   const orderedActiveClubs = clubDrafts.filter(club => club.category !== '퍼터').sort(compareClubOrder)
@@ -1951,6 +1974,11 @@ export default function App() {
                 <div className="putting-count"><span>퍼팅수</span><div className="putting-count-wrap"><div className="putting-choices">{[0, 1, 2, 3, 4].map(putts => <button type="button" key={putts} className={holeDraft.putts === putts ? 'selected' : ''} onClick={() => selectPutts(putts)}>{putts}</button>)}<button type="button" className={holeDraft.putts >= 5 || puttMoreOpen ? 'selected custom-value' : ''} aria-expanded={puttMoreOpen} aria-haspopup="dialog" onClick={openCustomPutts}>{holeDraft.putts >= 5 ? <><span className="cherrie-num">{holeDraft.putts}</span><small>⌄</small></> : '+'}</button></div>{puttMoreOpen && <form className="putting-more" role="dialog" aria-label="퍼팅수 직접 입력" onSubmit={applyCustomPutts}><label>5 이상<input autoFocus type="number" min="5" step="1" inputMode="numeric" value={customPutts} onChange={event => setCustomPutts(event.target.value)} /></label><button type="submit" disabled={!Number.isInteger(Number(customPutts)) || Number(customPutts) < 5}>완료</button></form>}</div></div>
               </div>
             </div>
+          </div>}
+          {holeMode !== 'view' && holeCompletion && <div className="hole-completion-check" aria-live="polite">
+            <p><strong>현재 기록</strong><span>샷 {holeCompletion.swingCount} · 퍼팅 {Number.isFinite(holeDraft.putts) ? holeDraft.putts : '—'} · 벌타 {holeCompletion.penaltyStrokes} = {Number.isFinite(holeDraft.putts) && holeCompletion.swingCount ? `${holeCompletion.score}타` : '—'}</span></p>
+            {!holeCompletion.canFinalize && <small className="blocking">{holeCompletion.blockingMessages[0]}</small>}
+            {holeCompletion.canFinalize && holeCompletion.advisoryMessages.map(message => <small key={message}>{message}</small>)}
           </div>}
           {holeMode === 'view' ? (
             <button className="primary save-hole" type="button" onClick={beginHoleEdit}>홀 기록 수정</button>
