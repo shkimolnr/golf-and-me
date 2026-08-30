@@ -1788,7 +1788,7 @@ export default function App() {
               <div className="distance-edit-actions"><button className="secondary-button" type="button" onClick={cancelDistanceUpdate}>취소</button><button className="primary" type="submit" disabled={!hasDistanceChanges}>비거리 저장</button></div>
             </form> : <>
               <section className="current-distance-set">
-                <div className="distance-set-heading distance-view-heading"><div>{latestDistanceSet ? <strong>최근 작성일 <time dateTime={latestDistanceSet.recordedAt}>{compactDate(latestDistanceSet.recordedAt)}</time></strong> : <span className="distance-empty-warning"><b aria-hidden="true">⚠</b> 아직 저장 기록이 없습니다</span>}</div>{latestDistanceSet && <div className="distance-record-meta"><span>단위 <b>{latestDistanceSet.unit}</b></span><span>기준 <b>{latestDistanceSet.basis === 'carry' ? '캐리' : latestDistanceSet.basis === 'total' ? '총거리' : '미지정'}</b></span></div>}</div>
+                <div className="distance-set-heading distance-view-heading"><div><strong>최근 작성일 {latestDistanceSet ? <time dateTime={latestDistanceSet.recordedAt}>{compactDate(latestDistanceSet.recordedAt)}</time> : <span>없음</span>}</strong></div>{latestDistanceSet && <div className="distance-record-meta"><span>단위 <b>{latestDistanceSet.unit}</b></span><span>기준 <b>{latestDistanceSet.basis === 'carry' ? '캐리' : latestDistanceSet.basis === 'total' ? '총거리' : '미지정'}</b></span></div>}</div>
                 <div className="distance-pair-table view">
                   <div className="distance-pair-header"><span>클럽</span><span>비거리</span><span>클럽</span><span>비거리</span></div>
                   {distanceClubPairs.map((pair, rowIndex) => <div className="distance-pair-row" key={rowIndex}>
