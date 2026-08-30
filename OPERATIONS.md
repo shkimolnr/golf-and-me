@@ -4,7 +4,7 @@
 
 ## 1. 환경과 주소
 
-- 프로덕션: Vercel 최초 배포와 OAuth 검증 후 주소 기록
+- 프로덕션: `https://golf-and-me.vercel.app`
 - 이전 Alpha 임시 배포: `https://golf-and-me.kimseungha.chatgpt.site` (롤백 참고용)
 - 로컬 개발: `http://127.0.0.1:5190/`
 - 로그인 없는 프리뷰: 로컬 개발 주소에만 `?preview=1` 사용

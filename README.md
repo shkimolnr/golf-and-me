@@ -59,7 +59,7 @@ Alpha 기록 화면은 퍼팅 시작 위치를 `그린/엣지`로 구분해 마�
 - Backend / Database: Supabase (PostgreSQL)
 - Authentication: Google OAuth 2.0
 - Hosting: Vercel
-- Production URL: Vercel 최초 배포와 OAuth 검증 후 기록
+- Production URL: https://golf-and-me.vercel.app
 - Legacy Alpha URL: https://golf-and-me.kimseungha.chatgpt.site (롤백 참고용, 임의 삭제하지 않음)
 - Email·Push: Alpha 범위에서 제외
 
