@@ -522,6 +522,9 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .account-profile span { margin-top: 4px; color: #6b7280; font-size: 15px; }
 .account-avatar { display: grid; flex: 0 0 46px; place-items: center; width: 46px; height: 46px; overflow: hidden; border-radius: 50%; color: white; background: #2d3748; font-weight: 800; }
 .logout-button { width: 100%; padding: 14px; border: 1px solid #fecaca; border-radius: 12px; color: #b91c1c; background: white; font-weight: 800; }
+.delete-account-link { display: block; margin: 14px auto 0; padding: 4px 8px; border: 0; color: #6b7280; background: transparent; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.delete-account-sheet > p { margin: 18px 0 22px; color: #6b7280; font-size: 15px; line-height: 1.65; }
+.delete-account-sheet .error-message { margin: -8px 0 18px; color: #b91c1c; }
 .date-time-sheet { padding-bottom: max(28px, env(safe-area-inset-bottom)); }
 .date-time-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; margin: 22px 0; }
 .date-time-fields label { width: 100%; min-width: 0; }

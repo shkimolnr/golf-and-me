@@ -14,6 +14,7 @@ import { googleOAuthOptions } from './lib/auth.js'
 import { clearRoundHoleDrafts, latestHoleDraft, removeRoundHoleDraft, upsertRoundHoleDraft } from './lib/roundDrafts.js'
 import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMeters, pairClubsForColumnLayout } from './lib/clubBag.js'
 import { loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
+import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
 const previewSession = {
@@ -115,6 +116,9 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(isPreviewMode ? false : isSupabaseConfigured)
   const [authError, setAuthError] = useState('')
   const [accountOpen, setAccountOpen] = useState(false)
+  const [accountDeletionOpen, setAccountDeletionOpen] = useState(false)
+  const [accountDeletionStatus, setAccountDeletionStatus] = useState('idle')
+  const [accountDeletionError, setAccountDeletionError] = useState('')
   const [dateTimeOpen, setDateTimeOpen] = useState(false)
   const [draftDate, setDraftDate] = useState('')
   const [draftTime, setDraftTime] = useState('')
@@ -167,7 +171,7 @@ export default function App() {
   const clubDistanceCanonicalInputsRef = useRef({})
 
   useEffect(() => {
-    const layerOpen = accountOpen || dateTimeOpen || Boolean(roundPendingDeletion) || Boolean(pendingStructureChange) || Boolean(pendingRoundStart) || roundCompletionOpen
+    const layerOpen = accountOpen || accountDeletionOpen || dateTimeOpen || Boolean(roundPendingDeletion) || Boolean(pendingStructureChange) || Boolean(pendingRoundStart) || roundCompletionOpen
     if (!layerOpen) return undefined
     const previouslyFocused = document.activeElement
     const focusTimer = window.setTimeout(() => {
@@ -180,6 +184,7 @@ export default function App() {
       else if (pendingRoundStart) setPendingRoundStart(null)
       else if (roundCompletionOpen) setRoundCompletionOpen(false)
       else if (dateTimeOpen) setDateTimeOpen(false)
+      else if (accountDeletionOpen && accountDeletionStatus !== 'deleting') setAccountDeletionOpen(false)
       else if (accountOpen) setAccountOpen(false)
     }
     window.addEventListener('keydown', closeOnEscape)
@@ -188,7 +193,7 @@ export default function App() {
       window.removeEventListener('keydown', closeOnEscape)
       if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus()
     }
-  }, [accountOpen, dateTimeOpen, roundPendingDeletion, pendingStructureChange, pendingRoundStart, roundCompletionOpen])
+  }, [accountOpen, accountDeletionOpen, accountDeletionStatus, dateTimeOpen, roundPendingDeletion, pendingStructureChange, pendingRoundStart, roundCompletionOpen])
 
   useEffect(() => {
     function updateConnectionState() {
@@ -569,6 +574,34 @@ export default function App() {
       setAccountOpen(false)
       setScreen('home')
     }
+  }
+
+  function openAccountDeletion() {
+    setAccountOpen(false)
+    setAccountDeletionError('')
+    setAccountDeletionStatus('idle')
+    setAccountDeletionOpen(true)
+  }
+
+  async function deleteAccount() {
+    if (!supabase || !session || accountDeletionStatus === 'deleting') return
+    setAccountDeletionError('')
+    setAccountDeletionStatus('deleting')
+    const userId = session.user.id
+    const { error } = await deleteRemoteAccount(supabase)
+    if (error) {
+      setAccountDeletionStatus('idle')
+      setAccountDeletionError('계정을 삭제하지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해주세요.')
+      return
+    }
+    clearLocalUserData(window.localStorage, userId)
+    await supabase.auth.signOut({ scope: 'local' })
+    setAccountDeletionOpen(false)
+    setAccountDeletionStatus('idle')
+    setRounds([])
+    setActiveRound(null)
+    setSession(null)
+    setScreen('home')
   }
 
   function completeOnboarding() {
@@ -1832,6 +1865,26 @@ export default function App() {
               <i aria-hidden="true">→</i>
             </button>
             <button className="logout-button" onClick={signOut}>로그아웃</button>
+            {!isPreviewMode && <button className="delete-account-link" type="button" onClick={openAccountDeletion}>계정 삭제</button>}
+          </section>
+        </div>
+      )}
+
+      {accountDeletionOpen && (
+        <div className="account-layer">
+          <button className="account-backdrop" onClick={() => accountDeletionStatus !== 'deleting' && setAccountDeletionOpen(false)} aria-label="계정 삭제 취소" />
+          <section className="account-sheet delete-account-sheet" role="alertdialog" aria-modal="true" aria-labelledby="delete-account-title" aria-describedby="delete-account-description">
+            <div className="sheet-handle" />
+            <div className="account-heading">
+              <h2 id="delete-account-title">계정을 삭제할까요?</h2>
+              <button className="close-button" type="button" onClick={() => setAccountDeletionOpen(false)} aria-label="닫기" disabled={accountDeletionStatus === 'deleting'}>×</button>
+            </div>
+            <p id="delete-account-description">라운드, 홀·샷 기록, 클럽 구성과 비거리 이력을 포함한 모든 계정 데이터가 영구적으로 삭제됩니다. 삭제한 데이터는 복구할 수 없습니다.</p>
+            {accountDeletionError && <p className="error-message" role="alert">{accountDeletionError}</p>}
+            <div className="sheet-actions">
+              <button className="secondary-button" type="button" onClick={() => setAccountDeletionOpen(false)} disabled={accountDeletionStatus === 'deleting'}>취소</button>
+              <button className="danger-button" type="button" onClick={deleteAccount} disabled={accountDeletionStatus === 'deleting'}>{accountDeletionStatus === 'deleting' ? '삭제 중…' : '계정과 기록 모두 삭제'}</button>
+            </div>
           </section>
         </div>
       )}
