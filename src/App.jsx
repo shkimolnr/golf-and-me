@@ -21,7 +21,8 @@ import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { requestTestAccess } from './lib/testAccessRequest.js'
 import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
 import { scheduleRemoteHydrationRetry } from './lib/remoteHydrationRetry.js'
-import { recordDiagnosticFailure, resolveDiagnosticFailure } from './lib/diagnostics.js'
+import { recordDiagnosticFailure, resolveDiagnosticFailures } from './lib/diagnostics.js'
+import { clearDiagnosticQueue, enqueueDiagnosticFailure, enqueueDiagnosticRecovery, flushDiagnosticQueue, setDiagnosticAccessTokenProvider } from './lib/diagnosticsTransport.js'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
 const isTestAccessRequestEnabled = import.meta.env.VITE_TEST_ACCESS_REQUEST_ENABLED === 'true'
@@ -36,6 +37,12 @@ const previewSession = {
     user_metadata: { full_name: '미리보기 사용자' },
   },
 }
+
+setDiagnosticAccessTokenProvider(async () => {
+  if (!supabase) return ''
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token || ''
+})
 
 function localDateTimeValue() {
   const now = new Date()
@@ -205,11 +212,15 @@ export default function App() {
   const unseenNews = hasUnseenNews(lastSeenNewsId)
 
   function reportDiagnosticFailure(stage, error) {
-    recordDiagnosticFailure({ stage, error, online: navigator.onLine })
+    // 인증 전 OAuth 오류는 서버가 인증된 요청만 받는 정책상 원격 진단에 넣지 않는다.
+    if (!session || isPreviewMode) return
+    const diagnostic = recordDiagnosticFailure({ stage, error, online: navigator.onLine })
+    if (diagnostic) enqueueDiagnosticFailure(diagnostic.record)
   }
 
   function reportDiagnosticRecovery(stage) {
-    resolveDiagnosticFailure(stage)
+    if (!session || isPreviewMode) return
+    resolveDiagnosticFailures(stage).forEach(record => enqueueDiagnosticRecovery(record))
   }
 
   function updateAnalyticsConsent(granted) {
@@ -223,6 +234,11 @@ export default function App() {
     }
     setLastSeenNewsId(window.localStorage.getItem(newsSeenStorageKey(session.user.id)))
   }, [session])
+
+  useEffect(() => {
+    if (!session || !isOnline || isPreviewMode) return
+    void flushDiagnosticQueue()
+  }, [session?.user?.id, isOnline])
 
   useEffect(() => {
     if (analyticsConsent !== 'granted') {
@@ -472,10 +488,15 @@ export default function App() {
         const localProfile = localProfileValue ? JSON.parse(localProfileValue) : null
         const resolvedProfile = resolveOnboardingProfile(localProfile, remoteProfile)
         if (resolvedProfile.shouldSaveRemote) {
-          await saveRemoteProfile(supabase, session.user.id, {
-            defaultTee: resolvedProfile.defaultTee,
-            defaultDistanceUnit: resolvedProfile.defaultDistanceUnit,
-          })
+          try {
+            await saveRemoteProfile(supabase, session.user.id, {
+              defaultTee: resolvedProfile.defaultTee,
+              defaultDistanceUnit: resolvedProfile.defaultDistanceUnit,
+            })
+          } catch (error) {
+            reportDiagnosticFailure('profile_save', error)
+            throw error
+          }
         }
         if (resolvedProfile.completed) {
           window.localStorage.setItem(`golf-and-me:onboarding:${session.user.id}`, JSON.stringify({
@@ -533,6 +554,7 @@ export default function App() {
         }
         setRemoteHydratedUserId(session.user.id)
         reportDiagnosticRecovery('profile_load')
+        reportDiagnosticRecovery('profile_save')
         reportDiagnosticRecovery('rounds_load')
         reportDiagnosticRecovery('club_bag_load')
         measureLoginStage('records_ready')
@@ -571,11 +593,9 @@ export default function App() {
     let retryTimer = null
     const timer = window.setTimeout(async () => {
       try {
-        const [roundsSaveResult, clubBagSaveResult] = await Promise.all([
-          Promise.all([
-            saveRemoteRounds(supabase, session.user.id, rounds),
-            ...pendingDeletedRoundIds.map(roundId => deleteRemoteRound(supabase, session.user.id, roundId)),
-          ]).then(() => ({ ok: true }), error => ({ error })),
+        const [roundsSaveResult, roundsDeleteResult, clubBagSaveResult] = await Promise.all([
+          saveRemoteRounds(supabase, session.user.id, rounds).then(() => ({ ok: true }), error => ({ error })),
+          Promise.all(pendingDeletedRoundIds.map(roundId => deleteRemoteRound(supabase, session.user.id, roundId))).then(() => ({ ok: true }), error => ({ error })),
           saveRemoteClubBag(supabase, session.user.id, {
             clubs: clubDrafts,
             inactiveClubs: inactiveClubDrafts,
@@ -586,8 +606,10 @@ export default function App() {
           }).then(() => ({ ok: true }), error => ({ error })),
         ])
         if (roundsSaveResult.error) reportDiagnosticFailure('rounds_save', roundsSaveResult.error)
+        if (roundsDeleteResult.error) reportDiagnosticFailure('rounds_delete', roundsDeleteResult.error)
         if (clubBagSaveResult.error) reportDiagnosticFailure('club_bag_save', clubBagSaveResult.error)
         if (roundsSaveResult.error) throw roundsSaveResult.error
+        if (roundsDeleteResult.error) throw roundsDeleteResult.error
         if (clubBagSaveResult.error) throw clubBagSaveResult.error
         if (pendingDeletedRoundIds.length) {
           savePendingRoundDeletions(window.localStorage, session.user.id, [])
@@ -595,6 +617,7 @@ export default function App() {
         }
         setSyncError('')
         reportDiagnosticRecovery('rounds_save')
+        reportDiagnosticRecovery('rounds_delete')
         reportDiagnosticRecovery('club_bag_save')
         if (hadSyncIssueRef.current) {
           hadSyncIssueRef.current = false
@@ -748,6 +771,7 @@ export default function App() {
     const { error } = await supabase.auth.signOut({ scope: 'local' })
     if (error) setAuthError('로그아웃하지 못했습니다. 다시 시도해주세요.')
     else {
+      clearDiagnosticQueue()
       resetNavigationForExplicitSignOut(window.localStorage, signingOutUserId)
       setAccountOpen(false)
       setScreen('home')
@@ -794,9 +818,12 @@ export default function App() {
     trackEvent('onboarding_step', { step: 3, status: 'complete' })
     trackEvent('onboarding_complete', { status: 'complete' })
     if (supabase && !isPreviewMode) {
-      saveRemoteProfile(supabase, session.user.id, { defaultTee, defaultDistanceUnit }).catch(() => {
-        setSyncError('기본 티 설정은 기기에 저장했지만 서버 동기화가 지연되고 있어요.')
-      })
+      saveRemoteProfile(supabase, session.user.id, { defaultTee, defaultDistanceUnit })
+        .then(() => reportDiagnosticRecovery('profile_save'))
+        .catch(error => {
+          reportDiagnosticFailure('profile_save', error)
+          setSyncError('기본 티 설정은 기기에 저장했지만 서버 동기화가 지연되고 있어요.')
+        })
     }
   }
 
