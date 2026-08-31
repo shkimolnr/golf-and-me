@@ -98,3 +98,10 @@ test('새소식 점은 최신 글을 해당 기기에서 확인할 때까지 표
   assert.equal(hasUnseenNews(newsItems[0].id, newsItems), false)
   assert.equal(newsSeenStorageKey('user-1'), 'golf-and-me:news-seen:user-1')
 })
+
+test('로그인 회원은 계정 메뉴에서 텍스트 의견을 보낼 수 있다', () => {
+  assert.match(appSource, /<strong>의견 보내기<\/strong>/)
+  assert.match(appSource, /screen === 'feedback'/)
+  assert.match(appSource, /maxLength=\{MAX_FEEDBACK_LENGTH\}/)
+  assert.match(appSource, /await sendFeedback\(message, session\.access_token\)/)
+})

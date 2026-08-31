@@ -19,6 +19,7 @@ import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from './da
 import { measureLoginStage, recordLoginFailure, startLoginMeasurement, trackEvent } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { requestTestAccess } from './lib/testAccessRequest.js'
+import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
 const isTestAccessRequestEnabled = import.meta.env.VITE_TEST_ACCESS_REQUEST_ENABLED === 'true'
@@ -116,6 +117,10 @@ function MegaphoneIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11v2a2 2 0 0 0 2 2h2l2 4h3l-2-4 7 3V6L8 9H6a2 2 0 0 0-2 2Z" /><path d="M20 9v6" /></svg>
 }
 
+function FeedbackIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-5 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" /><path d="M8 9h8M8 13h5" /></svg>
+}
+
 export default function App() {
   const [session, setSession] = useState(isPreviewMode ? previewSession : null)
   const [authLoading, setAuthLoading] = useState(isPreviewMode ? false : isSupabaseConfigured)
@@ -124,6 +129,9 @@ export default function App() {
   const [testAccessStatus, setTestAccessStatus] = useState('idle')
   const [testAccessError, setTestAccessError] = useState('')
   const [lastSeenNewsId, setLastSeenNewsId] = useState(null)
+  const [feedbackMessage, setFeedbackMessage] = useState('')
+  const [feedbackStatus, setFeedbackStatus] = useState('idle')
+  const [feedbackError, setFeedbackError] = useState('')
   const [accountOpen, setAccountOpen] = useState(false)
   const [accountDeletionOpen, setAccountDeletionOpen] = useState(false)
   const [accountDeletionStatus, setAccountDeletionStatus] = useState('idle')
@@ -636,6 +644,29 @@ export default function App() {
     }
     setAccountOpen(false)
     setScreen('news')
+  }
+
+  function openFeedback() {
+    setAccountOpen(false)
+    setFeedbackStatus('idle')
+    setFeedbackError('')
+    setScreen('feedback')
+  }
+
+  async function submitFeedback(event) {
+    event.preventDefault()
+    const message = feedbackMessage.trim()
+    if (!message || feedbackStatus === 'sending') return
+    setFeedbackStatus('sending')
+    setFeedbackError('')
+    try {
+      await sendFeedback(message, session.access_token)
+      setFeedbackMessage('')
+      setFeedbackStatus('sent')
+    } catch (error) {
+      setFeedbackError(error.message)
+      setFeedbackStatus('idle')
+    }
   }
 
   async function signOut() {
@@ -1767,6 +1798,26 @@ export default function App() {
         </section>
       )}
 
+      {screen === 'feedback' && (
+        <section className="feedback-page">
+          <div className="compact-page-header">
+            <button className="back" type="button" onClick={() => setScreen('home')} aria-label="홈으로 돌아가기">←</button>
+            <div className="compact-page-title"><h1>의견 보내기</h1><span>사용하면서 느낀 점을 편하게 남겨주세요</span></div>
+          </div>
+          {feedbackStatus === 'sent' ? <div className="feedback-success" role="status">
+            <strong>의견을 보내주셔서 고마워요.</strong>
+            <span>보내주신 내용은 서비스를 다듬는 데 참고할게요.</span>
+            <button className="primary" type="button" onClick={() => setScreen('home')}>홈으로</button>
+          </div> : <form className="feedback-form" onSubmit={submitFeedback}>
+            <label htmlFor="feedback-message">의견</label>
+            <textarea id="feedback-message" rows="7" maxLength={MAX_FEEDBACK_LENGTH} value={feedbackMessage} onChange={event => setFeedbackMessage(event.target.value)} placeholder="불편했던 점이나 있으면 좋을 기능을 알려주세요." />
+            <span className="feedback-count">{feedbackMessage.length}/{MAX_FEEDBACK_LENGTH}</span>
+            {feedbackError && <p className="error-message" role="alert">{feedbackError}</p>}
+            <button className="primary" type="submit" disabled={!feedbackMessage.trim() || feedbackStatus === 'sending'}>{feedbackStatus === 'sending' ? '보내는 중…' : '의견 보내기'}</button>
+          </form>}
+        </section>
+      )}
+
       {screen === 'clubs' && (
         <section className={`club-bag ${clubSetupReturn === 'onboarding' ? 'onboarding-club-bag' : ''}`}>
           {clubSetupReturn === 'onboarding' && <div className="onboarding-progress club-onboarding-progress" aria-label="온보딩 3/3 단계">
@@ -2143,6 +2194,10 @@ export default function App() {
             </button>
             <button className="account-menu-button" type="button" onClick={openNews} aria-label={unseenNews ? '새소식, 새 글 있음' : '새소식'}>
               <span><b className="news-menu-icon" aria-hidden="true"><MegaphoneIcon /></b><strong className="news-menu-label">새소식{unseenNews && <i className="news-unseen-dot" aria-hidden="true" />}</strong></span>
+              <i aria-hidden="true">→</i>
+            </button>
+            <button className="account-menu-button" type="button" onClick={openFeedback}>
+              <span><b className="feedback-menu-icon" aria-hidden="true"><FeedbackIcon /></b><strong>의견 보내기</strong></span>
               <i aria-hidden="true">→</i>
             </button>
             <button className="logout-button" onClick={signOut}>로그아웃</button>

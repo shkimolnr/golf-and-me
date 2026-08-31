@@ -154,6 +154,7 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .account-menu-button span { display: flex; align-items: center; gap: 10px; }
 .account-menu-button b { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; color: #047857; background: #ecfdf5; font-family: var(--font-ui); }
 .account-menu-button .news-menu-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.account-menu-button .feedback-menu-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .account-menu-button .news-menu-label { overflow: visible; }
 .account-menu-button i { color: #059669; font-style: normal; }
 .account-menu-button + .account-menu-button { margin-top: -5px; }
@@ -165,6 +166,16 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .news-meta time { color: #9ca3af; font-size: 11px; }
 .news-item h2 { margin: 9px 0 7px; font-size: 17px; line-height: 1.35; }
 .news-item p { margin: 0; color: #6b7280; font-size: 13px; line-height: 1.65; }
+.feedback-page { padding-top: 2px; }
+.feedback-form, .feedback-success { display: grid; gap: 12px; margin-top: 22px; padding: 18px; border: 1px solid #dfe7e3; border-radius: 16px; background: #f7fafc; }
+.feedback-form { grid-template-columns: minmax(0, 1fr) auto; }
+.feedback-form label, .feedback-form textarea, .feedback-form .error-message, .feedback-form button { grid-column: 1 / -1; }
+.feedback-form label { font-size: 15px; }
+.feedback-form textarea { min-height: 150px; background: white; }
+.feedback-count { grid-column: 2; color: #9ca3af; font-family: var(--font-ui); font-size: 11px; text-align: right; }
+.feedback-success strong { font-size: 18px; }
+.feedback-success span { color: #6b7280; font-size: 13px; line-height: 1.6; }
+.feedback-success button { margin-top: 6px; }
 .club-stage-tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; margin: 4px 0 18px; }
 .club-stage-tabs button { min-height: 38px; padding: 8px 11px; border: 0; border-radius: 11px; color: #6b7280; background: #f3f4f6; font-size: 13px; font-weight: 800; }
 .club-stage-tabs button.active { color: #047857; background: #ecfdf5; }

@@ -32,6 +32,14 @@
 
 2026-08-31 Production에 `Golf and Me Beta Requests` 앱과 비공개 `beta-requests` 채널을 연결했습니다. 테스트 신청은 API `202` 응답과 Slack 메시지 수신을 모두 확인했으며 Webhook URL은 Vercel의 Secret 환경변수에만 보관합니다. 이 기능은 GCP 정식 운영 승인 전까지만 사용하는 한시 기능입니다.
 
+### Beta 의견 보내기 연결
+
+1. 로그인 회원은 계정 메뉴의 `의견 보내기`에서 500자 이내 자유 텍스트를 전송합니다.
+2. `/api/feedback`은 브라우저가 전달한 Supabase 세션 토큰으로 `/auth/v1/user`를 조회해 로그인 회원인지 확인합니다. 토큰과 사용자 응답은 저장하거나 Slack으로 전달하지 않습니다.
+3. 전용 채널을 사용할 경우 Vercel Production 환경변수 `SLACK_FEEDBACK_WEBHOOK_URL`에 Incoming Webhook URL을 설정합니다. 없으면 기존 `SLACK_TEST_ACCESS_WEBHOOK_URL` 채널로 임시 전달됩니다.
+4. Slack 메시지는 `의견 보내기` 제목과 입력 본문만 포함합니다. 이메일, 사용자 UUID, 골프 기록, IP와 기기·브라우저 정보는 포함하지 않습니다.
+5. Production 배포 뒤 실제 로그인 계정에서 테스트 의견 한 건을 보내 Slack 수신과 성공 화면을 확인합니다.
+
 ## 3. 저장과 장애 대응
 
 - 라운드와 홀 초안은 기기에 먼저 저장하고 로그인·연결이 준비되면 Supabase에 저장합니다.
