@@ -16,15 +16,20 @@ import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMete
 import { loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
 import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from './data/news.js'
-import { hasAnalyticsConsent, measureLoginStage, recordDiagnosticEvent, setAnalyticsConsent, startLoginMeasurement, trackEvent } from './lib/analytics.js'
+import { getAnalyticsConsent, measureLoginStage, recordLoginFailure, setAnalyticsConsent, startLoginMeasurement, trackEvent, trackScreen } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { requestTestAccess } from './lib/testAccessRequest.js'
 import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
 import { scheduleRemoteHydrationRetry } from './lib/remoteHydrationRetry.js'
-import { recordDiagnosticFailure, resolveDiagnosticFailure } from './lib/diagnostics.js'
+import { recordDiagnosticFailure, resolveDiagnosticFailures } from './lib/diagnostics.js'
+import { clearDiagnosticQueue, enqueueDiagnosticFailure, enqueueDiagnosticRecovery, flushDiagnosticQueue, setDiagnosticAccessTokenProvider } from './lib/diagnosticsTransport.js'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
 const isTestAccessRequestEnabled = import.meta.env.VITE_TEST_ACCESS_REQUEST_ENABLED === 'true'
+const analyticsScreenNames = Object.freeze({
+  'new-round': 'new_round',
+  'hole-detail': 'hole_detail',
+})
 const previewSession = {
   user: {
     id: 'preview-user',
@@ -32,6 +37,12 @@ const previewSession = {
     user_metadata: { full_name: '미리보기 사용자' },
   },
 }
+
+setDiagnosticAccessTokenProvider(async () => {
+  if (!supabase) return ''
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token || ''
+})
 
 function localDateTimeValue() {
   const now = new Date()
@@ -135,7 +146,7 @@ export default function App() {
   const [feedbackStatus, setFeedbackStatus] = useState('idle')
   const [feedbackError, setFeedbackError] = useState('')
   const [accountOpen, setAccountOpen] = useState(false)
-  const [analyticsConsent, setAnalyticsConsentState] = useState(() => hasAnalyticsConsent())
+  const [analyticsConsent, setAnalyticsConsentState] = useState(() => getAnalyticsConsent())
   const [accountDeletionOpen, setAccountDeletionOpen] = useState(false)
   const [accountDeletionStatus, setAccountDeletionStatus] = useState('idle')
   const [accountDeletionError, setAccountDeletionError] = useState('')
@@ -195,21 +206,25 @@ export default function App() {
   const hadSyncIssueRef = useRef(false)
   const clubOnboardingCompletedRef = useRef(false)
   const clubDistanceCanonicalInputsRef = useRef({})
+  const lastTrackedScreenRef = useRef(null)
+  const lastTrackedOnboardingStepRef = useRef(null)
 
   const unseenNews = hasUnseenNews(lastSeenNewsId)
 
   function reportDiagnosticFailure(stage, error) {
+    // 인증 전 OAuth 오류는 서버가 인증된 요청만 받는 정책상 원격 진단에 넣지 않는다.
+    if (!session || isPreviewMode) return
     const diagnostic = recordDiagnosticFailure({ stage, error, online: navigator.onLine })
-    if (diagnostic?.isNew) recordDiagnosticEvent(diagnostic.record)
+    if (diagnostic) enqueueDiagnosticFailure(diagnostic.record)
   }
 
   function reportDiagnosticRecovery(stage) {
-    recordDiagnosticEvent(resolveDiagnosticFailure(stage), true)
+    if (!session || isPreviewMode) return
+    resolveDiagnosticFailures(stage).forEach(record => enqueueDiagnosticRecovery(record))
   }
 
   function updateAnalyticsConsent(granted) {
-    setAnalyticsConsent(granted)
-    setAnalyticsConsentState(granted)
+    setAnalyticsConsentState(setAnalyticsConsent(granted))
   }
 
   useEffect(() => {
@@ -219,6 +234,32 @@ export default function App() {
     }
     setLastSeenNewsId(window.localStorage.getItem(newsSeenStorageKey(session.user.id)))
   }, [session])
+
+  useEffect(() => {
+    if (!session || !isOnline || isPreviewMode) return
+    void flushDiagnosticQueue()
+  }, [session?.user?.id, isOnline])
+
+  useEffect(() => {
+    if (analyticsConsent !== 'granted') {
+      lastTrackedScreenRef.current = null
+      lastTrackedOnboardingStepRef.current = null
+      return
+    }
+    const rawScreen = session ? (onboardingReady ? screen : null) : 'login'
+    const analyticsScreen = analyticsScreenNames[rawScreen] || rawScreen
+    if (!analyticsScreen || lastTrackedScreenRef.current === analyticsScreen) return
+    trackScreen(analyticsScreen)
+    lastTrackedScreenRef.current = analyticsScreen
+  }, [analyticsConsent, session, onboardingReady, screen])
+
+  useEffect(() => {
+    if (analyticsConsent !== 'granted' || screen !== 'onboarding') return
+    const viewKey = `${onboardingStep}`
+    if (lastTrackedOnboardingStepRef.current === viewKey) return
+    trackEvent('onboarding_step', { step: onboardingStep, status: 'viewed' })
+    lastTrackedOnboardingStepRef.current = viewKey
+  }, [analyticsConsent, screen, onboardingStep])
 
   useEffect(() => {
     const layerOpen = accountOpen || accountDeletionOpen || dateTimeOpen || clubSetupPromptOpen || Boolean(roundPendingDeletion) || Boolean(pendingStructureChange) || Boolean(pendingRoundStart) || roundCompletionOpen
@@ -315,7 +356,10 @@ export default function App() {
 
     supabase.auth.getSession().then(({ data, error }) => {
       clearAuthCallbackFromAddress(window)
-      if (callbackError) setAuthError('Google 로그인이 완료되지 않았습니다. 다시 시도해주세요.')
+      if (callbackError) {
+        recordLoginFailure('oauth_callback')
+        setAuthError('Google 로그인이 완료되지 않았습니다. 다시 시도해주세요.')
+      }
       else if (error) setAuthError('로그인 상태를 확인하지 못했습니다. 다시 시도해주세요.')
       setSession(data.session)
       setAuthLoading(false)
@@ -444,10 +488,15 @@ export default function App() {
         const localProfile = localProfileValue ? JSON.parse(localProfileValue) : null
         const resolvedProfile = resolveOnboardingProfile(localProfile, remoteProfile)
         if (resolvedProfile.shouldSaveRemote) {
-          await saveRemoteProfile(supabase, session.user.id, {
-            defaultTee: resolvedProfile.defaultTee,
-            defaultDistanceUnit: resolvedProfile.defaultDistanceUnit,
-          })
+          try {
+            await saveRemoteProfile(supabase, session.user.id, {
+              defaultTee: resolvedProfile.defaultTee,
+              defaultDistanceUnit: resolvedProfile.defaultDistanceUnit,
+            })
+          } catch (error) {
+            reportDiagnosticFailure('profile_save', error)
+            throw error
+          }
         }
         if (resolvedProfile.completed) {
           window.localStorage.setItem(`golf-and-me:onboarding:${session.user.id}`, JSON.stringify({
@@ -505,6 +554,7 @@ export default function App() {
         }
         setRemoteHydratedUserId(session.user.id)
         reportDiagnosticRecovery('profile_load')
+        reportDiagnosticRecovery('profile_save')
         reportDiagnosticRecovery('rounds_load')
         reportDiagnosticRecovery('club_bag_load')
         measureLoginStage('records_ready')
@@ -543,11 +593,9 @@ export default function App() {
     let retryTimer = null
     const timer = window.setTimeout(async () => {
       try {
-        const [roundsSaveResult, clubBagSaveResult] = await Promise.all([
-          Promise.all([
-            saveRemoteRounds(supabase, session.user.id, rounds),
-            ...pendingDeletedRoundIds.map(roundId => deleteRemoteRound(supabase, session.user.id, roundId)),
-          ]).then(() => ({ ok: true }), error => ({ error })),
+        const [roundsSaveResult, roundsDeleteResult, clubBagSaveResult] = await Promise.all([
+          saveRemoteRounds(supabase, session.user.id, rounds).then(() => ({ ok: true }), error => ({ error })),
+          Promise.all(pendingDeletedRoundIds.map(roundId => deleteRemoteRound(supabase, session.user.id, roundId))).then(() => ({ ok: true }), error => ({ error })),
           saveRemoteClubBag(supabase, session.user.id, {
             clubs: clubDrafts,
             inactiveClubs: inactiveClubDrafts,
@@ -558,8 +606,10 @@ export default function App() {
           }).then(() => ({ ok: true }), error => ({ error })),
         ])
         if (roundsSaveResult.error) reportDiagnosticFailure('rounds_save', roundsSaveResult.error)
+        if (roundsDeleteResult.error) reportDiagnosticFailure('rounds_delete', roundsDeleteResult.error)
         if (clubBagSaveResult.error) reportDiagnosticFailure('club_bag_save', clubBagSaveResult.error)
         if (roundsSaveResult.error) throw roundsSaveResult.error
+        if (roundsDeleteResult.error) throw roundsDeleteResult.error
         if (clubBagSaveResult.error) throw clubBagSaveResult.error
         if (pendingDeletedRoundIds.length) {
           savePendingRoundDeletions(window.localStorage, session.user.id, [])
@@ -567,6 +617,7 @@ export default function App() {
         }
         setSyncError('')
         reportDiagnosticRecovery('rounds_save')
+        reportDiagnosticRecovery('rounds_delete')
         reportDiagnosticRecovery('club_bag_save')
         if (hadSyncIssueRef.current) {
           hadSyncIssueRef.current = false
@@ -673,6 +724,7 @@ export default function App() {
       options: googleOAuthOptions(window.location.origin),
     })
     if (error) {
+      recordLoginFailure('oauth_start')
       reportDiagnosticFailure('oauth', error)
       setAuthError('Google 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해주세요.')
       setAuthLoading(false)
@@ -719,6 +771,7 @@ export default function App() {
     const { error } = await supabase.auth.signOut({ scope: 'local' })
     if (error) setAuthError('로그아웃하지 못했습니다. 다시 시도해주세요.')
     else {
+      clearDiagnosticQueue()
       resetNavigationForExplicitSignOut(window.localStorage, signingOutUserId)
       setAccountOpen(false)
       setScreen('home')
@@ -765,9 +818,12 @@ export default function App() {
     trackEvent('onboarding_step', { step: 3, status: 'complete' })
     trackEvent('onboarding_complete', { status: 'complete' })
     if (supabase && !isPreviewMode) {
-      saveRemoteProfile(supabase, session.user.id, { defaultTee, defaultDistanceUnit }).catch(() => {
-        setSyncError('기본 티 설정은 기기에 저장했지만 서버 동기화가 지연되고 있어요.')
-      })
+      saveRemoteProfile(supabase, session.user.id, { defaultTee, defaultDistanceUnit })
+        .then(() => reportDiagnosticRecovery('profile_save'))
+        .catch(error => {
+          reportDiagnosticFailure('profile_save', error)
+          setSyncError('기본 티 설정은 기기에 저장했지만 서버 동기화가 지연되고 있어요.')
+        })
     }
   }
 
@@ -989,7 +1045,7 @@ export default function App() {
     const isFirstComposition = !clubCompositionCompleted
     setClubBagUpdatedAt(new Date().toISOString())
     setClubCompositionCompleted(true)
-    trackEvent('club_setup_complete', { status: 'saved' })
+    trackEvent('club_setup_complete', { status: 'saved', source: clubSetupReturn === 'onboarding' ? 'onboarding' : 'account' })
     setClubCompositionEditing(false)
     setClubStage(isFirstComposition ? 'distance' : 'composition')
     setCustomClubCategory(null)
@@ -1690,6 +1746,23 @@ export default function App() {
   const distanceBasisChanged = Boolean(latestDistanceSet && latestDistanceSet.basis !== clubDistanceBasis)
   const hasDistanceChanges = Object.values(clubDistanceInputs).some(value => value !== '' && value != null)
 
+  if (screen === 'onboarding' && analyticsConsent === 'unknown') {
+    return (
+      <main className="app-shell onboarding-shell analytics-consent-shell">
+        <section className="analytics-consent-prompt" aria-labelledby="analytics-consent-title">
+          <p className="eyebrow">Golf &amp; Me</p>
+          <h1 id="analytics-consent-title">서비스 개선에<br />도움을 주실래요?</h1>
+          <p>이용 흐름과 오류 발생 여부만 수집하며 계정·골프 기록은 보내지 않아요.</p>
+          <div className="analytics-consent-actions">
+            <button className="primary" type="button" onClick={() => updateAnalyticsConsent(true)}>허용</button>
+            <button className="secondary-button" type="button" onClick={() => updateAnalyticsConsent(false)}>괜찮아요</button>
+          </div>
+          <small>선택은 내 계정에서 언제든 바꿀 수 있어요.</small>
+        </section>
+      </main>
+    )
+  }
+
   if (screen === 'onboarding') {
     return (
       <main className="app-shell onboarding-shell">
@@ -2247,8 +2320,13 @@ export default function App() {
               <i aria-hidden="true">→</i>
             </button>
             <label className="analytics-consent-control">
-              <span><strong>서비스 개선 분석 허용</strong><small>GA4로 이용 흐름과 오류 요약을 보내며, 계정·골프 기록은 제외해요.</small></span>
-              <input type="checkbox" checked={analyticsConsent} onChange={event => updateAnalyticsConsent(event.target.checked)} />
+              <span>
+                <strong>서비스 개선 분석 허용</strong>
+                <small>{analyticsConsent === 'granted'
+                  ? '이용 흐름만 분석하며, 계정·골프 기록은 보내지 않아요.'
+                  : '현재 분석을 보내지 않아요. 허용해도 서비스 이용에는 영향이 없어요.'}</small>
+              </span>
+              <input type="checkbox" checked={analyticsConsent === 'granted'} onChange={event => updateAnalyticsConsent(event.target.checked)} />
             </label>
             <button className="logout-button" onClick={signOut}>로그아웃</button>
             {!isPreviewMode && <button className="delete-account-link" type="button" onClick={openAccountDeletion}>계정 삭제</button>}
