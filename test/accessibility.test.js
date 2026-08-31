@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
+import { newsItems } from '../src/data/news.js'
 
 const appSource = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8')
 
@@ -77,4 +78,12 @@ test('테스트 계정 요청은 로그인 약관 뒤에 간결한 보조 경로
   assert.match(appSource, /placeholder="example@gmail.com"/)
   assert.match(appSource, /'승인 요청'/)
   assert.doesNotMatch(appSource, /신청한 이메일은 테스트 계정 등록을 위해/)
+})
+
+test('전체 새소식은 홈과 계정 메뉴에서 같은 정적 목록으로 열린다', () => {
+  assert.match(appSource, /className="news-header-button"/)
+  assert.match(appSource, /setAccountOpen\(false\); setScreen\('news'\)/)
+  assert.match(appSource, /screen === 'news'/)
+  assert.ok(newsItems.length >= 1)
+  assert.ok(newsItems.every(item => item.id && item.date && item.category && item.title && item.body))
 })

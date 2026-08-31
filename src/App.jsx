@@ -15,6 +15,7 @@ import { clearRoundHoleDrafts, latestHoleDraft, removeRoundHoleDraft, upsertRoun
 import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMeters, pairClubsForColumnLayout } from './lib/clubBag.js'
 import { loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
+import { newsItems } from './data/news.js'
 import { measureLoginStage, recordLoginFailure, startLoginMeasurement, trackEvent } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { requestTestAccess } from './lib/testAccessRequest.js'
@@ -1647,11 +1648,14 @@ export default function App() {
       {screen === 'home' && (
         <header className="app-header">
           <div className="brand"><span className="brand-mark">G</span> Golf &amp; Me</div>
-          <button className="profile-button" type="button" onClick={() => setAccountOpen(true)} title="계정 메뉴" aria-label={`${displayName} 계정 메뉴 열기`}>
-            {avatarUrl
-              ? <img src={avatarUrl} alt="" referrerPolicy="no-referrer" />
-              : displayName?.slice(0, 1).toUpperCase()}
-          </button>
+          <div className="home-header-actions">
+            <button className="news-header-button" type="button" onClick={() => setScreen('news')}>새소식</button>
+            <button className="profile-button" type="button" onClick={() => setAccountOpen(true)} title="계정 메뉴" aria-label={`${displayName} 계정 메뉴 열기`}>
+              {avatarUrl
+                ? <img src={avatarUrl} alt="" referrerPolicy="no-referrer" />
+                : displayName?.slice(0, 1).toUpperCase()}
+            </button>
+          </div>
         </header>
       )}
       {authError && <p className="error-message" role="alert">{authError}</p>}
@@ -1712,6 +1716,22 @@ export default function App() {
               <span>첫 라운드를 기록하면 플레이 통계를 보여드릴게요.</span>
             </div>
           )}
+        </section>
+      )}
+
+      {screen === 'news' && (
+        <section className="news-page">
+          <div className="compact-page-header">
+            <button className="back" type="button" onClick={() => setScreen('home')} aria-label="홈으로 돌아가기">←</button>
+            <div className="compact-page-title"><h1>새소식</h1><span>골프와 나의 달라진 점을 전해요</span></div>
+          </div>
+          <div className="news-list">
+            {newsItems.map(item => <article className="news-item" key={item.id}>
+              <div className="news-meta"><span>{item.category}</span><time dateTime={item.date}>{item.date.replaceAll('-', '.')}</time></div>
+              <h2>{item.title}</h2>
+              <p>{item.body}</p>
+            </article>)}
+          </div>
         </section>
       )}
 
@@ -2087,6 +2107,10 @@ export default function App() {
             </div>
             <button className="account-menu-button" type="button" onClick={openClubBag}>
               <span><b aria-hidden="true">♧</b><strong>내 골프백</strong></span>
+              <i aria-hidden="true">→</i>
+            </button>
+            <button className="account-menu-button" type="button" onClick={() => { setAccountOpen(false); setScreen('news') }}>
+              <span><b aria-hidden="true">✦</b><strong>새소식</strong></span>
               <i aria-hidden="true">→</i>
             </button>
             <button className="logout-button" onClick={signOut}>로그아웃</button>
