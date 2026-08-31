@@ -19,7 +19,10 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .profile-button { display: grid; place-items: center; width: 38px; height: 38px; padding: 0; overflow: hidden; border: 0; border-radius: 50%; color: white; background: #2d3748; font-weight: 800; }
 .profile-button img, .account-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .home-header-actions { display: flex; align-items: center; gap: 12px; }
-.news-header-button { padding: 6px 2px; border: 0; color: #047857; background: none; font-size: 13px; font-weight: 800; }
+.news-header-button { display: flex; align-items: center; gap: 5px; padding: 6px 2px; border: 0; color: #047857; background: none; font-size: 13px; font-weight: 800; }
+.news-header-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.news-header-button > span, .news-menu-label { position: relative; }
+.news-unseen-dot { position: absolute; top: -3px; right: -8px; width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; }
 .eyebrow { color: #059669; font-size: 16px; font-weight: 700; }
 h1 { margin: 10px 0 14px; font-size: clamp(30px, 9vw, 42px); line-height: 1.2; letter-spacing: .035em; }
 .description { color: #6b7280; line-height: 1.6; margin-bottom: 32px; }
@@ -150,6 +153,8 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .account-menu-button { display: flex; align-items: center; justify-content: space-between; width: 100%; margin: -8px 0 12px; padding: 14px 15px; border: 1px solid #dfe7e3; border-radius: 12px; color: #2d3748; background: white; text-align: left; }
 .account-menu-button span { display: flex; align-items: center; gap: 10px; }
 .account-menu-button b { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; color: #047857; background: #ecfdf5; font-family: var(--font-ui); }
+.account-menu-button .news-menu-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.account-menu-button .news-menu-label { overflow: visible; }
 .account-menu-button i { color: #059669; font-style: normal; }
 .account-menu-button + .account-menu-button { margin-top: -5px; }
 .news-page { padding-top: 2px; }

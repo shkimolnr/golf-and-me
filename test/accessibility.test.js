@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { newsItems } from '../src/data/news.js'
+import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from '../src/data/news.js'
 
 const appSource = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8')
 
@@ -82,8 +82,17 @@ test('테스트 계정 요청은 로그인 약관 뒤에 간결한 보조 경로
 
 test('전체 새소식은 홈과 계정 메뉴에서 같은 정적 목록으로 열린다', () => {
   assert.match(appSource, /className="news-header-button"/)
-  assert.match(appSource, /setAccountOpen\(false\); setScreen\('news'\)/)
+  assert.match(appSource, /function openNews\(\)/)
+  assert.match(appSource, /<MegaphoneIcon \/>/)
+  assert.match(appSource, /className="news-unseen-dot"/)
   assert.match(appSource, /screen === 'news'/)
   assert.ok(newsItems.length >= 1)
   assert.ok(newsItems.every(item => item.id && item.date && item.category && item.title && item.body))
+})
+
+test('새소식 점은 최신 글을 해당 기기에서 확인할 때까지 표시한다', () => {
+  assert.equal(latestNewsId(newsItems), newsItems[0].id)
+  assert.equal(hasUnseenNews(null, newsItems), true)
+  assert.equal(hasUnseenNews(newsItems[0].id, newsItems), false)
+  assert.equal(newsSeenStorageKey('user-1'), 'golf-and-me:news-seen:user-1')
 })

@@ -21,3 +21,16 @@ export const newsItems = [
     body: 'TIGER·LION 코스의 공식 홀 순서와 티별 거리를 새 라운드에 연결했어요.',
   },
 ]
+
+export function latestNewsId(items = newsItems) {
+  return items[0]?.id ?? null
+}
+
+export function hasUnseenNews(lastSeenId, items = newsItems) {
+  const latestId = latestNewsId(items)
+  return Boolean(latestId && latestId !== lastSeenId)
+}
+
+export function newsSeenStorageKey(userId) {
+  return `golf-and-me:news-seen:${userId}`
+}

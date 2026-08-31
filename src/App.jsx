@@ -15,7 +15,7 @@ import { clearRoundHoleDrafts, latestHoleDraft, removeRoundHoleDraft, upsertRoun
 import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMeters, pairClubsForColumnLayout } from './lib/clubBag.js'
 import { loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
-import { newsItems } from './data/news.js'
+import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from './data/news.js'
 import { measureLoginStage, recordLoginFailure, startLoginMeasurement, trackEvent } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { requestTestAccess } from './lib/testAccessRequest.js'
@@ -112,6 +112,10 @@ function ParWarningIcon() {
   return <span className="par-warning-icon" role="img" aria-label="PAR 정보가 없는 홀은 파 대비 계산에서 제외됨">⚠️</span>
 }
 
+function MegaphoneIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11v2a2 2 0 0 0 2 2h2l2 4h3l-2-4 7 3V6L8 9H6a2 2 0 0 0-2 2Z" /><path d="M20 9v6" /></svg>
+}
+
 export default function App() {
   const [session, setSession] = useState(isPreviewMode ? previewSession : null)
   const [authLoading, setAuthLoading] = useState(isPreviewMode ? false : isSupabaseConfigured)
@@ -119,6 +123,7 @@ export default function App() {
   const [testAccessEmail, setTestAccessEmail] = useState('')
   const [testAccessStatus, setTestAccessStatus] = useState('idle')
   const [testAccessError, setTestAccessError] = useState('')
+  const [lastSeenNewsId, setLastSeenNewsId] = useState(null)
   const [accountOpen, setAccountOpen] = useState(false)
   const [accountDeletionOpen, setAccountDeletionOpen] = useState(false)
   const [accountDeletionStatus, setAccountDeletionStatus] = useState('idle')
@@ -178,6 +183,16 @@ export default function App() {
   const hadSyncIssueRef = useRef(false)
   const clubOnboardingCompletedRef = useRef(false)
   const clubDistanceCanonicalInputsRef = useRef({})
+
+  const unseenNews = hasUnseenNews(lastSeenNewsId)
+
+  useEffect(() => {
+    if (!session) {
+      setLastSeenNewsId(null)
+      return
+    }
+    setLastSeenNewsId(window.localStorage.getItem(newsSeenStorageKey(session.user.id)))
+  }, [session])
 
   useEffect(() => {
     const layerOpen = accountOpen || accountDeletionOpen || dateTimeOpen || clubSetupPromptOpen || Boolean(roundPendingDeletion) || Boolean(pendingStructureChange) || Boolean(pendingRoundStart) || roundCompletionOpen
@@ -611,6 +626,16 @@ export default function App() {
       setAuthError('Google 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해주세요.')
       setAuthLoading(false)
     }
+  }
+
+  function openNews() {
+    const currentLatestNewsId = latestNewsId()
+    if (session && currentLatestNewsId) {
+      window.localStorage.setItem(newsSeenStorageKey(session.user.id), currentLatestNewsId)
+      setLastSeenNewsId(currentLatestNewsId)
+    }
+    setAccountOpen(false)
+    setScreen('news')
   }
 
   async function signOut() {
@@ -1653,7 +1678,10 @@ export default function App() {
         <header className="app-header">
           <div className="brand"><span className="brand-mark">G</span> Golf &amp; Me</div>
           <div className="home-header-actions">
-            <button className="news-header-button" type="button" onClick={() => setScreen('news')}>새소식</button>
+            <button className="news-header-button" type="button" onClick={openNews} aria-label={unseenNews ? '새소식, 새 글 있음' : '새소식'}>
+              <MegaphoneIcon />
+              <span>새소식{unseenNews && <i className="news-unseen-dot" aria-hidden="true" />}</span>
+            </button>
             <button className="profile-button" type="button" onClick={() => setAccountOpen(true)} title="계정 메뉴" aria-label={`${displayName} 계정 메뉴 열기`}>
               {avatarUrl
                 ? <img src={avatarUrl} alt="" referrerPolicy="no-referrer" />
@@ -2113,8 +2141,8 @@ export default function App() {
               <span><b aria-hidden="true">♧</b><strong>내 골프백</strong></span>
               <i aria-hidden="true">→</i>
             </button>
-            <button className="account-menu-button" type="button" onClick={() => { setAccountOpen(false); setScreen('news') }}>
-              <span><b aria-hidden="true">✦</b><strong>새소식</strong></span>
+            <button className="account-menu-button" type="button" onClick={openNews} aria-label={unseenNews ? '새소식, 새 글 있음' : '새소식'}>
+              <span><b className="news-menu-icon" aria-hidden="true"><MegaphoneIcon /></b><strong className="news-menu-label">새소식{unseenNews && <i className="news-unseen-dot" aria-hidden="true" />}</strong></span>
               <i aria-hidden="true">→</i>
             </button>
             <button className="logout-button" onClick={signOut}>로그아웃</button>
