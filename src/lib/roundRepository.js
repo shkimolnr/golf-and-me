@@ -109,7 +109,54 @@ export function serializeRoundRow(userId, round) {
   }
 }
 
-export async function loadRemoteRounds(client, userId) {
+const roundSummaryColumns = [
+  'id', 'course_id', 'course_name', 'front_course_name', 'back_course_name', 'tee', 'distance_unit',
+  'played_at_local', 'status', 'completed_at', 'updated_at', 'entered_holes', 'par_recorded_holes',
+  'total_score', 'score_to_par', 'total_putts', 'putt_attempts', 'fir_hits', 'fir_attempts',
+  'gir_hits', 'gir_attempts', 'stats_summary',
+].join(', ')
+
+function missingRoundSummarySchema(error) {
+  const code = String(error?.code || '')
+  const message = String(error?.message || '').toLowerCase()
+  return ['42703', 'PGRST200', 'PGRST204'].includes(code)
+    || (message.includes('column') && ['entered_holes', 'stats_summary'].some(column => message.includes(column)))
+}
+
+export function deserializeRemoteRoundSummary(row) {
+  const statsSummary = {
+    enteredHoles: Number(row.entered_holes) || 0,
+    parRecordedHoles: Number(row.par_recorded_holes) || 0,
+    missingParHoles: Math.max(0, (Number(row.entered_holes) || 0) - (Number(row.par_recorded_holes) || 0)),
+    totalScore: row.total_score == null ? 0 : Number(row.total_score),
+    toPar: row.score_to_par == null ? null : Number(row.score_to_par),
+    totalPutts: row.total_putts == null ? 0 : Number(row.total_putts),
+    puttAttempts: Number(row.putt_attempts) || 0,
+    firHits: Number(row.fir_hits) || 0,
+    firAttempts: Number(row.fir_attempts) || 0,
+    girHits: Number(row.gir_hits) || 0,
+    girAttempts: Number(row.gir_attempts) || 0,
+    ...(row.stats_summary && typeof row.stats_summary === 'object' ? row.stats_summary : {}),
+  }
+  return {
+    id: row.id,
+    courseId: row.course_id || null,
+    courseName: row.course_name || '',
+    frontCourseName: row.front_course_name || '',
+    backCourseName: row.back_course_name || '',
+    tee: row.tee || '화이트',
+    distanceUnit: row.distance_unit || 'M',
+    playedAt: row.played_at_local || null,
+    status: row.status === 'completed' ? 'completed' : 'in_progress',
+    completedAt: row.completed_at || null,
+    updatedAt: row.updated_at || null,
+    holes: [],
+    statsSummary,
+    remoteSummaryOnly: true,
+  }
+}
+
+async function loadLegacyRemoteRounds(client, userId) {
   const { data, error } = await client
     .from('rounds')
     .select('payload')
@@ -118,6 +165,32 @@ export async function loadRemoteRounds(client, userId) {
 
   if (error) throw error
   return (data || []).map(row => row.payload).filter(Boolean)
+}
+
+export async function loadRemoteRounds(client, userId) {
+  const [{ data: draftRows, error: draftError }, { data: completedRows, error: completedError }] = await Promise.all([
+    client.from('rounds').select('payload').eq('user_id', userId).eq('status', 'in_progress').order('updated_at', { ascending: false }),
+    client.from('rounds').select(roundSummaryColumns).eq('user_id', userId).eq('status', 'completed').order('played_at_local', { ascending: false }),
+  ])
+
+  if (missingRoundSummarySchema(completedError)) return loadLegacyRemoteRounds(client, userId)
+  if (draftError) throw draftError
+  if (completedError) throw completedError
+  return [
+    ...(draftRows || []).map(row => row.payload).filter(Boolean),
+    ...(completedRows || []).map(deserializeRemoteRoundSummary),
+  ]
+}
+
+export async function loadRemoteRoundDetail(client, userId, roundId) {
+  const { data, error } = await client
+    .from('rounds')
+    .select('payload')
+    .eq('user_id', userId)
+    .eq('id', String(roundId))
+    .maybeSingle()
+  if (error) throw error
+  return data?.payload || null
 }
 
 export async function saveRemoteRounds(client, userId, rounds) {

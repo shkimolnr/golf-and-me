@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { isSupabaseConfigured, supabase } from './lib/supabase.js'
-import { createRemoteRoundVersionMap, deleteRemoteRound, loadRemoteProfile, loadRemoteRounds, markRoundsAsRemoteSaved, mergeRoundCollections, resolveOnboardingProfile, saveRemoteProfile, saveRemoteRounds, selectRoundsNeedingRemoteSave, sortRoundsForList } from './lib/roundRepository.js'
+import { createRemoteRoundVersionMap, deleteRemoteRound, loadRemoteProfile, loadRemoteRoundDetail, loadRemoteRounds, markRoundsAsRemoteSaved, mergeRoundCollections, resolveOnboardingProfile, saveRemoteProfile, saveRemoteRounds, selectRoundsNeedingRemoteSave, sortRoundsForList } from './lib/roundRepository.js'
 import { excludePendingRoundDeletions, loadPendingRoundDeletions, savePendingRoundDeletions } from './lib/pendingRoundDeletions.js'
 import { isRoundStructureLocked, needsRoundStructureChoice } from './lib/roundPolicy.js'
 import { calculateHoleTotals, isRecordedShot, terminalLieForShot, validateHoleCompletion } from './lib/scoring.js'
@@ -1146,11 +1146,28 @@ export default function App() {
     setClubDistanceEditing(false)
   }
 
-  function openRound(selectedRound) {
-    setActiveRound(selectedRound)
+  async function openRound(selectedRound) {
+    let resolvedRound = selectedRound
+    if (selectedRound.remoteSummaryOnly && supabase && session && !isPreviewMode) {
+      try {
+        const remoteRound = await loadRemoteRoundDetail(supabase, session.user.id, selectedRound.id)
+        if (!remoteRound) throw new Error('Round detail not found')
+        resolvedRound = remoteRound
+        const nextRounds = rounds.map(item => item.id === remoteRound.id ? remoteRound : item)
+        window.localStorage.setItem(`golf-and-me:rounds:${session.user.id}`, JSON.stringify(nextRounds))
+        setRounds(nextRounds)
+        setSyncError('')
+        reportDiagnosticRecovery('rounds_load')
+      } catch (error) {
+        reportDiagnosticFailure('rounds_load', error)
+        setSyncError('라운드 상세 기록을 불러오지 못했어요. 인터넷 연결을 확인한 뒤 다시 열어주세요.')
+        return
+      }
+    }
+    setActiveRound(resolvedRound)
     setEditingActiveRound(false)
-    setScreen(selectedRound.status === 'completed' ? 'round-result' : 'scorecard')
-    if (selectedRound.status === 'completed') trackEvent('round_result_view', { completed_holes: 18 })
+    setScreen(resolvedRound.status === 'completed' ? 'round-result' : 'scorecard')
+    if (resolvedRound.status === 'completed') trackEvent('round_result_view', { completed_holes: 18 })
   }
 
   function requestRoundDeletion(selectedRound) {

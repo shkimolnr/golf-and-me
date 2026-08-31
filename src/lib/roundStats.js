@@ -1,4 +1,5 @@
 export function calculateRoundStats(round) {
+  if (round?.remoteSummaryOnly && round.statsSummary) return round.statsSummary
   const roundHoles = round?.holes || []
   const holes = roundHoles.filter(hole => Number.isFinite(hole.score))
   const holesWithPar = holes.filter(hole => Number.isFinite(hole.par))

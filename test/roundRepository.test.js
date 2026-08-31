@@ -2,6 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   createRemoteRoundVersionMap,
+  deserializeRemoteRoundSummary,
+  loadRemoteRoundDetail,
+  loadRemoteRounds,
   markRoundsAsRemoteSaved,
   mergeRoundCollections,
   resolveOnboardingProfile,
@@ -85,6 +88,60 @@ test('서버 행은 홈 조회용 라운드 요약값을 원본과 함께 저장
   assert.equal(row.fir_attempts, 1)
   assert.equal(row.gir_hits, 1)
   assert.equal(row.gir_attempts, 2)
+})
+
+test('완료 라운드 요약 행은 상세 payload 없이 홈 표시 모델로 복원한다', () => {
+  const summary = deserializeRemoteRoundSummary({
+    id: 'summary-1', course_name: '레이크사이드', front_course_name: 'OUT', back_course_name: 'IN',
+    tee: '레드', distance_unit: 'M', played_at_local: '2026-08-30T07:00', status: 'completed',
+    updated_at: '2026-08-30T12:00:00.000Z', entered_holes: 18, par_recorded_holes: 18,
+    total_score: 85, score_to_par: 13, total_putts: 34, putt_attempts: 18,
+    fir_hits: 8, fir_attempts: 14, gir_hits: 7, gir_attempts: 18,
+  })
+
+  assert.equal(summary.remoteSummaryOnly, true)
+  assert.deepEqual(summary.holes, [])
+  assert.equal(summary.statsSummary.totalScore, 85)
+  assert.equal(summary.statsSummary.toPar, 13)
+  assert.equal(summary.statsSummary.firAttempts, 14)
+})
+
+function queryResult(result, selections) {
+  return {
+    select(columns) { selections.push(columns); return this },
+    eq() { return this },
+    order() { return Promise.resolve(result) },
+    maybeSingle() { return Promise.resolve(result) },
+  }
+}
+
+test('첫 원격 조회는 작성 중 원본과 완료 요약을 분리해 가져온다', async () => {
+  const selections = []
+  const results = [
+    { data: [{ payload: { id: 'draft', status: 'in_progress', updatedAt: '2026-08-30T01:00:00.000Z' } }], error: null },
+    { data: [{
+      id: 'complete', status: 'completed', course_name: '테스트', updated_at: '2026-08-30T02:00:00.000Z',
+      entered_holes: 18, total_score: 85,
+    }], error: null },
+  ]
+  const client = { from() { return queryResult(results.shift(), selections) } }
+
+  const rounds = await loadRemoteRounds(client, 'user-1')
+  assert.equal(selections[0], 'payload')
+  assert.equal(selections[1].includes('stats_summary'), true)
+  assert.equal(selections[1].includes('payload'), false)
+  assert.equal(rounds[0].id, 'draft')
+  assert.equal(rounds[1].remoteSummaryOnly, true)
+})
+
+test('완료 요약을 연 뒤에는 해당 라운드 payload 한 건만 가져온다', async () => {
+  const selections = []
+  const detail = { id: 'complete', status: 'completed', holes: [{ holeNumber: 1, score: 4 }] }
+  const client = { from() { return queryResult({ data: { payload: detail }, error: null }, selections) } }
+
+  const round = await loadRemoteRoundDetail(client, 'user-1', 'complete')
+  assert.equal(selections[0], 'payload')
+  assert.equal(round, detail)
 })
 
 test('요약 컬럼 마이그레이션 전 서버에도 기존 라운드 형식으로 저장한다', async () => {
