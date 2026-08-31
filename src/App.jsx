@@ -1612,9 +1612,9 @@ export default function App() {
     return (
       <main className="app-shell auth-shell">
         <div className="auth-logo"><span className="brand-mark">G</span></div>
-        <p className="eyebrow">당신의 골프 성장 파트너</p>
         <h1>골프와 나</h1>
-        <p className="description">라운드를 간편하게 기록하고<br />내 플레이의 변화를 발견하세요.</p>
+        <p className="eyebrow">Listen to your game.</p>
+        <p className="description">오늘의 플레이에서<br />내일의 골프를 발견하세요</p>
         <button className="google-button" type="button" onClick={signInWithGoogle} disabled={!isSupabaseConfigured}>
           <span className="google-mark" aria-hidden="true">
             <svg viewBox="0 0 48 48" focusable="false">
