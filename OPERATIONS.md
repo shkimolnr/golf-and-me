@@ -30,6 +30,8 @@
 5. Slack 메시지에 신청 이메일과 접수 시각만 있고 IP·브라우저 정보·Golf & Me 기록이 없는지 확인합니다.
 6. Beta 신청 운영이 끝나면 `VITE_TEST_ACCESS_REQUEST_ENABLED=false`로 바꾸고 재배포합니다.
 
+2026-08-31 Production에 `Golf and Me Beta Requests` 앱과 비공개 `beta-requests` 채널을 연결했습니다. 테스트 신청은 API `202` 응답과 Slack 메시지 수신을 모두 확인했으며 Webhook URL은 Vercel의 Secret 환경변수에만 보관합니다.
+
 ## 3. 저장과 장애 대응
 
 - 라운드와 홀 초안은 기기에 먼저 저장하고 로그인·연결이 준비되면 Supabase에 저장합니다.
