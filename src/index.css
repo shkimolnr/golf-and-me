@@ -18,9 +18,9 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: white; background: #059669; }
 .profile-button { display: grid; place-items: center; width: 38px; height: 38px; padding: 0; overflow: hidden; border: 0; border-radius: 50%; color: white; background: #2d3748; font-weight: 800; }
 .profile-button img, .account-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.home-header-actions { display: flex; align-items: center; gap: 12px; }
-.news-header-button { display: flex; align-items: center; gap: 5px; padding: 6px 2px; border: 0; color: #047857; background: none; font-size: 13px; font-weight: 800; }
-.news-header-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.home-header-actions { display: flex; align-items: center; gap: 20px; }
+.news-header-button { display: flex; align-items: center; gap: 6px; padding: 6px 2px; border: 0; color: #047857; background: none; font-size: 17px; font-weight: 800; }
+.news-header-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .news-header-button > span, .news-menu-label { position: relative; }
 .news-unseen-dot { position: absolute; top: -3px; right: -8px; width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; }
 .eyebrow { color: #059669; font-size: 16px; font-weight: 700; }
