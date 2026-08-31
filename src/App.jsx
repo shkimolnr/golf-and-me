@@ -10,7 +10,7 @@ import { compactCoursePair } from './lib/roundPresentation.js'
 import { roundCompletionState } from './lib/roundCompletion.js'
 import { applyKnownCourseTemplate, findKnownCourse, getKnownCourse, searchKnownCourses, segmentNamesForCourse, selectKnownCourse } from './data/courseData.js'
 import { PREVIEW_ROUNDS_VERSION, mergePreviewRounds } from './data/previewRounds.js'
-import { googleOAuthOptions } from './lib/auth.js'
+import { authCallbackError, clearAuthCallbackFromAddress, googleOAuthOptions } from './lib/auth.js'
 import { clearRoundHoleDrafts, latestHoleDraft, removeRoundHoleDraft, upsertRoundHoleDraft } from './lib/roundDrafts.js'
 import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMeters, pairClubsForColumnLayout } from './lib/clubBag.js'
 import { loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
@@ -270,8 +270,12 @@ export default function App() {
     if (isPreviewMode) return
     if (!supabase) return
 
+    const callbackError = authCallbackError(window.location.href)
+
     supabase.auth.getSession().then(({ data, error }) => {
-      if (error) setAuthError('로그인 상태를 확인하지 못했습니다. 다시 시도해주세요.')
+      clearAuthCallbackFromAddress(window)
+      if (callbackError) setAuthError('Google 로그인이 완료되지 않았습니다. 다시 시도해주세요.')
+      else if (error) setAuthError('로그인 상태를 확인하지 못했습니다. 다시 시도해주세요.')
       setSession(data.session)
       setAuthLoading(false)
     })
