@@ -391,7 +391,8 @@ export default function App() {
       clearAuthCallbackFromAddress(window)
       if (callbackError) {
         recordLoginFailure('oauth_callback')
-        setAuthError('Google 로그인이 완료되지 않았습니다. 다시 시도해주세요.')
+        const previewDetail = import.meta.env.VITE_APP_ENV === 'preview' ? ` (${callbackError})` : ''
+        setAuthError(`Google 로그인이 완료되지 않았습니다. 다시 시도해주세요.${previewDetail}`)
       }
       else if (error) setAuthError('로그인 상태를 확인하지 못했습니다. 다시 시도해주세요.')
       setSession(data.session)
