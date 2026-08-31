@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { deserializeRemoteClubBag, mergeDistanceSets, resolveClubBag } from '../src/lib/clubBagRepository.js'
+import { clubBagSyncSignature, deserializeRemoteClubBag, loadRemoteClubBag, mergeDistanceSets, resolveClubBag } from '../src/lib/clubBagRepository.js'
 
 const driver = { id: '드라이버·우드:1', category: '드라이버·우드', value: '1', label: 'D', custom: false }
 const iron = { id: '아이언:7', category: '아이언', value: '7', label: '7I', custom: false }
@@ -43,4 +43,49 @@ test('활성 해제한 클럽은 ID를 유지한 비활성 목록으로 병합�
   )
   assert.deepEqual(result.clubs, [driver])
   assert.deepEqual(result.inactiveClubs, [customWedge])
+})
+
+test('골프백 동기화 서명은 구성이나 비거리 세트가 바뀔 때만 달라진다', () => {
+  const base = {
+    clubs: [driver], inactiveClubs: [], compositionCompleted: true,
+    updatedAt: '2026-08-30T10:00:00.000Z',
+    distanceSets: [{ id: 'set-1', recordedAt: '2026-08-30T10:00:00.000Z' }],
+  }
+  assert.equal(clubBagSyncSignature(base), clubBagSyncSignature({ ...base }))
+  assert.notEqual(clubBagSyncSignature(base), clubBagSyncSignature({
+    ...base,
+    distanceSets: [...base.distanceSets, { id: 'set-2', recordedAt: '2026-08-31T10:00:00.000Z' }],
+  }))
+})
+
+test('로그인 시 비거리 이력은 가장 최근 세트의 행만 가져온다', async () => {
+  const queries = []
+  let distanceQueryCount = 0
+  const client = {
+    from(table) {
+      if (table === 'club_distance_history') distanceQueryCount += 1
+      const result = table === 'user_clubs'
+        ? { data: [], error: null }
+        : distanceQueryCount === 1
+          ? { data: [{ set_id: 'latest-set', recorded_at: '2026-08-31T10:00:00.000Z' }], error: null }
+          : { data: [{
+            set_id: 'latest-set', club_id: 'remote-driver', distance: 200, distance_unit: 'M',
+            club_snapshot: driver, is_changed: true, recorded_at: '2026-08-31T10:00:00.000Z',
+          }], error: null }
+      const query = {
+        table,
+        select() { return this },
+        eq(column, value) { queries.push([table, column, value]); return this },
+        order() { return this },
+        limit() { return Promise.resolve(result) },
+        then(resolve) { return Promise.resolve(result).then(resolve) },
+      }
+      return query
+    },
+  }
+
+  const bag = await loadRemoteClubBag(client, 'user-1')
+  assert.equal(queries.some(([, column, value]) => column === 'set_id' && value === 'latest-set'), true)
+  assert.equal(bag.distanceSets.length, 1)
+  assert.equal(bag.distanceSets[0].id, 'latest-set')
 })

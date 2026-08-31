@@ -13,7 +13,7 @@ import { PREVIEW_ROUNDS_VERSION, mergePreviewRounds } from './data/previewRounds
 import { authCallbackError, clearAuthCallbackFromAddress, googleOAuthOptions } from './lib/auth.js'
 import { clearRoundHoleDrafts, latestHoleDraft, removeRoundHoleDraft, upsertRoundHoleDraft } from './lib/roundDrafts.js'
 import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMeters, pairClubsForColumnLayout } from './lib/clubBag.js'
-import { loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
+import { clubBagSyncSignature, loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
 import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from './data/news.js'
 import { measureLoginStage, recordDiagnosticEvent, startLoginMeasurement, trackEvent } from './lib/analytics.js'
@@ -197,6 +197,7 @@ export default function App() {
   const remoteHydrationRetryAttemptsRef = useRef(0)
   const recordsReadyMeasuredUserIdRef = useRef(null)
   const remoteRoundVersionsRef = useRef(new Map())
+  const remoteClubBagSignatureRef = useRef(null)
   const clubOnboardingCompletedRef = useRef(false)
   const clubDistanceCanonicalInputsRef = useRef({})
 
@@ -342,6 +343,7 @@ export default function App() {
       remoteHydrationRetryAttemptsRef.current = 0
       recordsReadyMeasuredUserIdRef.current = null
       remoteRoundVersionsRef.current = new Map()
+      remoteClubBagSignatureRef.current = null
       setRounds([])
       setActiveRound(null)
       setCourseHistory([])
@@ -357,6 +359,7 @@ export default function App() {
     remoteHydrationRetryAttemptsRef.current = 0
     recordsReadyMeasuredUserIdRef.current = null
     remoteRoundVersionsRef.current = new Map()
+    remoteClubBagSignatureRef.current = null
     setRounds([])
     setActiveRound(null)
     setCourseHistory([])
@@ -523,6 +526,7 @@ export default function App() {
           clubBagFailed = true
           reportDiagnosticFailure('club_bag_load', clubBagResult.error)
         } else {
+          remoteClubBagSignatureRef.current = clubBagSyncSignature(clubBagResult.value)
           const clubStorageKey = `golf-and-me:club-bag:${userId}`
           let localClubBag = { clubs: [], inactiveClubs: [], distanceUnit: 'M', distanceSets: [], compositionCompleted: false, updatedAt: null }
           try {
@@ -598,34 +602,43 @@ export default function App() {
     let retryTimer = null
     const timer = window.setTimeout(async () => {
       const roundsToSave = selectRoundsNeedingRemoteSave(rounds, remoteRoundVersionsRef.current)
+      const currentClubBag = {
+        clubs: clubDrafts,
+        inactiveClubs: inactiveClubDrafts,
+        distanceSets: clubDistanceSets,
+        compositionCompleted: clubCompositionCompleted,
+        distanceUnit: clubDistanceUnit,
+        updatedAt: clubBagUpdatedAt,
+      }
+      const currentClubBagSignature = clubBagSyncSignature(currentClubBag)
+      const clubBagNeedsSave = currentClubBagSignature !== remoteClubBagSignatureRef.current
       try {
         const [roundsSaveResult, clubBagSaveResult] = await Promise.all([
           Promise.all([
             saveRemoteRounds(supabase, session.user.id, roundsToSave),
             ...pendingDeletedRoundIds.map(roundId => deleteRemoteRound(supabase, session.user.id, roundId)),
           ]).then(() => ({ ok: true }), error => ({ error })),
-          saveRemoteClubBag(supabase, session.user.id, {
-            clubs: clubDrafts,
-            inactiveClubs: inactiveClubDrafts,
-            distanceSets: clubDistanceSets,
-            compositionCompleted: clubCompositionCompleted,
-            distanceUnit: clubDistanceUnit,
-            updatedAt: clubBagUpdatedAt,
-          }).then(() => ({ ok: true }), error => ({ error })),
+          (clubBagNeedsSave ? saveRemoteClubBag(supabase, session.user.id, currentClubBag) : Promise.resolve())
+            .then(() => ({ ok: true }), error => ({ error })),
         ])
         if (roundsSaveResult.error) reportDiagnosticFailure('rounds_save', roundsSaveResult.error)
         if (clubBagSaveResult.error) reportDiagnosticFailure('club_bag_save', clubBagSaveResult.error)
-        if (roundsSaveResult.error) throw roundsSaveResult.error
-        if (clubBagSaveResult.error) throw clubBagSaveResult.error
-        remoteRoundVersionsRef.current = markRoundsAsRemoteSaved(remoteRoundVersionsRef.current, roundsToSave)
-        pendingDeletedRoundIds.forEach(roundId => remoteRoundVersionsRef.current.delete(String(roundId)))
-        if (pendingDeletedRoundIds.length) {
+        if (!roundsSaveResult.error) {
+          remoteRoundVersionsRef.current = markRoundsAsRemoteSaved(remoteRoundVersionsRef.current, roundsToSave)
+          pendingDeletedRoundIds.forEach(roundId => remoteRoundVersionsRef.current.delete(String(roundId)))
+          reportDiagnosticRecovery('rounds_save')
+        }
+        if (!clubBagSaveResult.error) {
+          if (clubBagNeedsSave) remoteClubBagSignatureRef.current = currentClubBagSignature
+          reportDiagnosticRecovery('club_bag_save')
+        }
+        if (!roundsSaveResult.error && pendingDeletedRoundIds.length) {
           savePendingRoundDeletions(window.localStorage, session.user.id, [])
           setPendingDeletedRoundIds([])
         }
+        if (roundsSaveResult.error) throw roundsSaveResult.error
+        if (clubBagSaveResult.error) throw clubBagSaveResult.error
         setSyncError('')
-        reportDiagnosticRecovery('rounds_save')
-        reportDiagnosticRecovery('club_bag_save')
         if (hadSyncIssueRef.current) {
           hadSyncIssueRef.current = false
           setSyncRecoveredNotice('기록을 최신 상태로 저장했어요.')
