@@ -16,11 +16,12 @@ import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMete
 import { loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
 import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from './data/news.js'
-import { measureLoginStage, recordLoginFailure, startLoginMeasurement, trackEvent } from './lib/analytics.js'
+import { measureLoginStage, recordDiagnosticEvent, startLoginMeasurement, trackEvent } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { requestTestAccess } from './lib/testAccessRequest.js'
 import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
 import { scheduleRemoteHydrationRetry } from './lib/remoteHydrationRetry.js'
+import { recordDiagnosticFailure, resolveDiagnosticFailure } from './lib/diagnostics.js'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
 const isTestAccessRequestEnabled = import.meta.env.VITE_TEST_ACCESS_REQUEST_ENABLED === 'true'
@@ -195,6 +196,15 @@ export default function App() {
   const clubDistanceCanonicalInputsRef = useRef({})
 
   const unseenNews = hasUnseenNews(lastSeenNewsId)
+
+  function reportDiagnosticFailure(stage, error) {
+    const diagnostic = recordDiagnosticFailure({ stage, error, online: navigator.onLine })
+    if (diagnostic?.isNew) recordDiagnosticEvent(diagnostic.record)
+  }
+
+  function reportDiagnosticRecovery(stage) {
+    recordDiagnosticEvent(resolveDiagnosticFailure(stage), true)
+  }
 
   useEffect(() => {
     if (!session) {
@@ -416,7 +426,13 @@ export default function App() {
           .then(value => ({ value }), error => ({ error }))
         const remoteClubBagPromise = loadRemoteClubBag(supabase, session.user.id)
           .then(value => ({ value }), error => ({ error }))
-        const remoteProfile = await loadRemoteProfile(supabase, session.user.id)
+        let remoteProfile
+        try {
+          remoteProfile = await loadRemoteProfile(supabase, session.user.id)
+        } catch (error) {
+          reportDiagnosticFailure('profile_load', error)
+          throw error
+        }
         if (cancelled) return
         const localProfileValue = window.localStorage.getItem(`golf-and-me:onboarding:${session.user.id}`)
         const localProfile = localProfileValue ? JSON.parse(localProfileValue) : null
@@ -443,6 +459,8 @@ export default function App() {
         setOnboardingReady(true)
 
         const [remoteRoundsResult, remoteClubBagResult] = await Promise.all([remoteRoundsPromise, remoteClubBagPromise])
+        if (remoteRoundsResult.error) reportDiagnosticFailure('rounds_load', remoteRoundsResult.error)
+        if (remoteClubBagResult.error) reportDiagnosticFailure('club_bag_load', remoteClubBagResult.error)
         if (remoteRoundsResult.error) throw remoteRoundsResult.error
         if (remoteClubBagResult.error) throw remoteClubBagResult.error
         const remoteRounds = remoteRoundsResult.value
@@ -480,6 +498,9 @@ export default function App() {
           trackEvent('save_recovered', { stage: 'remote_load', online: true })
         }
         setRemoteHydratedUserId(session.user.id)
+        reportDiagnosticRecovery('profile_load')
+        reportDiagnosticRecovery('rounds_load')
+        reportDiagnosticRecovery('club_bag_load')
         measureLoginStage('records_ready')
       } catch {
         if (!cancelled) {
@@ -489,10 +510,8 @@ export default function App() {
             setOnboardingStep(1)
           }
           setOnboardingReady(true)
-          const wasSyncIssue = hadSyncIssueRef.current
           hadSyncIssueRef.current = true
           setSyncError('계정에 저장된 기록을 불러오지 못했어요. 이 기기에 저장된 기록으로 계속할 수 있고, 잠시 후 자동으로 다시 시도할게요.')
-          if (!wasSyncIssue) recordLoginFailure('records_load')
           cancelRemoteHydrationRetry = scheduleRemoteHydrationRetry(window, () => {
             setRemoteHydrationRetryNonce(value => value + 1)
           })
@@ -518,8 +537,11 @@ export default function App() {
     let retryTimer = null
     const timer = window.setTimeout(async () => {
       try {
-        await Promise.all([
-          saveRemoteRounds(supabase, session.user.id, rounds),
+        const [roundsSaveResult, clubBagSaveResult] = await Promise.all([
+          Promise.all([
+            saveRemoteRounds(supabase, session.user.id, rounds),
+            ...pendingDeletedRoundIds.map(roundId => deleteRemoteRound(supabase, session.user.id, roundId)),
+          ]).then(() => ({ ok: true }), error => ({ error })),
           saveRemoteClubBag(supabase, session.user.id, {
             clubs: clubDrafts,
             inactiveClubs: inactiveClubDrafts,
@@ -527,14 +549,19 @@ export default function App() {
             compositionCompleted: clubCompositionCompleted,
             distanceUnit: clubDistanceUnit,
             updatedAt: clubBagUpdatedAt,
-          }),
-          ...pendingDeletedRoundIds.map(roundId => deleteRemoteRound(supabase, session.user.id, roundId)),
+          }).then(() => ({ ok: true }), error => ({ error })),
         ])
+        if (roundsSaveResult.error) reportDiagnosticFailure('rounds_save', roundsSaveResult.error)
+        if (clubBagSaveResult.error) reportDiagnosticFailure('club_bag_save', clubBagSaveResult.error)
+        if (roundsSaveResult.error) throw roundsSaveResult.error
+        if (clubBagSaveResult.error) throw clubBagSaveResult.error
         if (pendingDeletedRoundIds.length) {
           savePendingRoundDeletions(window.localStorage, session.user.id, [])
           setPendingDeletedRoundIds([])
         }
         setSyncError('')
+        reportDiagnosticRecovery('rounds_save')
+        reportDiagnosticRecovery('club_bag_save')
         if (hadSyncIssueRef.current) {
           hadSyncIssueRef.current = false
           setSyncRecoveredNotice('기록을 최신 상태로 저장했어요.')
@@ -640,7 +667,7 @@ export default function App() {
       options: googleOAuthOptions(window.location.origin),
     })
     if (error) {
-      recordLoginFailure('oauth_request')
+      reportDiagnosticFailure('oauth', error)
       setAuthError('Google 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해주세요.')
       setAuthLoading(false)
     }
@@ -706,10 +733,12 @@ export default function App() {
     const userId = session.user.id
     const { error } = await deleteRemoteAccount(supabase)
     if (error) {
+      reportDiagnosticFailure('account_delete', error)
       setAccountDeletionStatus('idle')
       setAccountDeletionError('계정을 삭제하지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해주세요.')
       return
     }
+    reportDiagnosticRecovery('account_delete')
     clearLocalUserData(window.localStorage, userId)
     await supabase.auth.signOut({ scope: 'local' })
     setAccountDeletionOpen(false)

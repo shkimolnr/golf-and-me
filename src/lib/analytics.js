@@ -3,12 +3,12 @@ const allowedEvents = new Set([
   'onboarding_step', 'club_setup_complete',
   'round_create', 'hole_start', 'hole_draft_save', 'hole_complete',
   'round_milestone', 'round_complete', 'round_result_view',
-  'save_delayed', 'save_recovered', 'account_delete_complete',
+  'save_delayed', 'save_recovered', 'account_delete_complete', 'diagnostic_failure', 'diagnostic_recovery',
 ])
 
 const allowedParameters = new Set([
   'stage', 'step', 'status', 'milestone', 'duration_ms', 'online',
-  'is_manual_course', 'has_course_data', 'completed_holes',
+  'is_manual_course', 'has_course_data', 'completed_holes', 'error_category', 'occurrence_count', 'app_version',
 ])
 
 const consentKey = 'golf-and-me:analytics-consent'
@@ -81,6 +81,17 @@ export function measureLoginStage(stage) {
 
 export function recordLoginFailure(stage) {
   trackEvent('login_fail', { stage })
+}
+
+export function recordDiagnosticEvent(record, recovered = false) {
+  if (!record) return false
+  return trackEvent(recovered ? 'diagnostic_recovery' : 'diagnostic_failure', {
+    stage: record.stage,
+    error_category: record.category,
+    occurrence_count: record.occurrenceCount,
+    duration_ms: recovered ? record.durationMs : undefined,
+    app_version: record.appVersion,
+  })
 }
 
 export const analyticsEventNames = Object.freeze([...allowedEvents])

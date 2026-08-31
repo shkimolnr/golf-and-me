@@ -17,6 +17,11 @@ test('분석 이벤트 파라미터는 비식별 허용 목록만 전송한다',
   }
 })
 
+test('오류 진단 이벤트는 비식별 단계·분류·횟수·버전만 허용한다', () => {
+  assert.match(analyticsSource, /'diagnostic_failure', 'diagnostic_recovery'/)
+  for (const parameter of ['error_category', 'occurrence_count', 'app_version']) assert.match(analyticsSource, new RegExp(`'${parameter}'`))
+})
+
 test('로그인과 핵심 라운드 흐름을 단계별로 계측한다', () => {
   assert.match(appSource, /startLoginMeasurement\(\)/)
   assert.match(appSource, /measureLoginStage\('session_restored'\)/)
