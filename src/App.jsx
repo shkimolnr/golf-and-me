@@ -16,7 +16,7 @@ import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMete
 import { loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
 import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from './data/news.js'
-import { measureLoginStage, recordDiagnosticEvent, startLoginMeasurement, trackEvent } from './lib/analytics.js'
+import { getAnalyticsConsent, measureLoginStage, recordLoginFailure, setAnalyticsConsent, startLoginMeasurement, trackEvent, trackScreen } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { requestTestAccess } from './lib/testAccessRequest.js'
 import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
@@ -25,6 +25,10 @@ import { recordDiagnosticFailure, resolveDiagnosticFailure } from './lib/diagnos
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
 const isTestAccessRequestEnabled = import.meta.env.VITE_TEST_ACCESS_REQUEST_ENABLED === 'true'
+const analyticsScreenNames = Object.freeze({
+  'new-round': 'new_round',
+  'hole-detail': 'hole_detail',
+})
 const previewSession = {
   user: {
     id: 'preview-user',
@@ -135,6 +139,7 @@ export default function App() {
   const [feedbackStatus, setFeedbackStatus] = useState('idle')
   const [feedbackError, setFeedbackError] = useState('')
   const [accountOpen, setAccountOpen] = useState(false)
+  const [analyticsConsent, setAnalyticsConsentState] = useState(() => getAnalyticsConsent())
   const [accountDeletionOpen, setAccountDeletionOpen] = useState(false)
   const [accountDeletionStatus, setAccountDeletionStatus] = useState('idle')
   const [accountDeletionError, setAccountDeletionError] = useState('')
@@ -194,16 +199,21 @@ export default function App() {
   const hadSyncIssueRef = useRef(false)
   const clubOnboardingCompletedRef = useRef(false)
   const clubDistanceCanonicalInputsRef = useRef({})
+  const lastTrackedScreenRef = useRef(null)
+  const lastTrackedOnboardingStepRef = useRef(null)
 
   const unseenNews = hasUnseenNews(lastSeenNewsId)
 
   function reportDiagnosticFailure(stage, error) {
-    const diagnostic = recordDiagnosticFailure({ stage, error, online: navigator.onLine })
-    if (diagnostic?.isNew) recordDiagnosticEvent(diagnostic.record)
+    recordDiagnosticFailure({ stage, error, online: navigator.onLine })
   }
 
   function reportDiagnosticRecovery(stage) {
-    recordDiagnosticEvent(resolveDiagnosticFailure(stage), true)
+    resolveDiagnosticFailure(stage)
+  }
+
+  function updateAnalyticsConsent(granted) {
+    setAnalyticsConsentState(setAnalyticsConsent(granted))
   }
 
   useEffect(() => {
@@ -213,6 +223,27 @@ export default function App() {
     }
     setLastSeenNewsId(window.localStorage.getItem(newsSeenStorageKey(session.user.id)))
   }, [session])
+
+  useEffect(() => {
+    if (analyticsConsent !== 'granted') {
+      lastTrackedScreenRef.current = null
+      lastTrackedOnboardingStepRef.current = null
+      return
+    }
+    const rawScreen = session ? (onboardingReady ? screen : null) : 'login'
+    const analyticsScreen = analyticsScreenNames[rawScreen] || rawScreen
+    if (!analyticsScreen || lastTrackedScreenRef.current === analyticsScreen) return
+    trackScreen(analyticsScreen)
+    lastTrackedScreenRef.current = analyticsScreen
+  }, [analyticsConsent, session, onboardingReady, screen])
+
+  useEffect(() => {
+    if (analyticsConsent !== 'granted' || screen !== 'onboarding') return
+    const viewKey = `${onboardingStep}`
+    if (lastTrackedOnboardingStepRef.current === viewKey) return
+    trackEvent('onboarding_step', { step: onboardingStep, status: 'viewed' })
+    lastTrackedOnboardingStepRef.current = viewKey
+  }, [analyticsConsent, screen, onboardingStep])
 
   useEffect(() => {
     const layerOpen = accountOpen || accountDeletionOpen || dateTimeOpen || clubSetupPromptOpen || Boolean(roundPendingDeletion) || Boolean(pendingStructureChange) || Boolean(pendingRoundStart) || roundCompletionOpen
@@ -309,7 +340,10 @@ export default function App() {
 
     supabase.auth.getSession().then(({ data, error }) => {
       clearAuthCallbackFromAddress(window)
-      if (callbackError) setAuthError('Google 로그인이 완료되지 않았습니다. 다시 시도해주세요.')
+      if (callbackError) {
+        recordLoginFailure('oauth_callback')
+        setAuthError('Google 로그인이 완료되지 않았습니다. 다시 시도해주세요.')
+      }
       else if (error) setAuthError('로그인 상태를 확인하지 못했습니다. 다시 시도해주세요.')
       setSession(data.session)
       setAuthLoading(false)
@@ -667,6 +701,7 @@ export default function App() {
       options: googleOAuthOptions(window.location.origin),
     })
     if (error) {
+      recordLoginFailure('oauth_start')
       reportDiagnosticFailure('oauth', error)
       setAuthError('Google 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해주세요.')
       setAuthLoading(false)
@@ -757,6 +792,7 @@ export default function App() {
     setClubSetupReturn(null)
     setScreen('home')
     trackEvent('onboarding_step', { step: 3, status: 'complete' })
+    trackEvent('onboarding_complete', { status: 'complete' })
     if (supabase && !isPreviewMode) {
       saveRemoteProfile(supabase, session.user.id, { defaultTee, defaultDistanceUnit }).catch(() => {
         setSyncError('기본 티 설정은 기기에 저장했지만 서버 동기화가 지연되고 있어요.')
@@ -982,7 +1018,7 @@ export default function App() {
     const isFirstComposition = !clubCompositionCompleted
     setClubBagUpdatedAt(new Date().toISOString())
     setClubCompositionCompleted(true)
-    trackEvent('club_setup_complete', { status: 'saved' })
+    trackEvent('club_setup_complete', { status: 'saved', source: clubSetupReturn === 'onboarding' ? 'onboarding' : 'account' })
     setClubCompositionEditing(false)
     setClubStage(isFirstComposition ? 'distance' : 'composition')
     setCustomClubCategory(null)
@@ -1683,6 +1719,23 @@ export default function App() {
   const distanceBasisChanged = Boolean(latestDistanceSet && latestDistanceSet.basis !== clubDistanceBasis)
   const hasDistanceChanges = Object.values(clubDistanceInputs).some(value => value !== '' && value != null)
 
+  if (screen === 'onboarding' && analyticsConsent === 'unknown') {
+    return (
+      <main className="app-shell onboarding-shell analytics-consent-shell">
+        <section className="analytics-consent-prompt" aria-labelledby="analytics-consent-title">
+          <p className="eyebrow">Golf &amp; Me</p>
+          <h1 id="analytics-consent-title">서비스 개선에<br />도움을 주실래요?</h1>
+          <p>이용 흐름과 오류 발생 여부만 수집하며 계정·골프 기록은 보내지 않아요.</p>
+          <div className="analytics-consent-actions">
+            <button className="primary" type="button" onClick={() => updateAnalyticsConsent(true)}>허용</button>
+            <button className="secondary-button" type="button" onClick={() => updateAnalyticsConsent(false)}>괜찮아요</button>
+          </div>
+          <small>선택은 내 계정에서 언제든 바꿀 수 있어요.</small>
+        </section>
+      </main>
+    )
+  }
+
   if (screen === 'onboarding') {
     return (
       <main className="app-shell onboarding-shell">
@@ -2239,6 +2292,15 @@ export default function App() {
               <span><b className="feedback-menu-icon" aria-hidden="true"><FeedbackIcon /></b><strong>의견 보내기</strong></span>
               <i aria-hidden="true">→</i>
             </button>
+            <label className="analytics-consent-control">
+              <span>
+                <strong>서비스 개선 분석 허용</strong>
+                <small>{analyticsConsent === 'granted'
+                  ? '이용 흐름만 분석하며, 계정·골프 기록은 보내지 않아요.'
+                  : '현재 분석을 보내지 않아요. 허용해도 서비스 이용에는 영향이 없어요.'}</small>
+              </span>
+              <input type="checkbox" checked={analyticsConsent === 'granted'} onChange={event => updateAnalyticsConsent(event.target.checked)} />
+            </label>
             <button className="logout-button" onClick={signOut}>로그아웃</button>
             {!isPreviewMode && <button className="delete-account-link" type="button" onClick={openAccountDeletion}>계정 삭제</button>}
           </section>

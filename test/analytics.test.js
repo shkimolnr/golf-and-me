@@ -1,32 +1,144 @@
-import test from 'node:test'
+import test, { afterEach, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
+import {
+  getAnalyticsConfiguration,
+  getAnalyticsConsent,
+  initializeAnalytics,
+  resetAnalyticsForTests,
+  setAnalyticsConsent,
+  trackEvent,
+  trackScreen,
+} from '../src/lib/analytics.js'
 
 const analyticsSource = await readFile(new URL('../src/lib/analytics.js', import.meta.url), 'utf8')
 const appSource = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8')
 
-test('분석 도구는 명시적 활성화와 사용자 동의가 모두 있어야 로드된다', () => {
-  assert.match(analyticsSource, /VITE_ANALYTICS_ENABLED === 'true'/)
-  assert.match(analyticsSource, /!enabled \|\| !containerId \|\| !hasConsent\(\)/)
+const productionConfig = Object.freeze({
+  enabled: true,
+  measurementId: 'G-TEST1234',
+  targetEnvironment: 'production',
+  runtimeEnvironment: 'production',
 })
 
-test('분석 이벤트 파라미터는 비식별 허용 목록만 전송한다', () => {
-  assert.match(analyticsSource, /allowedParameters\.has\(key\)/)
-  for (const forbidden of ['email', 'course_name', 'club_name', 'round_id', 'user_id']) {
-    assert.doesNotMatch(analyticsSource.match(/const allowedParameters[\s\S]*?\]\)/)?.[0] || '', new RegExp(forbidden))
+function createStorage() {
+  const values = new Map()
+  return {
+    getItem: key => values.has(key) ? values.get(key) : null,
+    setItem: (key, value) => values.set(key, String(value)),
+    removeItem: key => values.delete(key),
   }
+}
+
+function installBrowser() {
+  const scripts = []
+  global.window = {
+    localStorage: createStorage(),
+    sessionStorage: createStorage(),
+    performance: { mark() {} },
+  }
+  global.document = {
+    head: { appendChild: script => scripts.push(script) },
+    createElement: () => ({ dataset: {} }),
+    querySelector: selector => selector === 'script[data-golf-and-me-ga4]'
+      ? scripts.find(script => script.dataset.golfAndMeGa4 === 'true') || null
+      : null,
+  }
+  return scripts
+}
+
+beforeEach(() => {
+  resetAnalyticsForTests()
 })
 
-test('오류 진단 이벤트는 비식별 단계·분류·횟수·버전만 허용한다', () => {
-  assert.match(analyticsSource, /'diagnostic_failure', 'diagnostic_recovery'/)
-  for (const parameter of ['error_category', 'occurrence_count', 'app_version']) assert.match(analyticsSource, new RegExp(`'${parameter}'`))
+afterEach(() => {
+  delete global.window
+  delete global.document
 })
 
-test('로그인과 핵심 라운드 흐름을 단계별로 계측한다', () => {
-  assert.match(appSource, /startLoginMeasurement\(\)/)
-  assert.match(appSource, /measureLoginStage\('session_restored'\)/)
-  assert.match(appSource, /measureLoginStage\('records_ready'\)/)
-  assert.match(appSource, /trackEvent\('hole_draft_save'/)
-  assert.match(appSource, /trackEvent\('hole_complete'/)
+test('기본 동의 상태에서는 GA 스크립트와 이벤트가 전송되지 않는다', () => {
+  const scripts = installBrowser()
+  assert.equal(getAnalyticsConsent(), 'unknown')
+  assert.equal(initializeAnalytics(productionConfig), false)
+  assert.equal(trackScreen('login'), false)
+  assert.equal(scripts.length, 0)
+})
+
+test('허용 후 GA4를 정확히 한 번 초기화하고 자동 page_view를 끈다', () => {
+  const scripts = installBrowser()
+  assert.equal(setAnalyticsConsent(true, productionConfig), 'granted')
+  assert.equal(scripts.length, 1)
+  assert.equal(scripts[0].src, 'https://www.googletagmanager.com/gtag/js?id=G-TEST1234')
+  assert.equal(initializeAnalytics(productionConfig), false)
+  assert.equal(scripts.length, 1)
+  assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['config', 'G-TEST1234', { send_page_view: false }])
+})
+
+test('화면 전환은 명시적 허용 목록 이벤트로 한 번씩만 보낼 수 있다', () => {
+  installBrowser()
+  setAnalyticsConsent(true, productionConfig)
+  assert.equal(trackScreen('home'), true)
+  assert.equal(trackScreen('unknown-screen'), false)
+  assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['event', 'screen_view', { screen_name: 'home' }])
+})
+
+test('이벤트별 allowlist는 허용되지 않은 개인정보와 임의 매개변수를 제거한다', () => {
+  installBrowser()
+  setAnalyticsConsent(true, productionConfig)
+  assert.equal(trackEvent('round_create', {
+    is_manual_course: true,
+    has_course_data: false,
+    email: 'private@example.com',
+    user_id: 'private-user-id',
+    course_name: '비공개 골프장',
+  }), true)
+  assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['event', 'round_create', {
+    is_manual_course: true,
+    has_course_data: false,
+  }])
+  assert.equal(trackEvent('diagnostic_failure', { stage: 'oauth' }), false)
+})
+
+test('분석 철회 직후부터 이벤트 전송을 중단하고 선택은 기기에 저장한다', () => {
+  installBrowser()
+  setAnalyticsConsent(true, productionConfig)
+  assert.equal(trackScreen('home'), true)
+  assert.equal(setAnalyticsConsent(false, productionConfig), 'denied')
+  assert.equal(getAnalyticsConsent(), 'denied')
+  assert.equal(window['ga-disable-G-TEST1234'], true)
+  assert.equal(trackScreen('news'), false)
+})
+
+test('Preview 환경은 Production 측정 ID를 초기화하지 않는다', () => {
+  const scripts = installBrowser()
+  const previewWithProductionId = { ...productionConfig, runtimeEnvironment: 'preview' }
+  setAnalyticsConsent(true, previewWithProductionId)
+  assert.equal(getAnalyticsConfiguration(previewWithProductionId).canInitialize, false)
+  assert.equal(initializeAnalytics(previewWithProductionId), false)
+  assert.equal(scripts.length, 0)
+})
+
+test('측정 ID가 없거나 비활성화여도 앱 동작을 막지 않는다', () => {
+  const scripts = installBrowser()
+  const disabledConfig = { ...productionConfig, enabled: false, measurementId: '' }
+  assert.equal(setAnalyticsConsent(true, disabledConfig), 'granted')
+  assert.equal(initializeAnalytics(disabledConfig), false)
+  assert.equal(trackScreen('home'), false)
+  assert.equal(scripts.length, 0)
+})
+
+test('GA4는 GTM과 운영 진단 이벤트를 사용하지 않는다', () => {
+  assert.match(analyticsSource, /gtag\/js\?id=/)
+  assert.doesNotMatch(analyticsSource, /gtm\.js/)
+  assert.doesNotMatch(analyticsSource, /diagnostic_failure|diagnostic_recovery|recordDiagnosticEvent/)
+})
+
+test('온보딩 전 선택과 계정 설정 변경 UI가 있으며 제품 흐름 이벤트를 연결한다', () => {
+  assert.match(appSource, /서비스 개선에[\s\S]*도움을 주실래요/)
+  assert.match(appSource, />허용</)
+  assert.match(appSource, />괜찮아요</)
+  assert.match(appSource, /서비스 개선 분석 허용/)
+  assert.match(appSource, /trackScreen\(analyticsScreen\)/)
+  assert.match(appSource, /trackEvent\('onboarding_complete'/)
   assert.match(appSource, /trackEvent\('round_complete'/)
 })
