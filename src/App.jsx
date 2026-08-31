@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { isSupabaseConfigured, supabase } from './lib/supabase.js'
-import { deleteRemoteRound, loadRemoteProfile, loadRemoteRounds, mergeRoundCollections, resolveOnboardingProfile, saveRemoteProfile, saveRemoteRounds, sortRoundsForList } from './lib/roundRepository.js'
+import { createRemoteRoundVersionMap, deleteRemoteRound, loadRemoteProfile, loadRemoteRoundDetail, loadRemoteRounds, markRoundsAsRemoteSaved, mergeRoundCollections, resolveOnboardingProfile, saveRemoteProfile, saveRemoteRounds, selectRoundsNeedingRemoteSave, sortRoundsForList } from './lib/roundRepository.js'
 import { excludePendingRoundDeletions, loadPendingRoundDeletions, savePendingRoundDeletions } from './lib/pendingRoundDeletions.js'
 import { isRoundStructureLocked, needsRoundStructureChoice } from './lib/roundPolicy.js'
 import { calculateHoleTotals, isRecordedShot, terminalLieForShot, validateHoleCompletion } from './lib/scoring.js'
@@ -13,14 +13,14 @@ import { PREVIEW_ROUNDS_VERSION, mergePreviewRounds } from './data/previewRounds
 import { authCallbackError, clearAuthCallbackFromAddress, googleOAuthOptions } from './lib/auth.js'
 import { clearRoundHoleDrafts, latestHoleDraft, removeRoundHoleDraft, upsertRoundHoleDraft } from './lib/roundDrafts.js'
 import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMeters, pairClubsForColumnLayout } from './lib/clubBag.js'
-import { loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
+import { clubBagSyncSignature, loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
 import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from './data/news.js'
 import { getAnalyticsConsent, measureLoginStage, recordLoginFailure, setAnalyticsConsent, startLoginMeasurement, trackEvent, trackScreen } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { requestTestAccess } from './lib/testAccessRequest.js'
 import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
-import { scheduleRemoteHydrationRetry } from './lib/remoteHydrationRetry.js'
+import { scheduleRemoteHydrationRetry, shouldScheduleRemoteHydrationRetry } from './lib/remoteHydrationRetry.js'
 import { recordDiagnosticFailure, resolveDiagnosticFailures } from './lib/diagnostics.js'
 import { clearDiagnosticQueue, enqueueDiagnosticFailure, enqueueDiagnosticRecovery, flushDiagnosticQueue, setDiagnosticAccessTokenProvider } from './lib/diagnosticsTransport.js'
 
@@ -180,7 +180,9 @@ export default function App() {
   const [resumeNotice, setResumeNotice] = useState('')
   const [syncError, setSyncError] = useState('')
   const [syncRecoveredNotice, setSyncRecoveredNotice] = useState('')
-  const [remoteHydratedUserId, setRemoteHydratedUserId] = useState(null)
+  const [remoteProfileHydratedUserId, setRemoteProfileHydratedUserId] = useState(null)
+  const [remoteRoundsHydratedUserId, setRemoteRoundsHydratedUserId] = useState(null)
+  const [remoteClubBagHydratedUserId, setRemoteClubBagHydratedUserId] = useState(null)
   const [isOnline, setIsOnline] = useState(() => navigator.onLine)
   const [syncRetryNonce, setSyncRetryNonce] = useState(0)
   const [remoteHydrationRetryNonce, setRemoteHydrationRetryNonce] = useState(0)
@@ -204,6 +206,10 @@ export default function App() {
   const [clubSetupPromptOpen, setClubSetupPromptOpen] = useState(false)
   const courseNameInputRef = useRef(null)
   const hadSyncIssueRef = useRef(false)
+  const remoteHydrationRetryAttemptsRef = useRef(0)
+  const recordsReadyMeasuredUserIdRef = useRef(null)
+  const remoteRoundVersionsRef = useRef(new Map())
+  const remoteClubBagSignatureRef = useRef(null)
   const clubOnboardingCompletedRef = useRef(false)
   const clubDistanceCanonicalInputsRef = useRef({})
   const lastTrackedScreenRef = useRef(null)
@@ -212,7 +218,6 @@ export default function App() {
   const unseenNews = hasUnseenNews(lastSeenNewsId)
 
   function reportDiagnosticFailure(stage, error) {
-    // 인증 전 OAuth 오류는 서버가 인증된 요청만 받는 정책상 원격 진단에 넣지 않는다.
     if (!session || isPreviewMode) return
     const diagnostic = recordDiagnosticFailure({ stage, error, online: navigator.onLine })
     if (diagnostic) enqueueDiagnosticFailure(diagnostic.record)
@@ -300,6 +305,10 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    if (!isOnline) remoteHydrationRetryAttemptsRef.current = 0
+  }, [isOnline])
+
+  useEffect(() => {
     if (!session) {
       setClubBagHydrated(false)
       clubOnboardingCompletedRef.current = false
@@ -377,7 +386,13 @@ export default function App() {
   useEffect(() => {
     if (!session) {
       setOnboardingReady(false)
-      setRemoteHydratedUserId(null)
+      setRemoteProfileHydratedUserId(null)
+      setRemoteRoundsHydratedUserId(null)
+      setRemoteClubBagHydratedUserId(null)
+      remoteHydrationRetryAttemptsRef.current = 0
+      recordsReadyMeasuredUserIdRef.current = null
+      remoteRoundVersionsRef.current = new Map()
+      remoteClubBagSignatureRef.current = null
       setRounds([])
       setActiveRound(null)
       setCourseHistory([])
@@ -387,7 +402,13 @@ export default function App() {
     }
 
     setOnboardingReady(false)
-    setRemoteHydratedUserId(null)
+    setRemoteProfileHydratedUserId(null)
+    setRemoteRoundsHydratedUserId(null)
+    setRemoteClubBagHydratedUserId(null)
+    remoteHydrationRetryAttemptsRef.current = 0
+    recordsReadyMeasuredUserIdRef.current = null
+    remoteRoundVersionsRef.current = new Map()
+    remoteClubBagSignatureRef.current = null
     setRounds([])
     setActiveRound(null)
     setCourseHistory([])
@@ -466,112 +487,156 @@ export default function App() {
   }, [session])
 
   useEffect(() => {
-    if (!session || !clubBagHydrated || isPreviewMode || !supabase || remoteHydratedUserId === session.user.id) return
+    if (!session || !clubBagHydrated || isPreviewMode || !supabase) return
+    const userId = session.user.id
+    const needsProfile = remoteProfileHydratedUserId !== userId
+    const needsRounds = remoteRoundsHydratedUserId !== userId
+    const needsClubBag = remoteClubBagHydratedUserId !== userId
+    if (!needsProfile && !needsRounds && !needsClubBag) return
     let cancelled = false
     let cancelRemoteHydrationRetry = null
 
     async function hydrateRemoteData() {
-      try {
-        const remoteRoundsPromise = loadRemoteRounds(supabase, session.user.id)
-          .then(value => ({ value }), error => ({ error }))
-        const remoteClubBagPromise = loadRemoteClubBag(supabase, session.user.id)
-          .then(value => ({ value }), error => ({ error }))
-        let remoteProfile
-        try {
-          remoteProfile = await loadRemoteProfile(supabase, session.user.id)
-        } catch (error) {
-          reportDiagnosticFailure('profile_load', error)
-          throw error
-        }
-        if (cancelled) return
-        const localProfileValue = window.localStorage.getItem(`golf-and-me:onboarding:${session.user.id}`)
-        const localProfile = localProfileValue ? JSON.parse(localProfileValue) : null
-        const resolvedProfile = resolveOnboardingProfile(localProfile, remoteProfile)
-        if (resolvedProfile.shouldSaveRemote) {
+      const settle = promise => promise.then(value => ({ value }), error => ({ error }))
+      const [profileResult, roundsResult, clubBagResult] = await Promise.all([
+        needsProfile ? settle(loadRemoteProfile(supabase, userId)) : { skipped: true },
+        needsRounds ? settle(loadRemoteRounds(supabase, userId)) : { skipped: true },
+        needsClubBag ? settle(loadRemoteClubBag(supabase, userId)) : { skipped: true },
+      ])
+      if (cancelled) return
+
+      let profileFailed = false
+      let roundsFailed = false
+      let clubBagFailed = false
+
+      if (needsProfile) {
+        if (profileResult.error) {
+          profileFailed = true
+          reportDiagnosticFailure('profile_load', profileResult.error)
+          const hasLocalProfile = Boolean(window.localStorage.getItem(`golf-and-me:onboarding:${userId}`))
+          if (!hasLocalProfile) {
+            setScreen('onboarding')
+            setOnboardingStep(1)
+          }
+        } else {
           try {
-            await saveRemoteProfile(supabase, session.user.id, {
-              defaultTee: resolvedProfile.defaultTee,
-              defaultDistanceUnit: resolvedProfile.defaultDistanceUnit,
-            })
+            const localProfileValue = window.localStorage.getItem(`golf-and-me:onboarding:${userId}`)
+            const localProfile = localProfileValue ? JSON.parse(localProfileValue) : null
+            const resolvedProfile = resolveOnboardingProfile(localProfile, profileResult.value)
+            let profileSaveFailed = false
+            if (resolvedProfile.shouldSaveRemote) {
+              try {
+                await saveRemoteProfile(supabase, userId, {
+                  defaultTee: resolvedProfile.defaultTee,
+                  defaultDistanceUnit: resolvedProfile.defaultDistanceUnit,
+                })
+                reportDiagnosticRecovery('profile_save')
+              } catch (error) {
+                profileSaveFailed = true
+                profileFailed = true
+                reportDiagnosticFailure('profile_save', error)
+              }
+            }
+            if (cancelled) return
+            if (resolvedProfile.completed) {
+              window.localStorage.setItem(`golf-and-me:onboarding:${userId}`, JSON.stringify({
+                defaultTee: resolvedProfile.defaultTee,
+                defaultDistanceUnit: resolvedProfile.defaultDistanceUnit,
+              }))
+              setDefaultTee(resolvedProfile.defaultTee)
+              setDefaultDistanceUnit(resolvedProfile.defaultDistanceUnit)
+              setRound(current => ({ ...current, tee: resolvedProfile.defaultTee, distanceUnit: resolvedProfile.defaultDistanceUnit }))
+              setScreen(current => current === 'onboarding' ? 'home' : current)
+            } else {
+              setScreen('onboarding')
+              setOnboardingStep(1)
+            }
+            if (!profileSaveFailed) setRemoteProfileHydratedUserId(userId)
+            reportDiagnosticRecovery('profile_load')
           } catch (error) {
-            reportDiagnosticFailure('profile_save', error)
-            throw error
+            profileFailed = true
+            reportDiagnosticFailure('profile_load', error)
           }
         }
-        if (resolvedProfile.completed) {
-          window.localStorage.setItem(`golf-and-me:onboarding:${session.user.id}`, JSON.stringify({
-            defaultTee: resolvedProfile.defaultTee,
-            defaultDistanceUnit: resolvedProfile.defaultDistanceUnit,
-          }))
-          setDefaultTee(resolvedProfile.defaultTee)
-          setDefaultDistanceUnit(resolvedProfile.defaultDistanceUnit)
-          setRound(current => ({ ...current, tee: resolvedProfile.defaultTee, distanceUnit: resolvedProfile.defaultDistanceUnit }))
-          setScreen(current => current === 'onboarding' ? 'home' : current)
-        } else {
-          setScreen('onboarding')
-          setOnboardingStep(1)
-        }
-        setOnboardingReady(true)
+      }
+      setOnboardingReady(true)
 
-        const [remoteRoundsResult, remoteClubBagResult] = await Promise.all([remoteRoundsPromise, remoteClubBagPromise])
-        if (remoteRoundsResult.error) reportDiagnosticFailure('rounds_load', remoteRoundsResult.error)
-        if (remoteClubBagResult.error) reportDiagnosticFailure('club_bag_load', remoteClubBagResult.error)
-        if (remoteRoundsResult.error) throw remoteRoundsResult.error
-        if (remoteClubBagResult.error) throw remoteClubBagResult.error
-        const remoteRounds = remoteRoundsResult.value
-        const remoteClubBag = remoteClubBagResult.value
-        if (cancelled) return
-        setRounds(currentRounds => {
-          const mergedRounds = excludePendingRoundDeletions(mergeRoundCollections(currentRounds, remoteRounds), pendingDeletedRoundIds)
-          window.localStorage.setItem(`golf-and-me:rounds:${session.user.id}`, JSON.stringify(mergedRounds))
-          setActiveRound(currentRound => currentRound ? mergedRounds.find(item => item.id === currentRound.id) || currentRound : currentRound)
-          return mergedRounds
-        })
-        const clubStorageKey = `golf-and-me:club-bag:${session.user.id}`
-        let localClubBag = { clubs: [], inactiveClubs: [], distanceUnit: 'M', distanceSets: [], compositionCompleted: false, updatedAt: null }
-        try {
-          const storedClubBag = window.localStorage.getItem(clubStorageKey)
-          if (storedClubBag) localClubBag = { ...localClubBag, ...JSON.parse(storedClubBag) }
-        } catch {
-          window.localStorage.removeItem(clubStorageKey)
+      if (needsRounds) {
+        if (roundsResult.error) {
+          roundsFailed = true
+          reportDiagnosticFailure('rounds_load', roundsResult.error)
+        } else {
+          remoteRoundVersionsRef.current = createRemoteRoundVersionMap(roundsResult.value)
+          setRounds(currentRounds => {
+            const mergedRounds = excludePendingRoundDeletions(mergeRoundCollections(currentRounds, roundsResult.value), pendingDeletedRoundIds)
+            window.localStorage.setItem(`golf-and-me:rounds:${userId}`, JSON.stringify(mergedRounds))
+            setActiveRound(currentRound => currentRound ? mergedRounds.find(item => item.id === currentRound.id) || currentRound : currentRound)
+            return mergedRounds
+          })
+          setRemoteRoundsHydratedUserId(userId)
+          reportDiagnosticRecovery('rounds_load')
         }
-        const resolvedClubBag = resolveClubBag(localClubBag, remoteClubBag)
-        if (!clubOnboardingCompletedRef.current) {
-          setClubDrafts(resolvedClubBag.clubs)
-          setInactiveClubDrafts(resolvedClubBag.inactiveClubs)
-          setClubDistanceSets(resolvedClubBag.distanceSets)
-          setClubDistanceUnit(resolvedClubBag.distanceUnit)
-          setClubDistanceBasis(resolvedClubBag.distanceSets[0]?.basis ?? null)
-          setClubCompositionCompleted(resolvedClubBag.compositionCompleted)
-          setClubBagUpdatedAt(resolvedClubBag.updatedAt)
-          window.localStorage.setItem(clubStorageKey, JSON.stringify(resolvedClubBag))
+      }
+
+      if (needsClubBag) {
+        if (clubBagResult.error) {
+          clubBagFailed = true
+          reportDiagnosticFailure('club_bag_load', clubBagResult.error)
+        } else {
+          remoteClubBagSignatureRef.current = clubBagSyncSignature(clubBagResult.value)
+          const clubStorageKey = `golf-and-me:club-bag:${userId}`
+          let localClubBag = { clubs: [], inactiveClubs: [], distanceUnit: 'M', distanceSets: [], compositionCompleted: false, updatedAt: null }
+          try {
+            const storedClubBag = window.localStorage.getItem(clubStorageKey)
+            if (storedClubBag) localClubBag = { ...localClubBag, ...JSON.parse(storedClubBag) }
+          } catch {
+            window.localStorage.removeItem(clubStorageKey)
+          }
+          const resolvedClubBag = resolveClubBag(localClubBag, clubBagResult.value)
+          if (!clubOnboardingCompletedRef.current) {
+            setClubDrafts(resolvedClubBag.clubs)
+            setInactiveClubDrafts(resolvedClubBag.inactiveClubs)
+            setClubDistanceSets(resolvedClubBag.distanceSets)
+            setClubDistanceUnit(resolvedClubBag.distanceUnit)
+            setClubDistanceBasis(resolvedClubBag.distanceSets[0]?.basis ?? null)
+            setClubCompositionCompleted(resolvedClubBag.compositionCompleted)
+            setClubBagUpdatedAt(resolvedClubBag.updatedAt)
+            window.localStorage.setItem(clubStorageKey, JSON.stringify(resolvedClubBag))
+          }
+          setRemoteClubBagHydratedUserId(userId)
+          reportDiagnosticRecovery('club_bag_load')
         }
+      }
+
+      const profileReady = !needsProfile || !profileFailed
+      const roundsReady = !needsRounds || !roundsFailed
+      const clubBagReady = !needsClubBag || !clubBagFailed
+      if (roundsReady && clubBagReady && recordsReadyMeasuredUserIdRef.current !== userId) {
+        recordsReadyMeasuredUserIdRef.current = userId
+        measureLoginStage('records_ready')
+      }
+
+      if (profileReady && roundsReady && clubBagReady) {
+        remoteHydrationRetryAttemptsRef.current = 0
         setSyncError('')
         if (hadSyncIssueRef.current) {
           hadSyncIssueRef.current = false
           setSyncRecoveredNotice('기록을 최신 상태로 저장했어요.')
           trackEvent('save_recovered', { stage: 'remote_load', online: true })
         }
-        setRemoteHydratedUserId(session.user.id)
-        reportDiagnosticRecovery('profile_load')
-        reportDiagnosticRecovery('profile_save')
-        reportDiagnosticRecovery('rounds_load')
-        reportDiagnosticRecovery('club_bag_load')
-        measureLoginStage('records_ready')
-      } catch {
-        if (!cancelled) {
-          const hasLocalProfile = Boolean(window.localStorage.getItem(`golf-and-me:onboarding:${session.user.id}`))
-          if (!hasLocalProfile) {
-            setScreen('onboarding')
-            setOnboardingStep(1)
-          }
-          setOnboardingReady(true)
-          hadSyncIssueRef.current = true
-          setSyncError('계정에 저장된 기록을 불러오지 못했어요. 이 기기에 저장된 기록으로 계속할 수 있고, 잠시 후 자동으로 다시 시도할게요.')
-          cancelRemoteHydrationRetry = scheduleRemoteHydrationRetry(window, () => {
-            setRemoteHydrationRetryNonce(value => value + 1)
-          })
-        }
+        return
+      }
+
+      hadSyncIssueRef.current = true
+      const willRetry = shouldScheduleRemoteHydrationRetry(remoteHydrationRetryAttemptsRef.current, navigator.onLine)
+      setSyncError(willRetry
+        ? '일부 계정 기록을 불러오지 못했어요. 이 기기의 기록으로 계속할 수 있고, 잠시 후 한 번 더 시도할게요.'
+        : '일부 계정 기록을 불러오지 못했어요. 이 기기의 기록은 안전하며, 인터넷 연결을 확인한 뒤 새로고침해 주세요.')
+      if (willRetry) {
+        remoteHydrationRetryAttemptsRef.current += 1
+        cancelRemoteHydrationRetry = scheduleRemoteHydrationRetry(window, () => {
+          setRemoteHydrationRetryNonce(value => value + 1)
+        })
       }
     }
 
@@ -580,10 +645,11 @@ export default function App() {
       cancelled = true
       cancelRemoteHydrationRetry?.()
     }
-  }, [session, clubBagHydrated, remoteHydratedUserId, isOnline, pendingDeletedRoundIds, remoteHydrationRetryNonce])
+  }, [session, clubBagHydrated, remoteProfileHydratedUserId, remoteRoundsHydratedUserId, remoteClubBagHydratedUserId, isOnline, pendingDeletedRoundIds, remoteHydrationRetryNonce])
 
   useEffect(() => {
-    if (!session || !supabase || isPreviewMode || remoteHydratedUserId !== session.user.id) return
+    if (!session || !supabase || isPreviewMode) return
+    if (remoteRoundsHydratedUserId !== session.user.id || remoteClubBagHydratedUserId !== session.user.id) return
     if (!isOnline) {
       hadSyncIssueRef.current = true
       setSyncError('인터넷 연결이 없어요. 입력은 이 기기에 안전하게 저장하고 있으며, 연결되면 계정에도 자동 저장됩니다.')
@@ -592,33 +658,47 @@ export default function App() {
     }
     let retryTimer = null
     const timer = window.setTimeout(async () => {
+      const roundsToSave = selectRoundsNeedingRemoteSave(rounds, remoteRoundVersionsRef.current)
+      const currentClubBag = {
+        clubs: clubDrafts,
+        inactiveClubs: inactiveClubDrafts,
+        distanceSets: clubDistanceSets,
+        compositionCompleted: clubCompositionCompleted,
+        distanceUnit: clubDistanceUnit,
+        updatedAt: clubBagUpdatedAt,
+      }
+      const currentClubBagSignature = clubBagSyncSignature(currentClubBag)
+      const clubBagNeedsSave = currentClubBagSignature !== remoteClubBagSignatureRef.current
       try {
         const [roundsSaveResult, roundsDeleteResult, clubBagSaveResult] = await Promise.all([
-          saveRemoteRounds(supabase, session.user.id, rounds).then(() => ({ ok: true }), error => ({ error })),
+          saveRemoteRounds(supabase, session.user.id, roundsToSave).then(() => ({ ok: true }), error => ({ error })),
           Promise.all(pendingDeletedRoundIds.map(roundId => deleteRemoteRound(supabase, session.user.id, roundId))).then(() => ({ ok: true }), error => ({ error })),
-          saveRemoteClubBag(supabase, session.user.id, {
-            clubs: clubDrafts,
-            inactiveClubs: inactiveClubDrafts,
-            distanceSets: clubDistanceSets,
-            compositionCompleted: clubCompositionCompleted,
-            distanceUnit: clubDistanceUnit,
-            updatedAt: clubBagUpdatedAt,
-          }).then(() => ({ ok: true }), error => ({ error })),
+          (clubBagNeedsSave ? saveRemoteClubBag(supabase, session.user.id, currentClubBag) : Promise.resolve())
+            .then(() => ({ ok: true }), error => ({ error })),
         ])
         if (roundsSaveResult.error) reportDiagnosticFailure('rounds_save', roundsSaveResult.error)
         if (roundsDeleteResult.error) reportDiagnosticFailure('rounds_delete', roundsDeleteResult.error)
         if (clubBagSaveResult.error) reportDiagnosticFailure('club_bag_save', clubBagSaveResult.error)
-        if (roundsSaveResult.error) throw roundsSaveResult.error
-        if (roundsDeleteResult.error) throw roundsDeleteResult.error
-        if (clubBagSaveResult.error) throw clubBagSaveResult.error
-        if (pendingDeletedRoundIds.length) {
+        if (!roundsSaveResult.error) {
+          remoteRoundVersionsRef.current = markRoundsAsRemoteSaved(remoteRoundVersionsRef.current, roundsToSave)
+          reportDiagnosticRecovery('rounds_save')
+        }
+        if (!roundsDeleteResult.error) {
+          pendingDeletedRoundIds.forEach(roundId => remoteRoundVersionsRef.current.delete(String(roundId)))
+          reportDiagnosticRecovery('rounds_delete')
+        }
+        if (!clubBagSaveResult.error) {
+          if (clubBagNeedsSave) remoteClubBagSignatureRef.current = currentClubBagSignature
+          reportDiagnosticRecovery('club_bag_save')
+        }
+        if (!roundsDeleteResult.error && pendingDeletedRoundIds.length) {
           savePendingRoundDeletions(window.localStorage, session.user.id, [])
           setPendingDeletedRoundIds([])
         }
+        if (roundsSaveResult.error) throw roundsSaveResult.error
+        if (roundsDeleteResult.error) throw roundsDeleteResult.error
+        if (clubBagSaveResult.error) throw clubBagSaveResult.error
         setSyncError('')
-        reportDiagnosticRecovery('rounds_save')
-        reportDiagnosticRecovery('rounds_delete')
-        reportDiagnosticRecovery('club_bag_save')
         if (hadSyncIssueRef.current) {
           hadSyncIssueRef.current = false
           setSyncRecoveredNotice('기록을 최신 상태로 저장했어요.')
@@ -635,7 +715,7 @@ export default function App() {
       window.clearTimeout(timer)
       if (retryTimer) window.clearTimeout(retryTimer)
     }
-  }, [rounds, clubDrafts, inactiveClubDrafts, clubDistanceSets, clubCompositionCompleted, clubDistanceUnit, clubBagUpdatedAt, pendingDeletedRoundIds, session, remoteHydratedUserId, isOnline, syncRetryNonce])
+  }, [rounds, clubDrafts, inactiveClubDrafts, clubDistanceSets, clubCompositionCompleted, clubDistanceUnit, clubBagUpdatedAt, pendingDeletedRoundIds, session, remoteRoundsHydratedUserId, remoteClubBagHydratedUserId, isOnline, syncRetryNonce])
 
   useEffect(() => {
     if (!restoreHoleNumber || !activeRound) return
@@ -1145,11 +1225,28 @@ export default function App() {
     setClubDistanceEditing(false)
   }
 
-  function openRound(selectedRound) {
-    setActiveRound(selectedRound)
+  async function openRound(selectedRound) {
+    let resolvedRound = selectedRound
+    if (selectedRound.remoteSummaryOnly && supabase && session && !isPreviewMode) {
+      try {
+        const remoteRound = await loadRemoteRoundDetail(supabase, session.user.id, selectedRound.id)
+        if (!remoteRound) throw new Error('Round detail not found')
+        resolvedRound = remoteRound
+        const nextRounds = rounds.map(item => item.id === remoteRound.id ? remoteRound : item)
+        window.localStorage.setItem(`golf-and-me:rounds:${session.user.id}`, JSON.stringify(nextRounds))
+        setRounds(nextRounds)
+        setSyncError('')
+        reportDiagnosticRecovery('rounds_load')
+      } catch (error) {
+        reportDiagnosticFailure('rounds_load', error)
+        setSyncError('라운드 상세 기록을 불러오지 못했어요. 인터넷 연결을 확인한 뒤 다시 열어주세요.')
+        return
+      }
+    }
+    setActiveRound(resolvedRound)
     setEditingActiveRound(false)
-    setScreen(selectedRound.status === 'completed' ? 'round-result' : 'scorecard')
-    if (selectedRound.status === 'completed') trackEvent('round_result_view', { completed_holes: 18 })
+    setScreen(resolvedRound.status === 'completed' ? 'round-result' : 'scorecard')
+    if (resolvedRound.status === 'completed') trackEvent('round_result_view', { completed_holes: 18 })
   }
 
   function requestRoundDeletion(selectedRound) {

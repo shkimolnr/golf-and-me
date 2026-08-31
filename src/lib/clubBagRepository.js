@@ -41,6 +41,21 @@ export function resolveClubBag(localBag, remoteBag) {
   }
 }
 
+export function clubBagSyncSignature(bag = {}) {
+  const activeIds = (bag.clubs || []).map(club => String(club.id)).sort()
+  const inactiveIds = (bag.inactiveClubs || []).map(club => String(club.id)).sort()
+  const distanceSets = (bag.distanceSets || [])
+    .map(set => `${String(set.id)}:${set.recordedAt || ''}`)
+    .sort()
+  return JSON.stringify({
+    activeIds,
+    inactiveIds,
+    compositionCompleted: Boolean(bag.compositionCompleted),
+    updatedAt: bag.updatedAt || null,
+    distanceSets,
+  })
+}
+
 function restoreClub(row) {
   const payload = row.payload && typeof row.payload === 'object' ? row.payload : {}
   return {
@@ -98,13 +113,35 @@ export function deserializeRemoteClubBag(clubRows = [], distanceRows = []) {
 }
 
 export async function loadRemoteClubBag(client, userId) {
-  const [{ data: clubRows, error: clubError }, { data: distanceRows, error: distanceError }] = await Promise.all([
+  const [{ data: clubRows, error: clubError }, { data: latestDistanceRows, error: latestDistanceError }] = await Promise.all([
     client.from('user_clubs').select('id, client_id, name, category, sort_order, active, payload, updated_at').eq('user_id', userId),
-    client.from('club_distance_history').select('set_id, club_id, distance, distance_unit, distance_basis, normalized_distance_m, club_snapshot, is_changed, recorded_at').eq('user_id', userId).order('recorded_at', { ascending: false }),
+    client.from('club_distance_history').select('set_id, recorded_at').eq('user_id', userId).order('recorded_at', { ascending: false }).limit(1),
   ])
   if (clubError) throw clubError
-  if (distanceError) throw distanceError
+  if (latestDistanceError) throw latestDistanceError
+  const latestSetId = latestDistanceRows?.[0]?.set_id
+  let distanceRows = []
+  if (latestSetId) {
+    const { data, error } = await client
+      .from('club_distance_history')
+      .select('set_id, club_id, distance, distance_unit, distance_basis, normalized_distance_m, club_snapshot, is_changed, recorded_at')
+      .eq('user_id', userId)
+      .eq('set_id', latestSetId)
+      .order('recorded_at', { ascending: false })
+    if (error) throw error
+    distanceRows = data || []
+  }
   return deserializeRemoteClubBag(clubRows || [], distanceRows || [])
+}
+
+export async function loadRemoteClubDistanceHistory(client, userId) {
+  const { data, error } = await client
+    .from('club_distance_history')
+    .select('set_id, club_id, distance, distance_unit, distance_basis, normalized_distance_m, club_snapshot, is_changed, recorded_at')
+    .eq('user_id', userId)
+    .order('recorded_at', { ascending: false })
+  if (error) throw error
+  return data || []
 }
 
 export async function saveRemoteClubBag(client, userId, bag) {

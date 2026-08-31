@@ -172,3 +172,23 @@ test('완료 기록이 없으면 누적 평균과 베스트는 계산하지 않�
   assert.equal(stats.bestScore, null)
   assert.equal(stats.averagePutts, null)
 })
+
+test('상세 원본이 없는 서버 요약만으로도 홈 누적 통계를 계산한다', () => {
+  const stats = calculateCumulativeStats([
+    { status: 'completed', remoteSummaryOnly: true, statsSummary: {
+      enteredHoles: 18, totalScore: 85, totalPutts: 34, puttAttempts: 18,
+      firHits: 8, firAttempts: 14, girHits: 7, girAttempts: 18,
+    } },
+    { status: 'completed', remoteSummaryOnly: true, statsSummary: {
+      enteredHoles: 18, totalScore: 90, totalPutts: 36, puttAttempts: 18,
+      firHits: 6, firAttempts: 14, girHits: 5, girAttempts: 18,
+    } },
+  ])
+
+  assert.equal(stats.roundCount, 2)
+  assert.equal(stats.averageScore, 87.5)
+  assert.equal(stats.bestScore, 85)
+  assert.equal(stats.averagePutts, 70 / 36)
+  assert.equal(stats.firHits, 14)
+  assert.equal(stats.girAttempts, 36)
+})
