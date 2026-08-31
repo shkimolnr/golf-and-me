@@ -88,6 +88,8 @@ test('전체 새소식은 홈과 계정 메뉴에서 같은 정적 목록으로 
   assert.match(appSource, /screen === 'news'/)
   assert.ok(newsItems.length >= 1)
   assert.ok(newsItems.every(item => item.id && item.date && item.category && item.title && item.body))
+  assert.ok(newsItems.every(item => item.title.length <= 30), '새소식 제목은 30자 이내여야 한다')
+  assert.ok(newsItems.every(item => item.body.length <= 120), '새소식 본문은 120자 이내여야 한다')
 })
 
 test('새소식 점은 최신 글을 해당 기기에서 확인할 때까지 표시한다', () => {
