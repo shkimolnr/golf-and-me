@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 
-const migration = await readFile(new URL('../supabase/migrations/202608310002_round_summary_columns.sql', import.meta.url), 'utf8')
+const migration = await readFile(new URL('../supabase/migrations/202608310003_round_summary_columns.sql', import.meta.url), 'utf8')
 
 test('홈 경량 조회에 필요한 라운드 요약 컬럼을 원본 payload와 별도로 추가한다', () => {
   for (const column of [
