@@ -21,6 +21,15 @@
 
 문제가 생기면 Vercel의 직전 정상 배포로 롤백합니다. OpenAI Sites의 이전 Alpha 배포는 외부 접근을 종료했고 Supabase Redirect 허용 목록에서도 제거했으므로 운영·롤백 경로로 사용하지 않습니다. DB 마이그레이션은 대응하는 `supabase/rollback/` 파일을 먼저 검토하고, 사용자 데이터가 있는 운영 DB에는 자동 롤백하지 않습니다.
 
+### Beta 테스트 계정 신청 연결
+
+1. 신청을 받을 비공개 Slack 채널에 Incoming Webhook을 생성합니다.
+2. Vercel Production 환경변수 `SLACK_TEST_ACCESS_WEBHOOK_URL`에 Webhook URL을 비밀값으로 등록합니다. `VITE_` 접두사를 붙이지 않고 Git이나 브라우저 번들에 포함하지 않습니다.
+3. Vercel Production 환경변수 `VITE_TEST_ACCESS_REQUEST_ENABLED=true`를 등록합니다.
+4. 재배포한 뒤 로그인 화면에서 전용 테스트 이메일로 한 번 신청하고 Slack 수신 내용을 확인합니다.
+5. Slack 메시지에 신청 이메일과 접수 시각만 있고 IP·브라우저 정보·Golf & Me 기록이 없는지 확인합니다.
+6. Beta 신청 운영이 끝나면 `VITE_TEST_ACCESS_REQUEST_ENABLED=false`로 바꾸고 재배포합니다.
+
 ## 3. 저장과 장애 대응
 
 - 라운드와 홀 초안은 기기에 먼저 저장하고 로그인·연결이 준비되면 Supabase에 저장합니다.
@@ -64,6 +73,8 @@
 - Supabase DB 백업은 Storage API의 실제 파일 객체를 포함하지 않습니다. 현재 MVP는 Storage 파일을 사용하지 않지만, 사진·첨부 기능을 도입할 때 DB와 파일 백업을 분리해 추가합니다.
 - 사용자가 늘기 전 Pro 자동 일일 백업 또는 PITR 도입 여부를 다시 결정합니다. PITR을 쓰지 않는 동안에는 마지막 수동 백업 이후의 서버 데이터가 손실될 수 있음을 운영 위험으로 남깁니다.
 - 실제 iPhone Safari에서는 로그인, 18홀 기록, 화면 잠금·복귀, 오프라인 입력, 완료와 재로그인을 릴리스별 핵심 점검으로 수행합니다.
+- 로그인 속도는 2026-08-31 모바일 영상 점검에서 앱 복귀 후 약 0.1~0.5초로 현재 단계 통과했습니다. GA4/GTM 활성화 후에는 `session_restored`와 `records_ready`의 `duration_ms`를 모바일 Safari·데스크톱별로 확인하고, Google 계정 선택에 머문 시간은 앱 로딩 시간에서 분리합니다.
+- 분석 활성화 직후에는 `BACKLOG.md`의 `TASK-038 GA4/GTM 활성화 후 로그인 속도 점검 체크리스트`를 수행합니다.
 
 ## 6. 공개 테스트 전 필수 보완
 

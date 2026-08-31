@@ -22,6 +22,14 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 h1 { margin: 10px 0 14px; font-size: clamp(30px, 9vw, 42px); line-height: 1.2; letter-spacing: .035em; }
 .description { color: #6b7280; line-height: 1.6; margin-bottom: 32px; }
 .eyebrow, h1, .description { margin-left: 18px; margin-right: 18px; }
+.test-access { width: 100%; margin-top: 14px; }
+.test-access-toggle { width: 100%; min-height: 44px; border: 1px solid #dfe7e3; border-radius: 12px; color: #047857; background: white; font-size: 14px; font-weight: 800; }
+.test-access-form { display: grid; gap: 12px; margin-top: 10px; padding: 15px; border: 1px solid #dfe7e3; border-radius: 14px; background: #f7fafc; text-align: left; }
+.test-access-form label { font-size: 14px; }
+.test-access-form input { min-height: 44px; padding: 10px 12px; font-family: var(--font-ui); letter-spacing: 0; }
+.test-access-form p, .test-access-success { margin: 0; color: #6b7280; font-size: 12px; line-height: 1.55; }
+.test-access-form .primary { min-height: 44px; padding: 11px 14px; }
+.test-access-success { padding: 13px 14px; border-radius: 12px; color: #047857; background: #ecfdf5; font-weight: 700; text-align: center; }
 .primary { width: 100%; border: 0; border-radius: 14px; padding: 17px 20px; color: white; background: #059669; font-weight: 800; }
 .empty-card, .form-card { display: flex; flex-direction: column; gap: 18px; margin-top: 24px; padding: 22px; border: 1px solid #e5e7eb; border-radius: 18px; background: #f7fafc; }
 .empty-card span, .hint { color: #6b7280; font-size: 16px; line-height: 1.6; }

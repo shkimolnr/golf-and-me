@@ -17,8 +17,10 @@ import { loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/club
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
 import { measureLoginStage, recordLoginFailure, startLoginMeasurement, trackEvent } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
+import { requestTestAccess } from './lib/testAccessRequest.js'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
+const isTestAccessRequestEnabled = import.meta.env.VITE_TEST_ACCESS_REQUEST_ENABLED === 'true'
 const previewSession = {
   user: {
     id: 'preview-user',
@@ -113,6 +115,10 @@ export default function App() {
   const [session, setSession] = useState(isPreviewMode ? previewSession : null)
   const [authLoading, setAuthLoading] = useState(isPreviewMode ? false : isSupabaseConfigured)
   const [authError, setAuthError] = useState('')
+  const [testAccessOpen, setTestAccessOpen] = useState(false)
+  const [testAccessEmail, setTestAccessEmail] = useState('')
+  const [testAccessStatus, setTestAccessStatus] = useState('idle')
+  const [testAccessError, setTestAccessError] = useState('')
   const [accountOpen, setAccountOpen] = useState(false)
   const [accountDeletionOpen, setAccountDeletionOpen] = useState(false)
   const [accountDeletionStatus, setAccountDeletionStatus] = useState('idle')
@@ -1486,6 +1492,19 @@ export default function App() {
     trackEvent('round_result_view', { completed_holes: 18 })
   }
 
+  async function submitTestAccessRequest(event) {
+    event.preventDefault()
+    setTestAccessStatus('submitting')
+    setTestAccessError('')
+    try {
+      await requestTestAccess(testAccessEmail)
+      setTestAccessStatus('sent')
+    } catch (error) {
+      setTestAccessStatus('idle')
+      setTestAccessError(error.message)
+    }
+  }
+
   if (authLoading) {
     return <main className="app-shell auth-shell" aria-live="polite"><div className="spinner" aria-hidden="true" /><p role="status">로그인 상태를 확인하고 있어요.</p></main>
   }
@@ -1500,6 +1519,25 @@ export default function App() {
         <button className="google-button" type="button" onClick={signInWithGoogle} disabled={!isSupabaseConfigured}>
           <span className="google-mark">G</span> Google로 계속하기
         </button>
+        {isTestAccessRequestEnabled && (
+          <section className="test-access">
+            <button className="test-access-toggle" type="button" aria-expanded={testAccessOpen} onClick={() => { setTestAccessOpen(open => !open); setTestAccessError('') }}>
+              테스트 계정 신청
+            </button>
+            {testAccessOpen && testAccessStatus !== 'sent' && (
+              <form className="test-access-form" onSubmit={submitTestAccessRequest}>
+                <label>Google 계정 이메일
+                  <input autoFocus type="email" inputMode="email" autoComplete="email" required maxLength="254" placeholder="name@gmail.com" value={testAccessEmail} onChange={event => setTestAccessEmail(event.target.value)} />
+                </label>
+                <input hidden type="text" name="website" tabIndex="-1" autoComplete="off" aria-hidden="true" />
+                <p>신청한 이메일은 테스트 계정 등록을 위해 운영자의 비공개 Slack으로 전달됩니다. 가능한 빨리 확인할게요.</p>
+                {testAccessError && <p className="error-message" role="alert">{testAccessError}</p>}
+                <button className="primary" type="submit" disabled={testAccessStatus === 'submitting' || !testAccessEmail.trim()}>{testAccessStatus === 'submitting' ? '전달 중…' : '신청 보내기'}</button>
+              </form>
+            )}
+            {testAccessStatus === 'sent' && <p className="test-access-success" role="status">신청을 받았어요. 테스트 계정에 추가한 뒤 알려드릴게요.</p>}
+          </section>
+        )}
         {!isSupabaseConfigured && <p className="setup-notice" role="status">Google 로그인을 사용하려면 <code>.env</code>에 Supabase 연결 정보를 설정해주세요.</p>}
         {authError && <p className="error-message" role="alert">{authError}</p>}
         <p className="legal">계속하면 서비스 이용약관 및 개인정보 처리방침에 동의하게 됩니다.</p>
