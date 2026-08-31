@@ -25,6 +25,9 @@ import { recordDiagnosticFailure, resolveDiagnosticFailures } from './lib/diagno
 import { clearDiagnosticQueue, enqueueDiagnosticFailure, enqueueDiagnosticRecovery, flushDiagnosticQueue, setDiagnosticAccessTokenProvider } from './lib/diagnosticsTransport.js'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
+const isDiagnosticSmokeMode = window.location.hostname.endsWith('.vercel.app')
+  && window.location.hostname !== 'golf-and-me.vercel.app'
+  && new URLSearchParams(window.location.search).get('diagnostics-smoke') === '1'
 const isTestAccessRequestEnabled = import.meta.env.VITE_TEST_ACCESS_REQUEST_ENABLED === 'true'
 const analyticsScreenNames = Object.freeze({
   'new-round': 'new_round',
@@ -199,6 +202,7 @@ export default function App() {
   const [clubDistanceInputs, setClubDistanceInputs] = useState({})
   const [clubDistanceSets, setClubDistanceSets] = useState([])
   const [recentlyChangedClubIds, setRecentlyChangedClubIds] = useState([])
+  const [diagnosticSmokeStatus, setDiagnosticSmokeStatus] = useState('idle')
   const [clubBagHydrated, setClubBagHydrated] = useState(false)
   const [clubCompositionCompleted, setClubCompositionCompleted] = useState(false)
   const [clubBagUpdatedAt, setClubBagUpdatedAt] = useState(null)
@@ -226,6 +230,26 @@ export default function App() {
   function reportDiagnosticRecovery(stage) {
     if (!session || isPreviewMode) return
     resolveDiagnosticFailures(stage).forEach(record => enqueueDiagnosticRecovery(record))
+  }
+
+  async function runDiagnosticSmokeTest() {
+    if (!session || !isDiagnosticSmokeMode || diagnosticSmokeStatus === 'sending') return
+    setDiagnosticSmokeStatus('sending')
+    const diagnostic = recordDiagnosticFailure({
+      stage: 'api_call',
+      error: { status: 503 },
+      online: navigator.onLine,
+    })
+    if (!diagnostic) {
+      setDiagnosticSmokeStatus('error')
+      return
+    }
+    enqueueDiagnosticFailure(diagnostic.record)
+    await flushDiagnosticQueue()
+    await new Promise(resolve => window.setTimeout(resolve, 500))
+    resolveDiagnosticFailures('api_call').forEach(record => enqueueDiagnosticRecovery(record))
+    const sent = await flushDiagnosticQueue()
+    setDiagnosticSmokeStatus(sent ? 'sent' : 'queued')
   }
 
   function updateAnalyticsConsent(granted) {
@@ -2425,6 +2449,9 @@ export default function App() {
               </span>
               <input type="checkbox" checked={analyticsConsent === 'granted'} onChange={event => updateAnalyticsConsent(event.target.checked)} />
             </label>
+            {isDiagnosticSmokeMode && <button className="secondary-button" type="button" onClick={runDiagnosticSmokeTest} disabled={diagnosticSmokeStatus === 'sending'}>
+              {diagnosticSmokeStatus === 'sending' ? '진단 전송 중…' : diagnosticSmokeStatus === 'sent' ? '진단 전송 완료' : diagnosticSmokeStatus === 'queued' ? '진단 재전송 대기' : diagnosticSmokeStatus === 'error' ? '진단 생성 실패' : '운영 진단 E2E 실행'}
+            </button>}
             <button className="logout-button" onClick={signOut}>로그아웃</button>
             {!isPreviewMode && <button className="delete-account-link" type="button" onClick={openAccountDeletion}>계정 삭제</button>}
           </section>
