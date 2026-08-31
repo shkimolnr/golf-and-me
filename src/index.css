@@ -23,11 +23,12 @@ h1 { margin: 10px 0 14px; font-size: clamp(30px, 9vw, 42px); line-height: 1.2; l
 .description { color: #6b7280; line-height: 1.6; margin-bottom: 32px; }
 .eyebrow, h1, .description { margin-left: 18px; margin-right: 18px; }
 .test-access { width: 100%; margin-top: 16px; }
-.test-access-label { margin: 0 0 6px; color: #6b7280; font-size: 12px; font-weight: 700; text-align: left; }
+.test-access-label { margin: 0 0 6px; color: #b45353; font-size: 12px; font-weight: 700; text-align: left; }
 .test-access-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; text-align: left; }
 .test-access-email { min-width: 0; }
 .test-access-email span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.test-access-form input { min-height: 38px; padding: 8px 10px; border-radius: 10px; font-family: var(--font-ui); font-size: 13px; letter-spacing: 0; }
+.test-access-form input { min-height: 38px; padding: 8px 10px; border-radius: 10px; font-family: var(--font-cherrie); font-size: 13px; letter-spacing: .04em; }
+.test-access-form input::placeholder { color: #c7cdd5; opacity: 1; }
 .test-access-form button { min-height: 38px; padding: 8px 12px; border: 1px solid #a7f3d0; border-radius: 10px; color: #047857; background: #ecfdf5; font-size: 12px; font-weight: 800; white-space: nowrap; }
 .test-access-form .error-message { grid-column: 1 / -1; margin: 0; font-size: 12px; }
 .test-access-success { margin: 0; color: #047857; font-size: 12px; font-weight: 700; text-align: left; }

@@ -71,10 +71,10 @@ test('신규 골프백은 드라이버와 퍼터만 기본 선택한다', () => 
 test('테스트 계정 요청은 로그인 약관 뒤에 간결한 보조 경로로 표시한다', () => {
   const googleButtonIndex = appSource.indexOf('Google로 계속하기')
   const legalIndex = appSource.indexOf('계속하면 서비스 이용약관')
-  const testAccessIndex = appSource.indexOf('처음 오신 분만!')
+  const testAccessIndex = appSource.indexOf('⚠️ 처음 오신 분만!')
   assert.ok(googleButtonIndex < legalIndex)
   assert.ok(legalIndex < testAccessIndex)
-  assert.match(appSource, /placeholder="이메일"/)
+  assert.match(appSource, /placeholder="example@gmail.com"/)
   assert.match(appSource, /'승인 요청'/)
   assert.doesNotMatch(appSource, /신청한 이메일은 테스트 계정 등록을 위해/)
 })

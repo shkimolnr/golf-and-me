@@ -1523,10 +1523,10 @@ export default function App() {
           <section className="test-access">
             {testAccessStatus !== 'sent' && (
               <>
-                <p className="test-access-label">처음 오신 분만!</p>
+                <p className="test-access-label">⚠️ 처음 오신 분만!</p>
               <form className="test-access-form" onSubmit={submitTestAccessRequest}>
                 <label className="test-access-email"><span>Google 계정 이메일</span>
-                  <input type="email" inputMode="email" autoComplete="email" required maxLength="254" placeholder="이메일" value={testAccessEmail} onChange={event => setTestAccessEmail(event.target.value)} />
+                  <input type="email" inputMode="email" autoComplete="email" required maxLength="254" placeholder="example@gmail.com" value={testAccessEmail} onChange={event => setTestAccessEmail(event.target.value)} />
                 </label>
                 <input hidden type="text" name="website" tabIndex="-1" autoComplete="off" aria-hidden="true" />
                 {testAccessError && <p className="error-message" role="alert">{testAccessError}</p>}
