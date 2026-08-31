@@ -26,6 +26,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .eyebrow { color: #059669; font-size: 16px; font-weight: 700; }
 h1 { margin: 10px 0 14px; font-size: clamp(30px, 9vw, 42px); line-height: 1.2; letter-spacing: .035em; }
 .description { color: #6b7280; line-height: 1.6; margin-bottom: 32px; }
+.home .description { font-size: 18px; font-weight: 700; }
 .eyebrow, h1, .description { margin-left: 18px; margin-right: 18px; }
 .test-access { width: 100%; margin-top: 16px; }
 .test-access-label { margin: 0 0 6px; color: #b45353; font-size: 12px; font-weight: 700; text-align: left; }
