@@ -1952,9 +1952,8 @@ export default function App() {
 
       {screen === 'home' && (
         <section className="home">
-          <p className="eyebrow">오늘도 한 타씩, 더 나답게</p>
-          <h1>라운드를 기록하고<br />내 골프를 발견하세요.</h1>
-          <p className="description">매홀 기록은 간단하게, 라운드 후 분석은 깊게.</p>
+          <h1>라운드 기록을<br />시작해 볼까요?</h1>
+          <p className="description">기록은 간단하게, 분석은 깊이 있게.</p>
           <button className="primary" type="button" onClick={startNewRound}>새 라운드 기록하기</button>
           {rounds.length > 0 && <section className="home-report" aria-labelledby="home-report-title">
             <div className="home-report-heading">
