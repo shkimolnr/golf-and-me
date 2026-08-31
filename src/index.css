@@ -1,4 +1,4 @@
-@font-face { font-family: "Griun Cherrie"; src: url("./assets/fonts/Griun_Cherrie-Rg.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Griun Cherrie"; src: url("./assets/fonts/Griun_Cherrie-Rg.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
 :root {
   --font-cherrie: "Griun Cherrie", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-ui: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
