@@ -545,8 +545,10 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .putting-more input { height: 36px; padding: 5px 7px; border-radius: 8px; font-size: 16px; text-align: center; }
 .putting-more button { height: 36px; padding: 0; border: 1px solid #059669; border-radius: 8px; color: white; background: #059669; font-size: 11px; font-weight: 800; }
 .auth-shell { display: flex; flex-direction: column; justify-content: center; text-align: center; }
-.auth-logo { display: flex; justify-content: center; margin-bottom: 18px; }
+.auth-logo { display: flex; justify-content: center; margin-bottom: 12px; }
 .auth-logo .brand-mark { width: 58px; height: 58px; font-size: 24px; }
+.auth-shell h1 { margin-top: 0; margin-bottom: 8px; }
+.auth-shell .eyebrow { margin-top: 0; margin-bottom: 18px; font-size: 13px; letter-spacing: .04em; }
 .google-button { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; padding: 15px 20px; border: 1px solid #d1d5db; border-radius: 14px; color: #2d3748; background: white; font-weight: 800; }
 .google-mark { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 20px; height: 20px; }
 .google-mark svg { display: block; width: 100%; height: 100%; }
@@ -556,7 +558,7 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .sync-message { margin: 0 0 10px; padding: 9px 12px; border-radius: 10px; color: #92400e; background: #fffbeb; font-size: 12px; font-weight: 700; line-height: 1.45; }
 .sync-recovered-notice { position: fixed; z-index: 19; bottom: max(18px, env(safe-area-inset-bottom)); left: 50%; width: max-content; max-width: calc(100% - 32px); margin: 0; padding: 9px 13px; border: 1px solid #a7f3d0; border-radius: 999px; color: #047857; background: #ecfdf5; font-size: 12px; font-weight: 700; text-align: center; transform: translateX(-50%); }
 .resume-notice { position: fixed; z-index: 18; bottom: max(18px, env(safe-area-inset-bottom)); left: 50%; width: max-content; max-width: calc(100% - 32px); margin: 0; padding: 9px 13px; border: 1px solid #a7f3d0; border-radius: 999px; color: #047857; background: #ecfdf5; font-size: 12px; font-weight: 700; text-align: center; transform: translateX(-50%); }
-.legal { margin-top: 24px; color: #9ca3af; font-size: 13px; line-height: 1.6; }
+.legal { margin-top: 12px; color: #9ca3af; font-size: 13px; line-height: 1.6; }
 .spinner { width: 36px; height: 36px; margin: 0 auto 14px; border: 3px solid #d1fae5; border-top-color: #059669; border-radius: 50%; animation: spin .8s linear infinite; }
 .onboarding-shell { display: flex; flex-direction: column; }
 .onboarding-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 48px; }
