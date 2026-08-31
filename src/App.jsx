@@ -20,6 +20,7 @@ import { measureLoginStage, recordLoginFailure, startLoginMeasurement, trackEven
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { requestTestAccess } from './lib/testAccessRequest.js'
 import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
+import { scheduleRemoteHydrationRetry } from './lib/remoteHydrationRetry.js'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
 const isTestAccessRequestEnabled = import.meta.env.VITE_TEST_ACCESS_REQUEST_ENABLED === 'true'
@@ -169,6 +170,7 @@ export default function App() {
   const [remoteHydratedUserId, setRemoteHydratedUserId] = useState(null)
   const [isOnline, setIsOnline] = useState(() => navigator.onLine)
   const [syncRetryNonce, setSyncRetryNonce] = useState(0)
+  const [remoteHydrationRetryNonce, setRemoteHydrationRetryNonce] = useState(0)
   const [pendingDeletedRoundIds, setPendingDeletedRoundIds] = useState([])
   const [clubDrafts, setClubDrafts] = useState(initialClubDrafts)
   const [inactiveClubDrafts, setInactiveClubDrafts] = useState([])
@@ -406,6 +408,7 @@ export default function App() {
   useEffect(() => {
     if (!session || !clubBagHydrated || isPreviewMode || !supabase || remoteHydratedUserId === session.user.id) return
     let cancelled = false
+    let cancelRemoteHydrationRetry = null
 
     async function hydrateRemoteData() {
       try {
@@ -486,16 +489,23 @@ export default function App() {
             setOnboardingStep(1)
           }
           setOnboardingReady(true)
+          const wasSyncIssue = hadSyncIssueRef.current
           hadSyncIssueRef.current = true
           setSyncError('계정에 저장된 기록을 불러오지 못했어요. 이 기기에 저장된 기록으로 계속할 수 있고, 잠시 후 자동으로 다시 시도할게요.')
-          recordLoginFailure('records_load')
+          if (!wasSyncIssue) recordLoginFailure('records_load')
+          cancelRemoteHydrationRetry = scheduleRemoteHydrationRetry(window, () => {
+            setRemoteHydrationRetryNonce(value => value + 1)
+          })
         }
       }
     }
 
     hydrateRemoteData()
-    return () => { cancelled = true }
-  }, [session, clubBagHydrated, remoteHydratedUserId, isOnline, pendingDeletedRoundIds])
+    return () => {
+      cancelled = true
+      cancelRemoteHydrationRetry?.()
+    }
+  }, [session, clubBagHydrated, remoteHydratedUserId, isOnline, pendingDeletedRoundIds, remoteHydrationRetryNonce])
 
   useEffect(() => {
     if (!session || !supabase || isPreviewMode || remoteHydratedUserId !== session.user.id) return

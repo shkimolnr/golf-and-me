@@ -11,6 +11,11 @@ test('핵심 비동기 준비 상태는 스크린리더에 상태로 전달된�
   assert.ok((appSource.match(/<p role="status">/g) || []).length >= 2)
 })
 
+test('원격 기록 조회 실패는 사용자 안내 뒤 자동 재시도를 예약한다', () => {
+  assert.match(appSource, /scheduleRemoteHydrationRetry\(window, \(\) => \{\n\s+setRemoteHydrationRetryNonce/)
+  assert.match(appSource, /remoteHydrationRetryNonce/)
+})
+
 test('골프백의 두 화면은 탭 관계와 현재 선택 상태를 제공한다', () => {
   assert.match(appSource, /role="tablist" aria-label="골프백 관리 메뉴"/)
   assert.match(appSource, /role="tab" aria-selected=\{clubStage === 'composition'\}/)
