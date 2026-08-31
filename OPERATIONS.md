@@ -47,8 +47,8 @@
 1. GA4는 GTM 없이 웹 데이터 스트림을 직접 사용합니다. 광고 기능·Google Signals·리마케팅·광고 개인화는 끄고, Development·Preview·Production의 측정 ID와 `VITE_ANALYTICS_ENV`를 분리합니다. Production 측정 ID를 Preview에 넣으면 앱이 초기화하지 않아야 합니다.
 2. Vercel 환경별로 `VITE_GA_MEASUREMENT_ID`, `VITE_ANALYTICS_ENABLED`, `VITE_APP_ENV`, `VITE_ANALYTICS_ENV`를 등록합니다. 실제 ID는 Git에 넣지 않으며, Development는 기본 비활성 상태로 둡니다.
 3. Supabase 진단은 먼저 테스트 프로젝트의 백업·롤백 파일을 확인한 뒤 `202608310002_app_diagnostics.sql`을 적용합니다. Vercel에는 `SUPABASE_SERVICE_ROLE_KEY`만 Secret으로 등록하며, `VITE_` 접두사나 브라우저 번들에 절대 포함하지 않습니다. 2026-08-31 Production에는 migration과 Vercel Production Secret 등록, 앱 배포를 완료했습니다.
-4. Preview에서 분석 미선택 상태의 GA 요청 부재, 허용 뒤 DebugView의 allowlist 이벤트, 철회 뒤 전송 중단을 확인합니다. 이어서 인증된 `/api/diagnostics`의 실패·반복·복구·큐 재전송을 확인하고 DB에 금지 항목이 없는지 점검합니다.
-5. `purge_expired_app_diagnostics()`의 실제 정기 실행은 아직 설정하지 않았습니다. Supabase `pg_cron` 또는 Vercel Cron의 실행 주체·권한·비용·점검 책임을 확정하고, 의도적 실패·복구 검증 뒤 30일 원시 기록·복구 후 7일 삭제를 활성화합니다.
+4. Preview에서 분석 미선택 상태의 GA 요청 부재, 허용 뒤 DebugView의 allowlist 이벤트, 철회 뒤 전송 중단을 확인합니다. 이어서 인증된 `/api/diagnostics`의 실패·반복·복구·큐 재전송을 확인하고 DB에 금지 항목이 없는지 점검합니다. 2026-08-31 Production에서는 서버 전용 DB 함수의 비식별 test incident가 실패 2회에서 한 행의 count 2로 합쳐지고 복구 상태가 연결되는 것을 확인한 뒤 test 행을 삭제했습니다. 이는 브라우저→Vercel API 종단간 검증과는 별도입니다.
+5. `purge_expired_app_diagnostics()`의 실제 정기 실행은 아직 설정하지 않았습니다. Supabase `pg_cron` 또는 Vercel Cron의 실행 주체·권한·비용·점검 책임을 확정하고, 인증 브라우저 전송의 실패·복구 검증 뒤 30일 원시 기록·복구 후 7일 삭제를 활성화합니다.
 6. GA4는 속성 설정, 개인정보처리방침, Preview DebugView 검증이 모두 끝난 뒤에만 사용자가 Production 활성화를 명시적으로 승인합니다. Supabase 진단은 별도 체계이므로 GA4 동의·활성화와 결합하지 않습니다.
 
 ## 3. 저장과 장애 대응

@@ -4,7 +4,7 @@
 
 - 작업 브랜치: `codex/supabase-diagnostics`
 - 기준 브랜치: `codex/ga4-direct-consent` (`de501ba`)
-- 2026-08-31 Production Supabase SQL Editor에서 migration을 적용하고 `app_diagnostics` 테이블 생성을 확인했습니다. Vercel Production에 `SUPABASE_SERVICE_ROLE_KEY`를 Secret으로 등록하고 앱을 배포했습니다. GA4 설정·보관 삭제 scheduler·의도적 실패/복구 검증은 아직 수행하지 않았습니다.
+- 2026-08-31 Production Supabase SQL Editor에서 migration을 적용하고 `app_diagnostics` 테이블 생성을 확인했습니다. Vercel Production에 `SUPABASE_SERVICE_ROLE_KEY`를 Secret으로 등록하고 앱을 배포했습니다. server-role DB 함수는 비식별 test incident의 실패 2회→한 행 count 2→복구 연결을 실제 확인한 뒤 test 행을 삭제했습니다. GA4 설정·인증 브라우저 전송 종단간 검증·보관 삭제 scheduler는 아직 수행하지 않았습니다.
 - GA4·GTM·Firebase·Sentry와 분석 동의 UI는 변경하지 않았습니다.
 
 ## 변경 파일
@@ -68,10 +68,11 @@ DB schema는 향후 `distance_history_*`, `local_storage_parse`, `remote_hydrati
 
 - `npm test`: 132 passed, 0 failed
 - `npm run build`: passed (전용 worktree에 원본의 `node_modules`를 임시 링크해 실행). `VITE_SUPABASE_URL`이 없는 로컬 빌드 경고만 있으며 생성물·링크는 제거했습니다.
+- 2026-08-31 Production SQL Editor에서 비식별 `api_call`/`network` test incident를 실패 2회와 복구 1회로 실행했습니다. 결과는 한 행, `occurrence_count=2`, `recovered=true`, `recovery_duration_ms=5000`이었고 곧바로 해당 UUID 한 행을 삭제한 뒤 0건을 재확인했습니다. 이 검증은 DB 함수 범위이며 인증 브라우저→Vercel API 전송을 대신하지 않습니다.
 
 ## 남은 외부·운영 작업
 
-1. 전용 테스트 계정 또는 통제된 네트워크 차단으로 실패→재시도→복구를 한 번 검증합니다. incident 중복 합산, 금지 항목 미저장, 전송 실패가 앱을 막지 않는지 함께 확인합니다.
+1. 전용 테스트 계정 또는 통제된 네트워크 차단으로 인증 브라우저→Vercel API→Supabase의 실패→재시도→복구를 한 번 검증합니다. incident 중복 합산, 금지 항목 미저장, 전송 실패가 앱을 막지 않는지 함께 확인합니다.
 2. `/api/diagnostics`의 Preview 검증을 마친 뒤 `purge_expired_app_diagnostics()`의 실행 주체를 선택·활성화합니다.
 3. 개인정보처리방침에 Supabase 최소 운영 진단의 목적·항목·보관기간(30일/복구 7일)·문의 방법·국외 처리 정보를 실제 설정과 맞춰 반영합니다.
 

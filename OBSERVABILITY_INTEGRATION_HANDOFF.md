@@ -5,7 +5,7 @@
 - 통합 브랜치: `codex/observability-integration`
 - 포함 커밋: `de501ba Add consented direct GA4 analytics`, `9d84268 Add Supabase operational diagnostics`
 - 코드 커밋은 이미 DB 트랙이 GA4 트랙을 부모로 두고 있어 두 커밋 사이의 Git 충돌은 없습니다.
-- 통합 당시에는 실제 외부 설정을 실행하지 않았습니다. 이후 2026-08-31 Production Supabase migration과 Vercel Production Secret 등록, 앱 배포를 완료했습니다. GA4 측정 ID 등록, 보관 삭제 scheduler, 의도적 실패·복구 검증은 아직 수행하지 않았습니다.
+- 통합 당시에는 실제 외부 설정을 실행하지 않았습니다. 이후 2026-08-31 Production Supabase migration과 Vercel Production Secret 등록, 앱 배포를 완료했습니다. server-role DB 함수의 비식별 test incident는 실패 2회가 한 행으로 병합되고 복구되는 것을 확인한 뒤 삭제했습니다. GA4 측정 ID 등록, 인증 브라우저 전송 종단간 검증, 보관 삭제 scheduler는 아직 수행하지 않았습니다.
 
 ## 확정 정책 초안
 
