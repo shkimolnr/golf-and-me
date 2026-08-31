@@ -1616,7 +1616,15 @@ export default function App() {
         <h1>골프와 나</h1>
         <p className="description">라운드를 간편하게 기록하고<br />내 플레이의 변화를 발견하세요.</p>
         <button className="google-button" type="button" onClick={signInWithGoogle} disabled={!isSupabaseConfigured}>
-          <span className="google-mark">G</span> Google로 계속하기
+          <span className="google-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48" focusable="false">
+              <path fill="#EA4335" d="M24 9.5c3.5 0 6.7 1.2 9.2 3.6l6.9-6.9C35.9 2.4 30.5 0 24 0 14.6 0 6.5 5.4 2.6 13.2l8 6.2C12.4 13.7 17.7 9.5 24 9.5Z" />
+              <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.1 5.5c4.1-3.8 7.2-9.4 7.2-16.4Z" />
+              <path fill="#FBBC05" d="M10.5 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6l-8-6.2C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.9-6.2Z" />
+              <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.1-5.5c-2 1.3-4.5 2.1-8.8 2.1-6.3 0-11.6-4.2-13.5-9.9l-8 6.2C6.5 42.6 14.6 48 24 48Z" />
+            </svg>
+          </span>
+          Google로 계속하기
         </button>
         <p className="legal">계속하면 서비스 이용약관 및 개인정보 처리방침에 동의하게 됩니다.</p>
         {isTestAccessRequestEnabled && (
