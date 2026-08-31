@@ -29,7 +29,7 @@ test('Slack Webhook이 없으면 개인정보를 다른 위치에 저장하지 �
   if (previousWebhook) process.env.SLACK_TEST_ACCESS_WEBHOOK_URL = previousWebhook
 })
 
-test('유효한 신청은 이메일을 Slack plain_text 블록으로 전달한다', async () => {
+test('유효한 신청은 이메일 한 줄만 Slack으로 전달한다', async () => {
   const previousWebhook = process.env.SLACK_TEST_ACCESS_WEBHOOK_URL
   const previousFetch = globalThis.fetch
   process.env.SLACK_TEST_ACCESS_WEBHOOK_URL = 'https://hooks.slack.test/example'
@@ -41,7 +41,7 @@ test('유효한 신청은 이메일을 Slack plain_text 블록으로 전달한�
   const response = responseRecorder()
   await handler({ method: 'POST', body: { email: 'test@example.com', consent: true } }, response)
   assert.equal(response.statusCode, 202)
-  assert.equal(sentPayload.blocks[1].fields[0].text, 'Google 계정\ntest@example.com')
+  assert.deepEqual(sentPayload, { text: 'test@example.com' })
   globalThis.fetch = previousFetch
   if (previousWebhook) process.env.SLACK_TEST_ACCESS_WEBHOOK_URL = previousWebhook
   else delete process.env.SLACK_TEST_ACCESS_WEBHOOK_URL

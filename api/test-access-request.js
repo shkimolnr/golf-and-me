@@ -38,14 +38,7 @@ export default async function handler(request, response) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        text: 'Golf & Me Beta 테스트 계정 신청',
-        blocks: [
-          { type: 'header', text: { type: 'plain_text', text: 'Golf & Me 테스트 계정 신청' } },
-          { type: 'section', fields: [
-            { type: 'plain_text', text: `Google 계정\n${validation.email}` },
-            { type: 'plain_text', text: `접수 시각\n${new Date().toISOString()}` },
-          ] },
-        ],
+        text: validation.email,
       }),
     })
     if (!slackResponse.ok) throw new Error(`Slack responded ${slackResponse.status}`)
