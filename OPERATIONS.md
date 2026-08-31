@@ -40,6 +40,8 @@
 4. Slack 메시지는 `의견 보내기` 제목과 입력 본문만 포함합니다. 이메일, 사용자 UUID, 골프 기록, IP와 기기·브라우저 정보는 포함하지 않습니다.
 5. Production 배포 뒤 실제 로그인 계정에서 테스트 의견 한 건을 보내 Slack 수신과 성공 화면을 확인합니다.
 
+2026-08-31 비공개 `feedback` 채널용 Incoming Webhook을 별도로 생성해 Vercel Production의 `SLACK_FEEDBACK_WEBHOOK_URL`에 Secret으로 등록하고 재배포했습니다. 실제 로그인 계정에서 `연결 테스트입니다`를 전송해 앱 성공 화면과 전용 채널 수신을 모두 확인했습니다. `beta-requests`에는 테스트 계정 신청만, `feedback`에는 회원 의견만 쌓입니다.
+
 ## 3. 저장과 장애 대응
 
 - 라운드와 홀 초안은 기기에 먼저 저장하고 로그인·연결이 준비되면 Supabase에 저장합니다.
