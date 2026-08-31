@@ -42,6 +42,15 @@
 
 2026-08-31 비공개 `feedback` 채널용 Incoming Webhook을 별도로 생성해 Vercel Production의 `SLACK_FEEDBACK_WEBHOOK_URL`에 Secret으로 등록하고 재배포했습니다. 실제 로그인 계정에서 `연결 테스트입니다`를 전송해 앱 성공 화면과 전용 채널 수신을 모두 확인했습니다. `beta-requests`에는 테스트 계정 신청만, `feedback`에는 회원 의견만 쌓입니다.
 
+### GA4 제품 분석과 Supabase 운영 진단 활성화
+
+1. GA4는 GTM 없이 웹 데이터 스트림을 직접 사용합니다. 광고 기능·Google Signals·리마케팅·광고 개인화는 끄고, Development·Preview·Production의 측정 ID와 `VITE_ANALYTICS_ENV`를 분리합니다. Production 측정 ID를 Preview에 넣으면 앱이 초기화하지 않아야 합니다.
+2. Vercel 환경별로 `VITE_GA_MEASUREMENT_ID`, `VITE_ANALYTICS_ENABLED`, `VITE_APP_ENV`, `VITE_ANALYTICS_ENV`를 등록합니다. 실제 ID는 Git에 넣지 않으며, Development는 기본 비활성 상태로 둡니다.
+3. Supabase 진단은 먼저 테스트 프로젝트의 백업·롤백 파일을 확인한 뒤 `202608310002_app_diagnostics.sql`을 적용합니다. Vercel에는 `SUPABASE_SERVICE_ROLE_KEY`만 Secret으로 등록하며, `VITE_` 접두사나 브라우저 번들에 절대 포함하지 않습니다.
+4. Preview에서 분석 미선택 상태의 GA 요청 부재, 허용 뒤 DebugView의 allowlist 이벤트, 철회 뒤 전송 중단을 확인합니다. 이어서 인증된 `/api/diagnostics`의 실패·반복·복구·큐 재전송을 확인하고 DB에 금지 항목이 없는지 점검합니다.
+5. `purge_expired_app_diagnostics()`의 실제 정기 실행은 아직 설정하지 않았습니다. Supabase `pg_cron` 또는 Vercel Cron을 정하기 전까지 Production 진단 수집을 활성화하지 않으며, 30일 원시 기록·복구 후 7일 삭제와 점검 책임을 함께 확정합니다.
+6. GA4 속성 설정, Supabase migration, Vercel Secret, 개인정보처리방침과 Preview 검증이 모두 끝난 뒤에만 사용자가 Production 활성화를 명시적으로 승인합니다.
+
 ## 3. 저장과 장애 대응
 
 - 라운드와 홀 초안은 기기에 먼저 저장하고 로그인·연결이 준비되면 Supabase에 저장합니다.
@@ -85,8 +94,8 @@
 - Supabase DB 백업은 Storage API의 실제 파일 객체를 포함하지 않습니다. 현재 MVP는 Storage 파일을 사용하지 않지만, 사진·첨부 기능을 도입할 때 DB와 파일 백업을 분리해 추가합니다.
 - 사용자가 늘기 전 Pro 자동 일일 백업 또는 PITR 도입 여부를 다시 결정합니다. PITR을 쓰지 않는 동안에는 마지막 수동 백업 이후의 서버 데이터가 손실될 수 있음을 운영 위험으로 남깁니다.
 - 실제 iPhone Safari에서는 로그인, 18홀 기록, 화면 잠금·복귀, 오프라인 입력, 완료와 재로그인을 릴리스별 핵심 점검으로 수행합니다.
-- 로그인 속도는 2026-08-31 모바일 영상 점검에서 앱 복귀 후 약 0.1~0.5초로 현재 단계 통과했습니다. GA4/GTM 활성화 후에는 `session_restored`와 `records_ready`의 `duration_ms`를 모바일 Safari·데스크톱별로 확인하고, Google 계정 선택에 머문 시간은 앱 로딩 시간에서 분리합니다.
-- 분석 활성화 직후에는 `BACKLOG.md`의 `TASK-038 GA4/GTM 활성화 후 로그인 속도 점검 체크리스트`를 수행합니다.
+- 로그인 속도는 2026-08-31 모바일 영상 점검에서 앱 복귀 후 약 0.1~0.5초로 현재 단계 통과했습니다. GA4 직접 연동을 활성화한 뒤에는 `session_restored`와 `records_ready`의 `duration_ms`를 모바일 Safari·데스크톱별로 확인하고, Google 계정 선택에 머문 시간은 앱 로딩 시간에서 분리합니다.
+- 분석·진단 활성화 직후에는 `BACKLOG.md`의 `TASK-038`과 `TASK-047` Preview 점검표를 수행합니다. GA4 제품 분석과 Supabase 운영 진단의 수집 범위·동의 기준을 혼합하지 않습니다.
 
 ## 6. 공개 테스트 전 필수 보완
 
