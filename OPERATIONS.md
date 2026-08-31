@@ -28,9 +28,9 @@
 3. Vercel Production 환경변수 `VITE_TEST_ACCESS_REQUEST_ENABLED=true`를 등록합니다.
 4. 재배포한 뒤 로그인 화면에서 전용 테스트 이메일로 한 번 신청하고 Slack 수신 내용을 확인합니다.
 5. Slack 메시지는 모바일에서 이메일만 바로 복사할 수 있도록 신청 이메일 한 줄만 표시합니다. 접수 시각은 Slack 메시지 시각으로 확인하며 IP·브라우저 정보·Golf & Me 기록은 전송하지 않습니다.
-6. Beta 신청 운영이 끝나면 `VITE_TEST_ACCESS_REQUEST_ENABLED=false`로 바꾸고 재배포합니다.
+6. GCP OAuth 동의 화면의 정식 운영 승인이 완료되어 테스트 사용자 등록이 더는 필요하지 않게 되는 즉시, 같은 배포에서 `VITE_TEST_ACCESS_REQUEST_ENABLED=false`로 전환하고 로그인 화면의 신청 UI와 `/api/test-access-request`를 제거합니다. 이어서 Vercel의 Slack Webhook 환경변수도 삭제하고, 기존 접수 메시지는 개인정보 보관 원칙에 따라 정리합니다.
 
-2026-08-31 Production에 `Golf and Me Beta Requests` 앱과 비공개 `beta-requests` 채널을 연결했습니다. 테스트 신청은 API `202` 응답과 Slack 메시지 수신을 모두 확인했으며 Webhook URL은 Vercel의 Secret 환경변수에만 보관합니다.
+2026-08-31 Production에 `Golf and Me Beta Requests` 앱과 비공개 `beta-requests` 채널을 연결했습니다. 테스트 신청은 API `202` 응답과 Slack 메시지 수신을 모두 확인했으며 Webhook URL은 Vercel의 Secret 환경변수에만 보관합니다. 이 기능은 GCP 정식 운영 승인 전까지만 사용하는 한시 기능입니다.
 
 ## 3. 저장과 장애 대응
 
