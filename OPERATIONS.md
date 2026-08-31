@@ -97,6 +97,14 @@
 - 로그인 속도는 2026-08-31 모바일 영상 점검에서 앱 복귀 후 약 0.1~0.5초로 현재 단계 통과했습니다. GA4 직접 연동을 활성화한 뒤에는 `session_restored`와 `records_ready`의 `duration_ms`를 모바일 Safari·데스크톱별로 확인하고, Google 계정 선택에 머문 시간은 앱 로딩 시간에서 분리합니다.
 - 분석·진단 활성화 직후에는 `BACKLOG.md`의 `TASK-038`과 `TASK-047` Preview 점검표를 수행합니다. GA4 제품 분석과 Supabase 운영 진단의 수집 범위·동의 기준을 혼합하지 않습니다.
 
+### 라운드 요약 스키마 배포 점검
+
+- `202608310003_round_summary_columns.sql`은 기존 `rounds.payload`를 보존한 채 홈 목록용 요약 컬럼과 `rounds_user_status_played_idx`를 추가하는 비파괴 migration입니다.
+- SQL Editor 수동 적용 뒤 요약 컬럼 11개, 인덱스 1개, 기존 라운드 수와 `payload` 보존 여부를 확인합니다. 재실행 가능하도록 migration은 idempotent하게 유지합니다.
+- 앱 배포 뒤에는 작성 중 라운드 복원, 완료 목록 표시, 완료 상세 첫 열람, 새로고침 뒤 상세 재열람, 한 홀 수정 시 해당 라운드 한 건만 저장되는지를 확인합니다.
+- 과거 비거리 세트는 초기 화면에서 내려받지 않더라도 DB에서 삭제하지 않습니다. 최신 세트 표시와 새 세트 저장 후 이전 세트 행 보존을 함께 확인합니다.
+- 수동 적용한 migration을 추후 Supabase CLI 이력 관리로 전환할 때는 실제 스키마를 다시 변경하지 말고 migration history를 먼저 대조합니다.
+
 ## 6. 공개 테스트 전 필수 보완
 
 ### OAuth 콜백 주소 점검
