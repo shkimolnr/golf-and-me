@@ -5,7 +5,7 @@
 - 통합 브랜치: `codex/observability-integration`
 - 포함 커밋: `de501ba Add consented direct GA4 analytics`, `9d84268 Add Supabase operational diagnostics`
 - 코드 커밋은 이미 DB 트랙이 GA4 트랙을 부모로 두고 있어 두 커밋 사이의 Git 충돌은 없습니다.
-- 이 문서와 관리 문서 변경은 실제 GA4·Vercel·Supabase 설정, DB migration, Preview/Production 배포를 실행하지 않습니다.
+- 통합 당시에는 실제 외부 설정을 실행하지 않았습니다. 이후 2026-08-31 Production Supabase migration과 Vercel Production Secret 등록, 앱 배포를 완료했습니다. GA4 측정 ID 등록, 보관 삭제 scheduler, 의도적 실패·복구 검증은 아직 수행하지 않았습니다.
 
 ## 확정 정책 초안
 
@@ -13,7 +13,7 @@
 2. 제품 분석은 GA4 직접 `gtag.js` 연동입니다. 기본값은 OFF이며, 동의 전 스크립트를 로드하지 않고 철회 뒤 이후 이벤트 전송을 멈춥니다.
 3. 운영 오류 진단은 GA4와 분리된 Supabase `app_diagnostics` + 인증된 Vercel API입니다. GA4 거부가 최소 운영 진단을 끄지 않습니다.
 4. 양쪽 모두 이메일·사용자 UUID·Google 토큰·전체 URL·골프 기록·자유 입력·원본 오류·stack을 보내지 않습니다. UUID는 진단 API 인증에서만 일시 확인하고 DB·로그에 저장하지 않습니다.
-5. 운영 진단의 기본 삭제 기준은 원시 기록 30일, 복구 incident 7일입니다. 실제 scheduler·정책 게시 전에는 운영 수집을 활성화하지 않습니다.
+5. 운영 진단의 기본 삭제 기준은 원시 기록 30일, 복구 incident 7일입니다. Production 진단 경로는 배포됐고, 실제 scheduler와 정책 게시가 남아 있습니다.
 
 ## `main` dirty 변경과의 충돌 관리
 
