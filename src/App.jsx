@@ -1967,11 +1967,11 @@ export default function App() {
             {cumulativeStats.roundCount > 0 ? (
               <div className="home-report-grid">
                 <div><strong>{cumulativeStats.averageScore.toFixed(1)}</strong><span>평균 스코어</span></div>
+                <div><strong>{cumulativeStats.bestScore}타</strong><span>베스트 스코어</span></div>
                 <div><strong>{cumulativeStats.roundCount}</strong><span>총 라운드</span></div>
+                <div><strong>{formatPercent(cumulativeStats.firHits, cumulativeStats.firAttempts)}</strong><span>FIR 평균</span></div>
                 <div><strong>{formatPercent(cumulativeStats.girHits, cumulativeStats.girAttempts)}</strong><span>GIR 평균</span></div>
                 <div><strong>{cumulativeStats.averagePutts === null ? '—' : cumulativeStats.averagePutts.toFixed(1)}</strong><span>평균 퍼팅</span></div>
-                <div><strong>{formatPercent(cumulativeStats.firHits, cumulativeStats.firAttempts)}</strong><span>FIR 평균</span></div>
-                <div><strong>{cumulativeStats.bestScore}타</strong><span>베스트 스코어</span></div>
               </div>
             ) : (
               <div className="home-report-empty">
