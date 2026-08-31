@@ -1,3 +1,5 @@
+import { calculateRoundStats } from './roundStats.js'
+
 function roundTimestamp(round) {
   return round?.updatedAt || round?.completedAt || round?.createdAt || ''
 }
@@ -78,6 +80,7 @@ export function resolveOnboardingProfile(localProfile, remoteProfile) {
 
 export function serializeRoundRow(userId, round) {
   const updatedAt = roundTimestamp(round) || '1970-01-01T00:00:00.000Z'
+  const summary = calculateRoundStats(round)
   return {
     id: String(round.id),
     user_id: userId,
@@ -90,6 +93,17 @@ export function serializeRoundRow(userId, round) {
     played_at_local: round.playedAt || null,
     status: round.status === 'completed' ? 'completed' : 'in_progress',
     completed_at: round.completedAt || null,
+    entered_holes: summary.enteredHoles,
+    par_recorded_holes: summary.parRecordedHoles,
+    total_score: summary.enteredHoles ? summary.totalScore : null,
+    score_to_par: summary.toPar,
+    total_putts: summary.puttAttempts ? summary.totalPutts : null,
+    putt_attempts: summary.puttAttempts,
+    fir_hits: summary.firHits,
+    fir_attempts: summary.firAttempts,
+    gir_hits: summary.girHits,
+    gir_attempts: summary.girAttempts,
+    stats_summary: summary,
     payload: round,
     updated_at: updatedAt,
   }
@@ -108,9 +122,29 @@ export async function loadRemoteRounds(client, userId) {
 
 export async function saveRemoteRounds(client, userId, rounds) {
   if (!rounds.length) return
-  const { error } = await client
+  const rows = rounds.map(round => serializeRoundRow(userId, round))
+  let { error } = await client
     .from('rounds')
-    .upsert(rounds.map(round => serializeRoundRow(userId, round)), { onConflict: 'id' })
+    .upsert(rows, { onConflict: 'id' })
+
+  if (error?.code === '42703' || error?.code === 'PGRST204') {
+    const legacyRows = rows.map(({
+      entered_holes: _enteredHoles,
+      par_recorded_holes: _parRecordedHoles,
+      total_score: _totalScore,
+      score_to_par: _scoreToPar,
+      total_putts: _totalPutts,
+      putt_attempts: _puttAttempts,
+      fir_hits: _firHits,
+      fir_attempts: _firAttempts,
+      gir_hits: _girHits,
+      gir_attempts: _girAttempts,
+      stats_summary: _statsSummary,
+      ...legacyRow
+    }) => legacyRow)
+    const legacyResult = await client.from('rounds').upsert(legacyRows, { onConflict: 'id' })
+    error = legacyResult.error
+  }
 
   if (error) throw error
 }

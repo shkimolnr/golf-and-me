@@ -5,6 +5,7 @@ import {
   markRoundsAsRemoteSaved,
   mergeRoundCollections,
   resolveOnboardingProfile,
+  saveRemoteRounds,
   selectRoundsNeedingRemoteSave,
   serializeRoundRow,
   sortRoundsForList,
@@ -59,6 +60,56 @@ test('서버 행은 검색용 필드와 전체 라운드 원본을 함께 저장
   assert.equal(row.status, 'completed')
   assert.equal(row.played_at_local, '2026-08-30T07:12')
   assert.equal(row.payload, round)
+  assert.equal(row.entered_holes, 0)
+  assert.equal(row.total_score, null)
+  assert.deepEqual(row.stats_summary.scoreOutcomes, [])
+})
+
+test('서버 행은 홈 조회용 라운드 요약값을 원본과 함께 저장한다', () => {
+  const row = serializeRoundRow('user-1', {
+    id: 'round-summary', courseName: '테스트', frontCourseName: 'OUT', backCourseName: 'IN',
+    tee: '화이트', distanceUnit: 'M', status: 'completed', updatedAt: '2026-08-30T10:00:00.000Z',
+    holes: [
+      { holeNumber: 1, par: 4, score: 5, officialPutts: 2, fir: false, gir: false },
+      { holeNumber: 2, par: 3, score: 3, officialPutts: 1, fir: null, gir: true },
+    ],
+  })
+
+  assert.equal(row.entered_holes, 2)
+  assert.equal(row.par_recorded_holes, 2)
+  assert.equal(row.total_score, 8)
+  assert.equal(row.score_to_par, 1)
+  assert.equal(row.total_putts, 3)
+  assert.equal(row.putt_attempts, 2)
+  assert.equal(row.fir_hits, 0)
+  assert.equal(row.fir_attempts, 1)
+  assert.equal(row.gir_hits, 1)
+  assert.equal(row.gir_attempts, 2)
+})
+
+test('요약 컬럼 마이그레이션 전 서버에도 기존 라운드 형식으로 저장한다', async () => {
+  const savedRows = []
+  const client = {
+    from() {
+      return {
+        async upsert(rows) {
+          savedRows.push(rows)
+          return { error: savedRows.length === 1 ? { code: 'PGRST204' } : null }
+        },
+      }
+    },
+  }
+
+  await saveRemoteRounds(client, 'user-1', [{
+    id: 'legacy-compatible', courseName: '테스트', frontCourseName: 'OUT', backCourseName: 'IN',
+    tee: '화이트', distanceUnit: 'M', status: 'in_progress', updatedAt: '2026-08-30T10:00:00.000Z', holes: [],
+  }])
+
+  assert.equal(savedRows.length, 2)
+  assert.equal('stats_summary' in savedRows[0][0], true)
+  assert.equal('stats_summary' in savedRows[1][0], false)
+  assert.equal('entered_holes' in savedRows[1][0], false)
+  assert.equal(savedRows[1][0].payload.id, 'legacy-compatible')
 })
 
 test('작성 중 기록은 최근 수정 순으로 모든 기기에서 동일하게 정렬한다', () => {
