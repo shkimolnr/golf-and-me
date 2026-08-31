@@ -115,7 +115,6 @@ export default function App() {
   const [session, setSession] = useState(isPreviewMode ? previewSession : null)
   const [authLoading, setAuthLoading] = useState(isPreviewMode ? false : isSupabaseConfigured)
   const [authError, setAuthError] = useState('')
-  const [testAccessOpen, setTestAccessOpen] = useState(false)
   const [testAccessEmail, setTestAccessEmail] = useState('')
   const [testAccessStatus, setTestAccessStatus] = useState('idle')
   const [testAccessError, setTestAccessError] = useState('')
@@ -1519,28 +1518,27 @@ export default function App() {
         <button className="google-button" type="button" onClick={signInWithGoogle} disabled={!isSupabaseConfigured}>
           <span className="google-mark">G</span> Google로 계속하기
         </button>
+        <p className="legal">계속하면 서비스 이용약관 및 개인정보 처리방침에 동의하게 됩니다.</p>
         {isTestAccessRequestEnabled && (
           <section className="test-access">
-            <button className="test-access-toggle" type="button" aria-expanded={testAccessOpen} onClick={() => { setTestAccessOpen(open => !open); setTestAccessError('') }}>
-              테스트 계정 신청
-            </button>
-            {testAccessOpen && testAccessStatus !== 'sent' && (
+            {testAccessStatus !== 'sent' && (
+              <>
+                <p className="test-access-label">처음 오신 분만!</p>
               <form className="test-access-form" onSubmit={submitTestAccessRequest}>
-                <label>Google 계정 이메일
-                  <input autoFocus type="email" inputMode="email" autoComplete="email" required maxLength="254" placeholder="name@gmail.com" value={testAccessEmail} onChange={event => setTestAccessEmail(event.target.value)} />
+                <label className="test-access-email"><span>Google 계정 이메일</span>
+                  <input type="email" inputMode="email" autoComplete="email" required maxLength="254" placeholder="이메일" value={testAccessEmail} onChange={event => setTestAccessEmail(event.target.value)} />
                 </label>
                 <input hidden type="text" name="website" tabIndex="-1" autoComplete="off" aria-hidden="true" />
-                <p>신청한 이메일은 테스트 계정 등록을 위해 운영자의 비공개 Slack으로 전달됩니다. 가능한 빨리 확인할게요.</p>
                 {testAccessError && <p className="error-message" role="alert">{testAccessError}</p>}
-                <button className="primary" type="submit" disabled={testAccessStatus === 'submitting' || !testAccessEmail.trim()}>{testAccessStatus === 'submitting' ? '전달 중…' : '신청 보내기'}</button>
+                <button type="submit" disabled={testAccessStatus === 'submitting' || !testAccessEmail.trim()}>{testAccessStatus === 'submitting' ? '요청 중…' : '승인 요청'}</button>
               </form>
+              </>
             )}
-            {testAccessStatus === 'sent' && <p className="test-access-success" role="status">신청을 받았어요. 테스트 계정에 추가한 뒤 알려드릴게요.</p>}
+            {testAccessStatus === 'sent' && <p className="test-access-success" role="status">승인 요청을 보냈어요.</p>}
           </section>
         )}
         {!isSupabaseConfigured && <p className="setup-notice" role="status">Google 로그인을 사용하려면 <code>.env</code>에 Supabase 연결 정보를 설정해주세요.</p>}
         {authError && <p className="error-message" role="alert">{authError}</p>}
-        <p className="legal">계속하면 서비스 이용약관 및 개인정보 처리방침에 동의하게 됩니다.</p>
       </main>
     )
   }
