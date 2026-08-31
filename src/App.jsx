@@ -16,7 +16,7 @@ import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMete
 import { loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
 import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from './data/news.js'
-import { measureLoginStage, recordDiagnosticEvent, startLoginMeasurement, trackEvent } from './lib/analytics.js'
+import { hasAnalyticsConsent, measureLoginStage, recordDiagnosticEvent, setAnalyticsConsent, startLoginMeasurement, trackEvent } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { requestTestAccess } from './lib/testAccessRequest.js'
 import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
@@ -135,6 +135,7 @@ export default function App() {
   const [feedbackStatus, setFeedbackStatus] = useState('idle')
   const [feedbackError, setFeedbackError] = useState('')
   const [accountOpen, setAccountOpen] = useState(false)
+  const [analyticsConsent, setAnalyticsConsentState] = useState(() => hasAnalyticsConsent())
   const [accountDeletionOpen, setAccountDeletionOpen] = useState(false)
   const [accountDeletionStatus, setAccountDeletionStatus] = useState('idle')
   const [accountDeletionError, setAccountDeletionError] = useState('')
@@ -204,6 +205,11 @@ export default function App() {
 
   function reportDiagnosticRecovery(stage) {
     recordDiagnosticEvent(resolveDiagnosticFailure(stage), true)
+  }
+
+  function updateAnalyticsConsent(granted) {
+    setAnalyticsConsent(granted)
+    setAnalyticsConsentState(granted)
   }
 
   useEffect(() => {
@@ -757,6 +763,7 @@ export default function App() {
     setClubSetupReturn(null)
     setScreen('home')
     trackEvent('onboarding_step', { step: 3, status: 'complete' })
+    trackEvent('onboarding_complete', { status: 'complete' })
     if (supabase && !isPreviewMode) {
       saveRemoteProfile(supabase, session.user.id, { defaultTee, defaultDistanceUnit }).catch(() => {
         setSyncError('기본 티 설정은 기기에 저장했지만 서버 동기화가 지연되고 있어요.')
@@ -2239,6 +2246,10 @@ export default function App() {
               <span><b className="feedback-menu-icon" aria-hidden="true"><FeedbackIcon /></b><strong>의견 보내기</strong></span>
               <i aria-hidden="true">→</i>
             </button>
+            <label className="analytics-consent-control">
+              <span><strong>서비스 개선 분석 허용</strong><small>GA4로 이용 흐름과 오류 요약을 보내며, 계정·골프 기록은 제외해요.</small></span>
+              <input type="checkbox" checked={analyticsConsent} onChange={event => updateAnalyticsConsent(event.target.checked)} />
+            </label>
             <button className="logout-button" onClick={signOut}>로그아웃</button>
             {!isPreviewMode && <button className="delete-account-link" type="button" onClick={openAccountDeletion}>계정 삭제</button>}
           </section>

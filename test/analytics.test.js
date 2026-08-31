@@ -5,9 +5,12 @@ import { readFile } from 'node:fs/promises'
 const analyticsSource = await readFile(new URL('../src/lib/analytics.js', import.meta.url), 'utf8')
 const appSource = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8')
 
-test('분석 도구는 명시적 활성화와 사용자 동의가 모두 있어야 로드된다', () => {
+test('GA4 직접 분석은 명시적 활성화와 사용자 동의가 모두 있어야 로드된다', () => {
   assert.match(analyticsSource, /VITE_ANALYTICS_ENABLED === 'true'/)
-  assert.match(analyticsSource, /!enabled \|\| !containerId \|\| !hasConsent\(\)/)
+  assert.match(analyticsSource, /VITE_GA_MEASUREMENT_ID/)
+  assert.match(analyticsSource, /!enabled \|\| !measurementId \|\| !hasConsent\(\)/)
+  assert.match(analyticsSource, /gtag\/js\?id=/)
+  assert.doesNotMatch(analyticsSource, /gtm\.js/)
 })
 
 test('분석 이벤트 파라미터는 비식별 허용 목록만 전송한다', () => {
@@ -29,4 +32,6 @@ test('로그인과 핵심 라운드 흐름을 단계별로 계측한다', () => 
   assert.match(appSource, /trackEvent\('hole_draft_save'/)
   assert.match(appSource, /trackEvent\('hole_complete'/)
   assert.match(appSource, /trackEvent\('round_complete'/)
+  assert.match(appSource, /trackEvent\('onboarding_complete'/)
+  assert.match(appSource, /서비스 개선 분석 허용/)
 })

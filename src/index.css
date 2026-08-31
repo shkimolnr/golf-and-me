@@ -158,6 +158,11 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .account-menu-button .news-menu-label { overflow: visible; }
 .account-menu-button i { color: #059669; font-style: normal; }
 .account-menu-button + .account-menu-button { margin-top: -5px; }
+.analytics-consent-control { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: -5px 0 16px; padding: 14px 15px; border: 1px solid #dfe7e3; border-radius: 12px; color: #2d3748; background: #f7fafc; cursor: pointer; }
+.analytics-consent-control span { min-width: 0; }
+.analytics-consent-control strong, .analytics-consent-control small { display: block; }
+.analytics-consent-control small { margin-top: 4px; color: #6b7280; font-size: 12px; line-height: 1.4; }
+.analytics-consent-control input { flex: 0 0 auto; width: 20px; height: 20px; accent-color: #059669; }
 .news-page { padding-top: 2px; }
 .news-list { display: grid; gap: 10px; margin-top: 18px; }
 .news-item { padding: 17px 18px; border-radius: 15px; background: #f7fafc; }

@@ -1,6 +1,6 @@
 const allowedEvents = new Set([
   'login_start', 'login_success', 'login_fail',
-  'onboarding_step', 'club_setup_complete',
+  'onboarding_step', 'onboarding_complete', 'club_setup_complete',
   'round_create', 'hole_start', 'hole_draft_save', 'hole_complete',
   'round_milestone', 'round_complete', 'round_result_view',
   'save_delayed', 'save_recovered', 'account_delete_complete', 'diagnostic_failure', 'diagnostic_recovery',
@@ -20,6 +20,10 @@ function hasConsent() {
   return window.localStorage.getItem(consentKey) === 'granted'
 }
 
+export function hasAnalyticsConsent() {
+  return hasConsent()
+}
+
 function safeParameters(parameters = {}) {
   return Object.fromEntries(Object.entries(parameters).filter(([key, value]) => (
     allowedParameters.has(key)
@@ -28,27 +32,31 @@ function safeParameters(parameters = {}) {
 }
 
 export function initializeAnalytics() {
-  const containerId = import.meta.env.VITE_GTM_ID
+  const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID
   const enabled = import.meta.env.VITE_ANALYTICS_ENABLED === 'true'
-  if (!enabled || !containerId || !hasConsent() || analyticsReady) return false
+  if (!enabled || !measurementId || !hasConsent() || analyticsReady) return false
   window.dataLayer = window.dataLayer || []
-  window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' })
+  window.gtag = window.gtag || function gtag() { window.dataLayer.push(arguments) }
   const script = document.createElement('script')
   script.async = true
-  script.src = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(containerId)}`
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`
   document.head.appendChild(script)
+  window.gtag('js', new Date())
+  window.gtag('config', measurementId, { send_page_view: false })
   analyticsReady = true
   return true
 }
 
 export function setAnalyticsConsent(granted) {
   window.localStorage.setItem(consentKey, granted ? 'granted' : 'denied')
+  const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID
+  if (measurementId) window[`ga-disable-${measurementId}`] = !granted
   if (granted) initializeAnalytics()
 }
 
 export function trackEvent(event, parameters = {}) {
   if (!allowedEvents.has(event) || !analyticsReady) return false
-  window.dataLayer.push({ event, ...safeParameters(parameters) })
+  window.gtag('event', event, safeParameters(parameters))
   return true
 }
 
