@@ -2,6 +2,26 @@ function roundTimestamp(round) {
   return round?.updatedAt || round?.completedAt || round?.createdAt || ''
 }
 
+export function createRemoteRoundVersionMap(rounds = []) {
+  return new Map(rounds.filter(round => round?.id).map(round => [String(round.id), roundTimestamp(round)]))
+}
+
+export function selectRoundsNeedingRemoteSave(rounds = [], remoteVersions = new Map()) {
+  return rounds.filter(round => round?.id && remoteVersions.get(String(round.id)) !== roundTimestamp(round))
+}
+
+export function markRoundsAsRemoteSaved(remoteVersions, rounds = []) {
+  const nextVersions = new Map(remoteVersions)
+  rounds.forEach(round => {
+    if (!round?.id) return
+    const id = String(round.id)
+    const nextTimestamp = roundTimestamp(round)
+    const currentTimestamp = nextVersions.get(id) || ''
+    if (nextTimestamp >= currentTimestamp) nextVersions.set(id, nextTimestamp)
+  })
+  return nextVersions
+}
+
 function timestampValue(value) {
   const parsed = Date.parse(value || '')
   return Number.isFinite(parsed) ? parsed : 0

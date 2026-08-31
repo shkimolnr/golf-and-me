@@ -1,6 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mergeRoundCollections, resolveOnboardingProfile, serializeRoundRow, sortRoundsForList } from '../src/lib/roundRepository.js'
+import {
+  createRemoteRoundVersionMap,
+  markRoundsAsRemoteSaved,
+  mergeRoundCollections,
+  resolveOnboardingProfile,
+  selectRoundsNeedingRemoteSave,
+  serializeRoundRow,
+  sortRoundsForList,
+} from '../src/lib/roundRepository.js'
 
 test('같은 라운드는 가장 최근 수정본을 사용하고 양쪽의 고유 기록을 보존한다', () => {
   const local = [
@@ -15,6 +23,27 @@ test('같은 라운드는 가장 최근 수정본을 사용하고 양쪽의 고�
   const merged = mergeRoundCollections(local, remote)
   assert.deepEqual(merged.map(round => round.id), ['local-only', 'shared', 'remote-only'])
   assert.equal(merged.find(round => round.id === 'shared').courseName, '서버')
+})
+
+test('서버와 수정 시각이 다른 라운드만 저장 대상으로 고른다', () => {
+  const remote = [
+    { id: 'same', updatedAt: '2026-08-30T01:00:00.000Z' },
+    { id: 'changed', updatedAt: '2026-08-30T01:00:00.000Z' },
+  ]
+  const local = [
+    { id: 'same', updatedAt: '2026-08-30T01:00:00.000Z' },
+    { id: 'changed', updatedAt: '2026-08-30T02:00:00.000Z' },
+    { id: 'new', updatedAt: '2026-08-30T03:00:00.000Z' },
+  ]
+
+  const versions = createRemoteRoundVersionMap(remote)
+  assert.deepEqual(selectRoundsNeedingRemoteSave(local, versions).map(round => round.id), ['changed', 'new'])
+})
+
+test('늦게 끝난 과거 저장 요청이 최신 동기화 시각을 되돌리지 않는다', () => {
+  const latest = markRoundsAsRemoteSaved(new Map(), [{ id: 'round-1', updatedAt: '2026-08-30T03:00:00.000Z' }])
+  const afterOlderRequest = markRoundsAsRemoteSaved(latest, [{ id: 'round-1', updatedAt: '2026-08-30T02:00:00.000Z' }])
+  assert.equal(afterOlderRequest.get('round-1'), '2026-08-30T03:00:00.000Z')
 })
 
 test('서버 행은 검색용 필드와 전체 라운드 원본을 함께 저장한다', () => {

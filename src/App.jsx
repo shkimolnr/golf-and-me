@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { isSupabaseConfigured, supabase } from './lib/supabase.js'
-import { deleteRemoteRound, loadRemoteProfile, loadRemoteRounds, mergeRoundCollections, resolveOnboardingProfile, saveRemoteProfile, saveRemoteRounds, sortRoundsForList } from './lib/roundRepository.js'
+import { createRemoteRoundVersionMap, deleteRemoteRound, loadRemoteProfile, loadRemoteRounds, markRoundsAsRemoteSaved, mergeRoundCollections, resolveOnboardingProfile, saveRemoteProfile, saveRemoteRounds, selectRoundsNeedingRemoteSave, sortRoundsForList } from './lib/roundRepository.js'
 import { excludePendingRoundDeletions, loadPendingRoundDeletions, savePendingRoundDeletions } from './lib/pendingRoundDeletions.js'
 import { isRoundStructureLocked, needsRoundStructureChoice } from './lib/roundPolicy.js'
 import { calculateHoleTotals, isRecordedShot, terminalLieForShot, validateHoleCompletion } from './lib/scoring.js'
@@ -196,6 +196,7 @@ export default function App() {
   const hadSyncIssueRef = useRef(false)
   const remoteHydrationRetryAttemptsRef = useRef(0)
   const recordsReadyMeasuredUserIdRef = useRef(null)
+  const remoteRoundVersionsRef = useRef(new Map())
   const clubOnboardingCompletedRef = useRef(false)
   const clubDistanceCanonicalInputsRef = useRef({})
 
@@ -340,6 +341,7 @@ export default function App() {
       setRemoteClubBagHydratedUserId(null)
       remoteHydrationRetryAttemptsRef.current = 0
       recordsReadyMeasuredUserIdRef.current = null
+      remoteRoundVersionsRef.current = new Map()
       setRounds([])
       setActiveRound(null)
       setCourseHistory([])
@@ -354,6 +356,7 @@ export default function App() {
     setRemoteClubBagHydratedUserId(null)
     remoteHydrationRetryAttemptsRef.current = 0
     recordsReadyMeasuredUserIdRef.current = null
+    remoteRoundVersionsRef.current = new Map()
     setRounds([])
     setActiveRound(null)
     setCourseHistory([])
@@ -503,6 +506,7 @@ export default function App() {
           roundsFailed = true
           reportDiagnosticFailure('rounds_load', roundsResult.error)
         } else {
+          remoteRoundVersionsRef.current = createRemoteRoundVersionMap(roundsResult.value)
           setRounds(currentRounds => {
             const mergedRounds = excludePendingRoundDeletions(mergeRoundCollections(currentRounds, roundsResult.value), pendingDeletedRoundIds)
             window.localStorage.setItem(`golf-and-me:rounds:${userId}`, JSON.stringify(mergedRounds))
@@ -593,10 +597,11 @@ export default function App() {
     }
     let retryTimer = null
     const timer = window.setTimeout(async () => {
+      const roundsToSave = selectRoundsNeedingRemoteSave(rounds, remoteRoundVersionsRef.current)
       try {
         const [roundsSaveResult, clubBagSaveResult] = await Promise.all([
           Promise.all([
-            saveRemoteRounds(supabase, session.user.id, rounds),
+            saveRemoteRounds(supabase, session.user.id, roundsToSave),
             ...pendingDeletedRoundIds.map(roundId => deleteRemoteRound(supabase, session.user.id, roundId)),
           ]).then(() => ({ ok: true }), error => ({ error })),
           saveRemoteClubBag(supabase, session.user.id, {
@@ -612,6 +617,8 @@ export default function App() {
         if (clubBagSaveResult.error) reportDiagnosticFailure('club_bag_save', clubBagSaveResult.error)
         if (roundsSaveResult.error) throw roundsSaveResult.error
         if (clubBagSaveResult.error) throw clubBagSaveResult.error
+        remoteRoundVersionsRef.current = markRoundsAsRemoteSaved(remoteRoundVersionsRef.current, roundsToSave)
+        pendingDeletedRoundIds.forEach(roundId => remoteRoundVersionsRef.current.delete(String(roundId)))
         if (pendingDeletedRoundIds.length) {
           savePendingRoundDeletions(window.localStorage, session.user.id, [])
           setPendingDeletedRoundIds([])
