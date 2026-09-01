@@ -2,11 +2,11 @@ import { sanitizedAuthCallbackPath } from './auth.js'
 
 const CONSENT_STORAGE_KEY = 'golf-and-me:analytics-consent'
 const AUTH_STARTED_STORAGE_KEY = 'golf-and-me:auth-started-at'
+const LOGIN_START_PENDING_STORAGE_KEY = 'golf-and-me:login-start-pending'
 const LOGIN_MEASUREMENTS_STORAGE_KEY = 'golf-and-me:login-measurements'
 const SCRIPT_SELECTOR = 'script[data-golf-and-me-ga4]'
 const GA_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]{4,20}$/
 const ANALYTICS_PAGE_LOCATION = 'https://golf-and-me.invalid/'
-const LOGIN_EVENT_TIMEOUT_MS = 200
 
 const EVENT_SCHEMAS = Object.freeze({
   screen_view: { screen_name: ['login', 'onboarding', 'home', 'new_round', 'clubs', 'scorecard', 'hole_detail', 'round_result', 'news', 'feedback'] },
@@ -191,37 +191,6 @@ export function trackEvent(eventName, parameters = {}) {
   return true
 }
 
-function trackEventBeforeNavigation(eventName, parameters = {}) {
-  const currentWindow = browserWindow()
-  if (!EVENT_SCHEMAS[eventName] || !analyticsReady || !activeMeasurementId || !hasAnalyticsConsent() || currentWindow?.[`ga-disable-${activeMeasurementId}`]) return Promise.resolve(false)
-  const safe = safeParameters(eventName, parameters)
-  if (!safe || !currentWindow?.gtag) return Promise.resolve(false)
-
-  return new Promise(resolve => {
-    let settled = false
-    let timeoutId = null
-    function finish() {
-      if (settled) return
-      settled = true
-      if (timeoutId !== null) clearTimeout(timeoutId)
-      resolve(true)
-    }
-
-    timeoutId = setTimeout(finish, LOGIN_EVENT_TIMEOUT_MS)
-    try {
-      currentWindow.gtag('event', eventName, {
-        ...(activeRuntimeEnvironment === 'preview' ? { ...safe, debug_mode: true } : safe),
-        event_callback: finish,
-        event_timeout: LOGIN_EVENT_TIMEOUT_MS,
-      })
-    } catch {
-      clearTimeout(timeoutId)
-      settled = true
-      resolve(false)
-    }
-  })
-}
-
 export function trackScreen(screenName) {
   return trackEvent('screen_view', { screen_name: screenName })
 }
@@ -230,11 +199,30 @@ export function startLoginMeasurement() {
   const startedAt = Date.now()
   try {
     storageFor('sessionStorage')?.setItem(AUTH_STARTED_STORAGE_KEY, String(startedAt))
+    if (hasAnalyticsConsent()) storageFor('sessionStorage')?.setItem(LOGIN_START_PENDING_STORAGE_KEY, 'true')
+    else storageFor('sessionStorage')?.removeItem(LOGIN_START_PENDING_STORAGE_KEY)
     browserWindow()?.performance?.mark?.('golf-and-me:login-start')
   } catch {
     // 성능 측정 저장 실패는 로그인 흐름에 영향을 주지 않는다.
   }
-  return trackEventBeforeNavigation('login_start', { stage: 'oauth_request' })
+}
+
+export function flushPendingLoginStartMeasurement() {
+  const sessionStorage = storageFor('sessionStorage')
+  try {
+    if (sessionStorage?.getItem(LOGIN_START_PENDING_STORAGE_KEY) !== 'true') return false
+  } catch {
+    return false
+  }
+  const tracked = trackEvent('login_start', { stage: 'oauth_request' })
+  if (tracked) {
+    try {
+      sessionStorage?.removeItem(LOGIN_START_PENDING_STORAGE_KEY)
+    } catch {
+      // 중복 방지 상태를 지우지 못해도 로그인 흐름에는 영향을 주지 않는다.
+    }
+  }
+  return tracked
 }
 
 export function measureLoginStage(stage) {
@@ -257,6 +245,7 @@ export function measureLoginStage(stage) {
   } catch {
     // 로컬 성능 이력은 선택적인 보조 정보다.
   }
+  flushPendingLoginStartMeasurement()
   trackEvent('login_success', { stage, duration_ms: durationMs })
   if (stage === 'records_ready') {
     try {
@@ -269,6 +258,7 @@ export function measureLoginStage(stage) {
 }
 
 export function recordLoginFailure(stage) {
+  flushPendingLoginStartMeasurement()
   return trackEvent('login_fail', { stage })
 }
 

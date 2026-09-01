@@ -2,9 +2,12 @@ import test, { afterEach, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import {
+  flushPendingLoginStartMeasurement,
   getAnalyticsConfiguration,
   getAnalyticsConsent,
   initializeAnalytics,
+  measureLoginStage,
+  recordLoginFailure,
   resetAnalyticsForTests,
   setAnalyticsConsent,
   startLoginMeasurement,
@@ -107,32 +110,44 @@ test('화면 전환은 명시적 허용 목록 이벤트로 한 번씩만 보낼
   assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['event', 'screen_view', { screen_name: 'home' }])
 })
 
-test('OAuth 이동 전 login_start 처리 콜백을 기다리되 허용 목록 밖 값은 받지 않는다', async () => {
+test('OAuth 시작은 동의 상태에서만 대기 표시하고 앱 복귀 후 login_start를 한 번 보낸다', () => {
   installBrowser()
   setAnalyticsConsent(true, productionConfig)
 
-  const loginMeasurement = startLoginMeasurement()
-  const [command, eventName, parameters] = Array.from(window.dataLayer.at(-1))
-  assert.equal(command, 'event')
-  assert.equal(eventName, 'login_start')
-  assert.equal(parameters.stage, 'oauth_request')
-  assert.equal(parameters.event_timeout, 200)
-  assert.equal(typeof parameters.event_callback, 'function')
-  assert.deepEqual(Object.keys(parameters).sort(), [
-    'event_callback',
-    'event_timeout',
-    'stage',
-  ])
-
-  parameters.event_callback()
-  assert.equal(await loginMeasurement, true)
-  assert.match(appSource, /await startLoginMeasurement\(\)/)
+  startLoginMeasurement()
+  assert.notEqual(Array.from(window.dataLayer.at(-1))[1], 'login_start')
+  assert.equal(flushPendingLoginStartMeasurement(), true)
+  assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['event', 'login_start', {
+    stage: 'oauth_request',
+  }])
+  assert.equal(flushPendingLoginStartMeasurement(), false)
+  assert.match(appSource, /initializeAnalytics\(\)[\s\S]*flushPendingLoginStartMeasurement\(\)/)
 })
 
-test('분석 미동의 상태의 로그인은 기다리지 않고 계속한다', async () => {
+test('분석 미동의 상태의 로그인은 나중에 허용해도 과거 시작 이벤트를 소급 전송하지 않는다', () => {
   installBrowser()
-  assert.equal(await startLoginMeasurement(), false)
-  assert.equal(window.dataLayer, undefined)
+  startLoginMeasurement()
+  setAnalyticsConsent(true, productionConfig)
+  assert.equal(flushPendingLoginStartMeasurement(), false)
+  assert.notEqual(Array.from(window.dataLayer.at(-1))[1], 'login_start')
+})
+
+test('앱 복귀 후 로그인 성공과 실패는 대기 중인 시작 이벤트 다음에 기록한다', () => {
+  installBrowser()
+  setAnalyticsConsent(true, productionConfig)
+  startLoginMeasurement()
+  measureLoginStage('session_restored')
+  assert.deepEqual(window.dataLayer.slice(-2).map(entry => Array.from(entry).slice(0, 2)), [
+    ['event', 'login_start'],
+    ['event', 'login_success'],
+  ])
+
+  startLoginMeasurement()
+  recordLoginFailure('oauth_callback')
+  assert.deepEqual(window.dataLayer.slice(-2).map(entry => Array.from(entry).slice(0, 2)), [
+    ['event', 'login_start'],
+    ['event', 'login_fail'],
+  ])
 })
 
 test('이벤트별 allowlist는 허용되지 않은 개인정보와 임의 매개변수를 제거한다', () => {
