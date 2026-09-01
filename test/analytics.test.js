@@ -117,11 +117,16 @@ test('OAuth 시작은 동의 상태에서만 대기 표시하고 앱 복귀 후 
   setAnalyticsConsent(true, productionConfig)
 
   startLoginMeasurement()
+  const storedLoginAttempt = JSON.parse(window.sessionStorage.getItem('golf-and-me:auth-started-at'))
+  assert.equal(Number.isFinite(storedLoginAttempt.startedAt), true)
+  assert.equal(storedLoginAttempt.analyticsAllowed, true)
+  assert.equal(storedLoginAttempt.startTracked, false)
   assert.notEqual(Array.from(window.dataLayer.at(-1))[1], 'login_start')
   assert.equal(flushPendingLoginStartMeasurement(), true)
   assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['event', 'login_start', {
     stage: 'oauth_request',
   }])
+  assert.equal(JSON.parse(window.sessionStorage.getItem('golf-and-me:auth-started-at')).startTracked, true)
   assert.equal(flushPendingLoginStartMeasurement(), false)
   assert.match(appSource, /initializeAnalytics\(\)[\s\S]*flushPendingLoginStartMeasurement\(\)/)
 })

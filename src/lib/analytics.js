@@ -2,7 +2,6 @@ import { sanitizedAuthCallbackPath } from './auth.js'
 
 const CONSENT_STORAGE_KEY = 'golf-and-me:analytics-consent'
 const AUTH_STARTED_STORAGE_KEY = 'golf-and-me:auth-started-at'
-const LOGIN_START_PENDING_STORAGE_KEY = 'golf-and-me:login-start-pending'
 const LOGIN_MEASUREMENTS_STORAGE_KEY = 'golf-and-me:login-measurements'
 const SCRIPT_SELECTOR = 'script[data-golf-and-me-ga4]'
 const GA_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]{4,20}$/
@@ -67,6 +66,43 @@ function writeStorage(key, value) {
     storageFor('localStorage')?.setItem(key, value)
   } catch {
     // 분석 선택을 저장하지 못해도 서비스 기능에는 영향을 주지 않는다.
+  }
+}
+
+function readLoginAttempt() {
+  let raw = null
+  try {
+    raw = storageFor('sessionStorage')?.getItem(AUTH_STARTED_STORAGE_KEY) ?? null
+  } catch {
+    return null
+  }
+  if (!raw) return null
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (parsed && Number.isFinite(parsed.startedAt)) {
+      return {
+        startedAt: parsed.startedAt,
+        analyticsAllowed: parsed.analyticsAllowed === true,
+        startTracked: parsed.startTracked === true,
+      }
+    }
+  } catch {
+    // 이전 숫자 형식은 아래 호환 경로에서 읽는다.
+  }
+
+  const legacyStartedAt = Number(raw)
+  return Number.isFinite(legacyStartedAt)
+    ? { startedAt: legacyStartedAt, analyticsAllowed: false, startTracked: false }
+    : null
+}
+
+function writeLoginAttempt(attempt) {
+  try {
+    storageFor('sessionStorage')?.setItem(AUTH_STARTED_STORAGE_KEY, JSON.stringify(attempt))
+    return true
+  } catch {
+    return false
   }
 }
 
@@ -205,9 +241,11 @@ export function trackScreen(screenName) {
 export function startLoginMeasurement() {
   const startedAt = Date.now()
   try {
-    storageFor('sessionStorage')?.setItem(AUTH_STARTED_STORAGE_KEY, String(startedAt))
-    if (hasAnalyticsConsent()) storageFor('sessionStorage')?.setItem(LOGIN_START_PENDING_STORAGE_KEY, 'true')
-    else storageFor('sessionStorage')?.removeItem(LOGIN_START_PENDING_STORAGE_KEY)
+    writeLoginAttempt({
+      startedAt,
+      analyticsAllowed: hasAnalyticsConsent(),
+      startTracked: false,
+    })
     browserWindow()?.performance?.mark?.('golf-and-me:login-start')
   } catch {
     // 성능 측정 저장 실패는 로그인 흐름에 영향을 주지 않는다.
@@ -215,30 +253,15 @@ export function startLoginMeasurement() {
 }
 
 export function flushPendingLoginStartMeasurement() {
-  const sessionStorage = storageFor('sessionStorage')
-  try {
-    if (sessionStorage?.getItem(LOGIN_START_PENDING_STORAGE_KEY) !== 'true') return false
-  } catch {
-    return false
-  }
+  const attempt = readLoginAttempt()
+  if (!attempt?.analyticsAllowed || attempt.startTracked) return false
   const tracked = trackEvent('login_start', { stage: 'oauth_request' })
-  if (tracked) {
-    try {
-      sessionStorage?.removeItem(LOGIN_START_PENDING_STORAGE_KEY)
-    } catch {
-      // 중복 방지 상태를 지우지 못해도 로그인 흐름에는 영향을 주지 않는다.
-    }
-  }
+  if (tracked) writeLoginAttempt({ ...attempt, startTracked: true })
   return tracked
 }
 
 export function measureLoginStage(stage) {
-  let startedAt = Number.NaN
-  try {
-    startedAt = Number(storageFor('sessionStorage')?.getItem(AUTH_STARTED_STORAGE_KEY))
-  } catch {
-    // 아래에서 측정 없이 종료한다.
-  }
+  const startedAt = readLoginAttempt()?.startedAt ?? Number.NaN
   if (!Number.isFinite(startedAt)) return null
   const durationMs = Math.max(0, Date.now() - startedAt)
   try {
