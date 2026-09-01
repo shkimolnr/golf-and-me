@@ -157,6 +157,7 @@ export function initializeAnalytics(config) {
     allow_google_signals: false,
     allow_ad_personalization_signals: false,
     page_referrer: '',
+    ...(resolved.runtimeEnvironment === 'preview' ? { debug_mode: true } : {}),
   })
   analyticsReady = true
   activeMeasurementId = resolved.measurementId

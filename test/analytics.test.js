@@ -139,6 +139,23 @@ test('Preview 환경은 Production 측정 ID를 초기화하지 않는다', () =
   assert.equal(scripts.length, 0)
 })
 
+test('Preview 전용 측정은 DebugView 검증 표식을 추가한다', () => {
+  installBrowser()
+  const previewConfig = {
+    ...productionConfig,
+    targetEnvironment: 'preview',
+    runtimeEnvironment: 'preview',
+  }
+  setAnalyticsConsent(true, previewConfig)
+  assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['config', 'G-TEST1234', {
+    send_page_view: false,
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false,
+    page_referrer: '',
+    debug_mode: true,
+  }])
+})
+
 test('측정 ID가 없거나 비활성화여도 앱 동작을 막지 않는다', () => {
   const scripts = installBrowser()
   const disabledConfig = { ...productionConfig, enabled: false, measurementId: '' }

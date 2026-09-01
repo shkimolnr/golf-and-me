@@ -59,7 +59,9 @@ Google Signals, advertising features, remarketing, and ad personalization are
 not enabled by the app configuration.
 
 Local consent, duplicate-event, and OAuth URL privacy checks have passed. The
-remaining `TASK-038` work is to verify the deployed Preview with the real
+Preview configuration adds GA4 `debug_mode` only in the Preview environment so
+the real stream can be inspected in DebugView without changing Production.
+The remaining `TASK-038` work is to verify the deployed Preview with the real
 measurement ID in GA4 DebugView, separately from operational diagnostics.
 
 ## Documentation integration requested from the control tower
