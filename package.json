@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test",
+    "test:db-catalog": "node scripts/compareDbCatalogSnapshot.mjs",
     "test:db-integration": "node scripts/verifyRoundSummarySqlParity.mjs"
   },
   "dependencies": {
