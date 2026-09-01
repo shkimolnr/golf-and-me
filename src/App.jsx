@@ -16,7 +16,7 @@ import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMete
 import { clubBagSyncSignature, loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
 import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from './data/news.js'
-import { flushPendingLoginStartMeasurement, getAnalyticsConsent, initializeAnalytics, measureLoginStage, recordLoginFailure, setAnalyticsConsent, startLoginMeasurement, trackEvent, trackScreen } from './lib/analytics.js'
+import { flushPendingLoginMeasurements, getAnalyticsConsent, initializeAnalytics, measureLoginStage, recordLoginFailure, setAnalyticsConsent, startLoginMeasurement, trackEvent, trackScreen } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { requestTestAccess } from './lib/testAccessRequest.js'
 import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
@@ -280,7 +280,7 @@ export default function App() {
   useEffect(() => {
     if (analyticsConsent === 'granted' && analyticsAddressReady) {
       initializeAnalytics()
-      flushPendingLoginStartMeasurement()
+      flushPendingLoginMeasurements()
     }
   }, [analyticsConsent, analyticsAddressReady])
 

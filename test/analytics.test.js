@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import {
   analyticsEventNames,
+  flushPendingLoginMeasurements,
   flushPendingLoginStartMeasurement,
   ga4AutomaticEventNames,
   getAnalyticsConfiguration,
@@ -36,11 +37,11 @@ function createStorage() {
   }
 }
 
-function installBrowser(storage = createStorage(), href = 'https://golf-and-me.vercel.app/') {
+function installBrowser(storage = createStorage(), href = 'https://golf-and-me.vercel.app/', sessionStorage = createStorage()) {
   const scripts = []
   global.window = {
     localStorage: storage,
-    sessionStorage: createStorage(),
+    sessionStorage,
     performance: { mark() {} },
     location: new URL(href),
   }
@@ -121,6 +122,7 @@ test('OAuth 시작은 동의 상태에서만 대기 표시하고 앱 복귀 후 
   assert.equal(Number.isFinite(storedLoginAttempt.startedAt), true)
   assert.equal(storedLoginAttempt.analyticsAllowed, true)
   assert.equal(storedLoginAttempt.startTracked, false)
+  assert.deepEqual(storedLoginAttempt.pendingSuccesses, [])
   assert.notEqual(Array.from(window.dataLayer.at(-1))[1], 'auth_attempt')
   assert.equal(flushPendingLoginStartMeasurement(), true)
   assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['event', 'auth_attempt', {
@@ -128,7 +130,7 @@ test('OAuth 시작은 동의 상태에서만 대기 표시하고 앱 복귀 후 
   }])
   assert.equal(JSON.parse(window.sessionStorage.getItem('golf-and-me:auth-started-at')).startTracked, true)
   assert.equal(flushPendingLoginStartMeasurement(), false)
-  assert.match(appSource, /initializeAnalytics\(\)[\s\S]*flushPendingLoginStartMeasurement\(\)/)
+  assert.match(appSource, /initializeAnalytics\(\)[\s\S]*flushPendingLoginMeasurements\(\)/)
 })
 
 test('분석 미동의 상태의 로그인은 나중에 허용해도 과거 시작 이벤트를 소급 전송하지 않는다', () => {
@@ -154,6 +156,50 @@ test('앱 복귀 후 로그인 성공과 실패는 대기 중인 시작 이벤�
   assert.deepEqual(window.dataLayer.slice(-2).map(entry => Array.from(entry).slice(0, 2)), [
     ['event', 'auth_attempt'],
     ['event', 'login_fail'],
+  ])
+})
+
+test('GA 초기화 전 성공 단계는 안전한 값만 대기시켜 로그인 순서대로 한 번씩 전송한다', () => {
+  const storage = createStorage()
+  const sessionStorage = createStorage()
+  installBrowser(storage, 'https://golf-and-me.vercel.app/', sessionStorage)
+  setAnalyticsConsent(true, productionConfig)
+  startLoginMeasurement()
+
+  resetAnalyticsForTests()
+  delete global.window
+  delete global.document
+  installBrowser(storage, 'https://golf-and-me.vercel.app/', sessionStorage)
+
+  assert.equal(measureLoginStage('session_restored') >= 0, true)
+  assert.equal(window.dataLayer, undefined)
+  assert.deepEqual(JSON.parse(sessionStorage.getItem('golf-and-me:auth-started-at')).pendingSuccesses.map(item => item.stage), [
+    'session_restored',
+  ])
+
+  assert.equal(initializeAnalytics(productionConfig), true)
+  assert.equal(flushPendingLoginMeasurements(), true)
+  assert.deepEqual(window.dataLayer.slice(-2).map(entry => [
+    Array.from(entry)[1],
+    Array.from(entry)[2]?.stage,
+  ]), [
+    ['auth_attempt', 'oauth_request'],
+    ['login_success', 'session_restored'],
+  ])
+  assert.equal(flushPendingLoginMeasurements(), false)
+
+  assert.equal(measureLoginStage('records_ready') >= 0, true)
+  assert.equal(Array.from(window.dataLayer.at(-1))[1], 'login_success')
+  assert.equal(Array.from(window.dataLayer.at(-1))[2].stage, 'records_ready')
+  assert.equal(sessionStorage.getItem('golf-and-me:auth-started-at'), null)
+  assert.equal(flushPendingLoginMeasurements(), false)
+  assert.deepEqual(window.dataLayer.filter(entry => Array.from(entry)[0] === 'event').map(entry => [
+    Array.from(entry)[1],
+    Array.from(entry)[2]?.stage,
+  ]), [
+    ['auth_attempt', 'oauth_request'],
+    ['login_success', 'session_restored'],
+    ['login_success', 'records_ready'],
   ])
 })
 

@@ -6,6 +6,7 @@ const LOGIN_MEASUREMENTS_STORAGE_KEY = 'golf-and-me:login-measurements'
 const SCRIPT_SELECTOR = 'script[data-golf-and-me-ga4]'
 const GA_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]{4,20}$/
 const ANALYTICS_PAGE_LOCATION = 'https://golf-and-me.invalid/'
+const LOGIN_SUCCESS_STAGES = Object.freeze(['session_restored', 'records_ready'])
 
 // Google 태그가 동의 후 자체 생성하는 기본 이벤트다. 앱에서는 이 이름을 직접 전송하지 않는다.
 export const ga4AutomaticEventNames = Object.freeze([
@@ -81,10 +82,19 @@ function readLoginAttempt() {
   try {
     const parsed = JSON.parse(raw)
     if (parsed && Number.isFinite(parsed.startedAt)) {
+      const pendingSuccesses = Array.isArray(parsed.pendingSuccesses)
+        ? LOGIN_SUCCESS_STAGES.flatMap(stage => {
+          const pending = parsed.pendingSuccesses.find(item => item?.stage === stage)
+          return pending && Number.isInteger(pending.durationMs) && pending.durationMs >= 0 && pending.durationMs <= 86_400_000
+            ? [{ stage, durationMs: pending.durationMs }]
+            : []
+        })
+        : []
       return {
         startedAt: parsed.startedAt,
         analyticsAllowed: parsed.analyticsAllowed === true,
         startTracked: parsed.startTracked === true,
+        pendingSuccesses,
       }
     }
   } catch {
@@ -93,7 +103,7 @@ function readLoginAttempt() {
 
   const legacyStartedAt = Number(raw)
   return Number.isFinite(legacyStartedAt)
-    ? { startedAt: legacyStartedAt, analyticsAllowed: false, startTracked: false }
+    ? { startedAt: legacyStartedAt, analyticsAllowed: false, startTracked: false, pendingSuccesses: [] }
     : null
 }
 
@@ -245,6 +255,7 @@ export function startLoginMeasurement() {
       startedAt,
       analyticsAllowed: hasAnalyticsConsent(),
       startTracked: false,
+      pendingSuccesses: [],
     })
     browserWindow()?.performance?.mark?.('golf-and-me:login-start')
   } catch {
@@ -260,10 +271,32 @@ export function flushPendingLoginStartMeasurement() {
   return tracked
 }
 
+export function flushPendingLoginMeasurements() {
+  let trackedAny = flushPendingLoginStartMeasurement()
+  let attempt = readLoginAttempt()
+  if (!attempt?.analyticsAllowed || !attempt.startTracked) return trackedAny
+
+  for (const stage of LOGIN_SUCCESS_STAGES) {
+    const pending = attempt.pendingSuccesses.find(item => item.stage === stage)
+    if (!pending) continue
+    const tracked = trackEvent('login_success', { stage, duration_ms: pending.durationMs })
+    if (!tracked) break
+    trackedAny = true
+    attempt = {
+      ...attempt,
+      pendingSuccesses: attempt.pendingSuccesses.filter(item => item.stage !== stage),
+    }
+    writeLoginAttempt(attempt)
+  }
+  return trackedAny
+}
+
 export function measureLoginStage(stage) {
-  const startedAt = readLoginAttempt()?.startedAt ?? Number.NaN
+  if (!LOGIN_SUCCESS_STAGES.includes(stage)) return null
+  const attempt = readLoginAttempt()
+  const startedAt = attempt?.startedAt ?? Number.NaN
   if (!Number.isFinite(startedAt)) return null
-  const durationMs = Math.max(0, Date.now() - startedAt)
+  const durationMs = Math.min(86_400_000, Math.max(0, Math.round(Date.now() - startedAt)))
   try {
     browserWindow()?.performance?.mark?.(`golf-and-me:login-${stage}`)
     const stored = JSON.parse(readStorage(LOGIN_MEASUREMENTS_STORAGE_KEY) || '[]')
@@ -275,11 +308,24 @@ export function measureLoginStage(stage) {
   } catch {
     // 로컬 성능 이력은 선택적인 보조 정보다.
   }
-  flushPendingLoginStartMeasurement()
-  trackEvent('login_success', { stage, duration_ms: durationMs })
+  if (attempt.analyticsAllowed) {
+    writeLoginAttempt({
+      ...attempt,
+      pendingSuccesses: [
+        ...attempt.pendingSuccesses.filter(item => item.stage !== stage),
+        { stage, durationMs },
+      ],
+    })
+  }
+  flushPendingLoginMeasurements()
   if (stage === 'records_ready') {
     try {
-      storageFor('sessionStorage')?.removeItem(AUTH_STARTED_STORAGE_KEY)
+      const remainingAttempt = readLoginAttempt()
+      if (!attempt.analyticsAllowed
+        || !hasAnalyticsConsent()
+        || (remainingAttempt?.startTracked && remainingAttempt.pendingSuccesses.length === 0)) {
+        storageFor('sessionStorage')?.removeItem(AUTH_STARTED_STORAGE_KEY)
+      }
     } catch {
       // 로그인 흐름에는 영향 없음.
     }
