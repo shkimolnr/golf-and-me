@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import {
   analyticsEventNames,
+  ga4AutomaticEventNames,
   getAnalyticsConfiguration,
   getAnalyticsConsent,
   initializeAnalytics,
@@ -162,6 +163,18 @@ test('모든 제품 분석 이벤트는 정의된 매개변수만 보내고 필�
     const invalidParameters = { ...parameters }
     delete invalidParameters[Object.keys(parameters)[0]]
     assert.equal(trackEvent(eventName, invalidParameters), false, `${eventName} should reject a missing required parameter`)
+  }
+})
+
+test('GA4 필수 자동 이벤트는 앱 직접 전송 allowlist와 분리한다', () => {
+  assert.deepEqual([...ga4AutomaticEventNames], [
+    'first_visit',
+    'session_start',
+    'user_engagement',
+  ])
+  for (const eventName of ga4AutomaticEventNames) {
+    assert.equal(analyticsEventNames.includes(eventName), false)
+    assert.doesNotMatch(appSource, new RegExp(`trackEvent\\('${eventName}'`))
   }
 })
 

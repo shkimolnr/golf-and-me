@@ -7,6 +7,13 @@ const SCRIPT_SELECTOR = 'script[data-golf-and-me-ga4]'
 const GA_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]{4,20}$/
 const ANALYTICS_PAGE_LOCATION = 'https://golf-and-me.invalid/'
 
+// Google 태그가 동의 후 자체 생성하는 기본 이벤트다. 앱에서는 이 이름을 직접 전송하지 않는다.
+export const ga4AutomaticEventNames = Object.freeze([
+  'first_visit',
+  'session_start',
+  'user_engagement',
+])
+
 const EVENT_SCHEMAS = Object.freeze({
   screen_view: { screen_name: ['login', 'onboarding', 'home', 'new_round', 'clubs', 'scorecard', 'hole_detail', 'round_result', 'news', 'feedback'] },
   login_start: { stage: ['oauth_request'] },
