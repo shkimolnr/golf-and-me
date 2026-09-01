@@ -39,7 +39,7 @@ Production: 미접속·미변경
 | 로컬 migration | Preview 상태 | Production 상태 |
 |---|---|---|
 | `202609010002_derived_data_integrity.sql` | **미적용 — 읽기 전용 preflight READY, 별도 적용 승인 필요** | 미적용 유지 |
-| `202609010003_round_summary_sync.sql` | **미적용 — 데이터 사전조건 통과, 002 검증 후 적용 후보** | 미적용 유지 |
+| `202609010003_round_summary_sync.sql` | **미적용 — 읽기 전용 preflight BLOCKED, 002 선행 적용 전 정상 중단** | 미적용 유지 |
 | `202609010004_runtime_table_least_privilege.sql` | **적용 완료 — 위험 권한 63→0, 필수 CRUD/RPC 보존, 앱 스모크 정상** | 미적용 유지 |
 
 002·003은 로컬 PostgreSQL에서 전체 적용·rollback·재적용과 검증 쿼리를 통과했지만,
@@ -65,6 +65,28 @@ Preview 적용은 이 문서의 사전확인과 명시적 승인을 모두 충�
 `117d20b5e9c660b31d6a8fefcd8354da`, PostgreSQL은 17.6(`170006`)으로 확인했습니다.
 이 결과는 현재 Preview가 002 검토를 계속할 수 있다는 뜻일 뿐이며, **002 적용 승인이나 실행을
 의미하지 않습니다.**
+
+## 003 적용 전 읽기 전용 gate 결과
+
+같은 날 `Golf&Me Preview`에서
+`supabase/verification/202609010003_round_summary_sync_preflight.sql`을 READ ONLY로 실행했습니다.
+
+| 항목 | 결과 |
+|---|---:|
+| gateStatus | **BLOCKED** |
+| 002 선행 unique index 누락 | 3 |
+| 002 선행 composite FK 누락 | 3 |
+| 002 이후 함수 baseline 불일치 | 1 |
+| authenticated 자식 테이블 DML 미차단 | 6 |
+| 현재 summary 컬럼·CHECK 불일치 | 0 |
+| payload 형태·smallint 변환 위험 | 0 |
+| 003 대상 함수·trigger 충돌 | 0 |
+| 요약 cache backfill 대상 | 0 |
+
+현재 002가 미적용이므로 이 `BLOCKED`는 예상된 안전 중단입니다. 기존 summary 컬럼 11개와 CHECK
+7개는 정확히 일치했고, payload·summary 불일치 집계도 0이었습니다. 003 대상 함수 2개와 trigger는
+모두 `absent_expected`였습니다. **002를 별도 승인·적용·검증하기 전에는 003을 다시 검토하거나
+실행하지 않습니다.**
 
 ## Preview 읽기 전용 데이터 감사 결과
 

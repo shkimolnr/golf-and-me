@@ -87,3 +87,13 @@ payload 원문, summary 원문을 반환하지 않습니다.
 - invalid holes container 또는 unsafe smallint cast 집계가 1 이상
 
 이 gate는 003 적용 자체나 Preview·Production 적용 승인이 아닙니다.
+
+## 2026-09-01 Preview 실제 판정
+
+컨트롤타워가 `Golf&Me Preview`에서 이 SQL을 READ ONLY로 실행한 결과는 `BLOCKED`였습니다.
+이는 현재 002가 미적용이라 unique index 3개·composite FK 3개·변경된 sync 함수·authenticated
+자식 테이블 DML 차단이 아직 없기 때문이며 예상된 결과입니다.
+
+동시에 summary 컬럼·CHECK, payload 안전성, 기존 cache 정합성은 모두 통과했고 003 대상 함수·trigger
+충돌도 없었습니다. 002 적용과 사후 검증이 별도 승인으로 완료되기 전에는 003 검토를 재개하지
+않습니다.
