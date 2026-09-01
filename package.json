@@ -11,7 +11,8 @@
     "test:db-catalog": "node scripts/compareDbCatalogSnapshot.mjs",
     "test:db-integrity-preflight": "node scripts/verifyDerivedIntegrityPreflight.mjs",
     "test:db-integration": "node scripts/verifyRoundSummarySqlParity.mjs",
-    "test:db-privileges": "node scripts/verifyRuntimeTablePrivileges.mjs"
+    "test:db-privileges": "node scripts/verifyRuntimeTablePrivileges.mjs",
+    "test:db-summary-preflight": "node scripts/verifyRoundSummaryPreflight.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
