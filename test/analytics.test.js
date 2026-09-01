@@ -2,6 +2,7 @@ import test, { afterEach, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import {
+  analyticsEventNames,
   getAnalyticsConfiguration,
   getAnalyticsConsent,
   initializeAnalytics,
@@ -121,6 +122,47 @@ test('이벤트별 allowlist는 허용되지 않은 개인정보와 임의 매�
     has_course_data: false,
   }])
   assert.equal(trackEvent('diagnostic_failure', { stage: 'oauth' }), false)
+})
+
+test('모든 제품 분석 이벤트는 정의된 매개변수만 보내고 필수값이 틀리면 거부한다', () => {
+  const validEvents = {
+    screen_view: { screen_name: 'home' },
+    login_start: { stage: 'oauth_request' },
+    login_success: { stage: 'records_ready', duration_ms: 250 },
+    login_fail: { stage: 'oauth_callback' },
+    onboarding_step: { step: 2, status: 'complete' },
+    onboarding_complete: { status: 'complete' },
+    club_setup_complete: { status: 'saved', source: 'account' },
+    round_create: { is_manual_course: true, has_course_data: false },
+    hole_start: { completed_holes: 0 },
+    hole_draft_save: { completed_holes: 2 },
+    hole_complete: { completed_holes: 3 },
+    round_milestone: { milestone: 9, completed_holes: 9 },
+    round_complete: { completed_holes: 18, duration_ms: 3_600_000 },
+    round_result_view: { completed_holes: 18 },
+    save_delayed: { stage: 'remote_save', online: false },
+    save_recovered: { stage: 'remote_save', online: true },
+    account_delete_complete: { status: 'success' },
+  }
+
+  assert.deepEqual([...analyticsEventNames].sort(), Object.keys(validEvents).sort())
+  installBrowser()
+  setAnalyticsConsent(true, productionConfig)
+
+  for (const [eventName, parameters] of Object.entries(validEvents)) {
+    assert.equal(trackEvent(eventName, {
+      ...parameters,
+      email: 'private@example.com',
+      user_id: 'private-user-id',
+      course_name: '비공개 골프장',
+      notes: '자유 입력',
+    }), true, `${eventName} should accept its valid allowlisted payload`)
+    assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['event', eventName, parameters])
+
+    const invalidParameters = { ...parameters }
+    delete invalidParameters[Object.keys(parameters)[0]]
+    assert.equal(trackEvent(eventName, invalidParameters), false, `${eventName} should reject a missing required parameter`)
+  }
 })
 
 test('분석 철회 직후부터 이벤트 전송을 중단하고 선택은 기기에 저장한다', () => {
