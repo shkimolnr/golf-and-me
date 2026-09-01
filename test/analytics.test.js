@@ -285,8 +285,10 @@ test('온보딩 전 선택과 계정 설정 변경 UI가 있으며 제품 흐름
 
 test('제품 이벤트는 재시도와 완료 기록 수정에서 중복 집계되지 않는다', () => {
   assert.match(appSource, /completedOnboardingStepsRef\.current\.has\(step\)/)
+  assert.match(appSource, /startedHoleAnalyticsRef\.current\.has\(holeStartKey\)/)
+  assert.match(appSource, /if \(tracked\) startedHoleAnalyticsRef\.current\.add\(holeStartKey\)/)
   assert.match(appSource, /analyticsSyncIssueStagesRef\.current\.has\(stage\)/)
   assert.match(appSource, /trackSaveDelayed\('remote_load'/)
-  assert.match(appSource, /if \(!completedHole\) trackEvent\('hole_start'/)
+  assert.match(appSource, /if \(!completedHole\) \{[\s\S]*trackEvent\('hole_start'/)
   assert.match(appSource, /if \(!holeWasCompleted\) \{[\s\S]*trackEvent\('hole_complete'[\s\S]*trackEvent\('round_milestone'/)
 })

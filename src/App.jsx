@@ -217,6 +217,7 @@ export default function App() {
   const lastTrackedScreenRef = useRef(null)
   const lastTrackedOnboardingStepRef = useRef(null)
   const completedOnboardingStepsRef = useRef(new Set())
+  const startedHoleAnalyticsRef = useRef(new Set())
   const analyticsSyncIssueStagesRef = useRef(new Set())
 
   const unseenNews = hasUnseenNews(lastSeenNewsId)
@@ -272,6 +273,7 @@ export default function App() {
     lastTrackedScreenRef.current = null
     lastTrackedOnboardingStepRef.current = null
     completedOnboardingStepsRef.current.clear()
+    startedHoleAnalyticsRef.current.clear()
     analyticsSyncIssueStagesRef.current.clear()
   }, [session?.user?.id])
 
@@ -1571,7 +1573,13 @@ export default function App() {
     setPuttMoreOpen(false)
     setCustomPutts(Number.isFinite(putts) && putts >= 5 ? String(putts) : '5')
     setScreen('hole-detail')
-    if (!completedHole) trackEvent('hole_start', { completed_holes: enteredHoles.length })
+    if (!completedHole) {
+      const holeStartKey = `${activeRound.id}:${hole.holeNumber}`
+      if (!startedHoleAnalyticsRef.current.has(holeStartKey)) {
+        const tracked = trackEvent('hole_start', { completed_holes: enteredHoles.length })
+        if (tracked) startedHoleAnalyticsRef.current.add(holeStartKey)
+      }
+    }
   }
 
   function leaveHoleDetail() {
