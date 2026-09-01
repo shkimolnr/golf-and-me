@@ -36,6 +36,10 @@ export function authCallbackError(href) {
   return url.searchParams.get('error_description') || fragment.get('error_description') || ''
 }
 
+export function shouldReportAuthCallbackFailure(callbackError, session) {
+  return Boolean(callbackError) && !session
+}
+
 export function sanitizedAuthCallbackPath(href) {
   const url = new URL(href)
   const fragment = fragmentParams(url)
