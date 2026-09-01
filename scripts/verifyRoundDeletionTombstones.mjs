@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -8,7 +8,7 @@ const repositoryRoot = dirname(dirname(fileURLToPath(import.meta.url)))
 const postgresImage = process.env.GOLF_AND_ME_POSTGRES_IMAGE || 'postgres:17.6'
 const containerName = `golf-me-round-tombstones-${process.pid}`
 const migrationDirectory = join(repositoryRoot, 'supabase', 'migrations')
-const baseMigrations = [
+const baseMigrationCandidates = [
   '202608300001_initial_golf_schema.sql',
   '202608300002_club_bag_sync.sql',
   '202608300003_delete_own_account.sql',
@@ -19,10 +19,14 @@ const baseMigrations = [
   '202608310003_round_summary_columns.sql',
   '202609010001_authenticated_table_privileges.sql',
 ]
+const migrationExists = fileName => existsSync(join(migrationDirectory, fileName))
+const baseMigrations = baseMigrationCandidates.filter(migrationExists)
 const migration002 = '202609010002_derived_data_integrity.sql'
 const migration003 = '202609010003_round_summary_sync.sql'
 const migration004 = '202609010004_runtime_table_least_privilege.sql'
 const migration005 = '202609010005_round_deletion_tombstones.sql'
+const advancedMigrationMatrixAvailable = [migration002, migration003, migration004]
+  .every(migrationExists)
 const rollback005Path = join(
   repositoryRoot, 'supabase', 'rollbacks',
   '202609010005_round_deletion_tombstones_rollback.sql',
@@ -89,25 +93,35 @@ function migrationSql(fileName) {
   return readFileSync(join(migrationDirectory, fileName), 'utf8')
 }
 
+function simulateSupabaseRuntimeBaseline(database) {
+  runSql(database, `
+    grant select, insert, update on table public.profiles to authenticated;
+    grant select, insert, update, delete on table
+      public.rounds,
+      public.round_holes,
+      public.round_shots,
+      public.user_clubs,
+      public.club_distance_history
+    to authenticated;
+    grant usage, select on sequence public.club_distance_history_id_seq to authenticated;
+    grant truncate, references, trigger on all tables in schema public
+      to anon, authenticated, service_role;
+  `)
+}
+
 function createDatabase(database, migrations) {
   docker(['exec', containerName, 'createdb', '-U', 'postgres', database])
   runSql(database, bootstrapSql)
   let runtimeRiskSimulated = false
   for (const migration of migrations) {
     if (migration === migration004) {
-      runSql(database, `
-        grant truncate, references, trigger on all tables in schema public
-          to anon, authenticated, service_role;
-      `)
+      simulateSupabaseRuntimeBaseline(database)
       runtimeRiskSimulated = true
     }
     runSql(database, migrationSql(migration))
   }
   if (!runtimeRiskSimulated) {
-    runSql(database, `
-      grant truncate, references, trigger on all tables in schema public
-        to anon, authenticated, service_role;
-    `)
+    simulateSupabaseRuntimeBaseline(database)
   }
 }
 
@@ -143,16 +157,20 @@ function insertRound(database, { id, userId, updatedAt = '2026-09-01T00:00:00.00
   `)
 }
 
-function assertExactPreflight(result) {
-  assert.equal(result.gateStatus, 'READY', JSON.stringify(result, null, 2))
-  assert.equal(result.runtime004.status, 'APPLIED_VERIFIED')
-  assert.equal(result.runtime004.risky_privilege_count, 0)
+function assertExactTarget(result) {
   assert.equal(result.targetTable.status, 'exact_existing')
   for (const item of result.columns) assert.equal(item.status, 'exact_existing')
   for (const item of result.functions) assert.equal(item.status, 'exact_existing')
   for (const item of result.triggers) assert.equal(item.status, 'exact_existing')
   assert.equal(result.policy.status, 'exact_existing')
   for (const item of result.targetPrivileges) assert.equal(item.status, 'exact_existing')
+}
+
+function assertExactPreflight(result) {
+  assert.equal(result.gateStatus, 'READY', JSON.stringify(result, null, 2))
+  assert.equal(result.runtime004.status, 'APPLIED_VERIFIED')
+  assert.equal(result.runtime004.risky_privilege_count, 0)
+  assertExactTarget(result)
 }
 
 function assertCommandFails(database, sql, pattern) {
@@ -274,40 +292,59 @@ try {
   assert.equal(missing004.runtime004.risky_privilege_count, 63)
   assert.equal(missing004.targetTable.status, 'absent_expected')
   runSql('without004', migrationSql(migration005))
-  runSql('without004', migrationSql(migration004))
-  assertExactPreflight(runPreflight('without004'))
-  verifyFunctionalBehavior('without004', '1')
+  assertExactTarget(runPreflight('without004'))
 
-  createDatabase('currentpreview', [...baseMigrations, migration004])
-  const absentCurrent = runPreflight('currentpreview')
-  assert.equal(absentCurrent.gateStatus, 'READY')
-  assert.equal(absentCurrent.targetTable.status, 'absent_expected')
-  runSql('currentpreview', migrationSql(migration005))
-  assert.equal(
-    functionHash('currentpreview', 'public.record_round_tombstone_before_delete()'),
-    expectedHashes.recordTombstone,
-  )
-  assert.equal(
-    functionHash('currentpreview', 'public.reject_tombstoned_round_write()'),
-    expectedHashes.rejectWrite,
-  )
-  assertExactPreflight(runPreflight('currentpreview'))
-  runSql('currentpreview', readFileSync(rollback005Path, 'utf8'))
-  assert.equal(runPreflight('currentpreview').targetTable.status, 'absent_expected')
-  runSql('currentpreview', migrationSql(migration005))
-  verifyFunctionalBehavior('currentpreview', '2')
-  await verifyDeleteRetryLock('currentpreview', '3')
+  if (advancedMigrationMatrixAvailable) {
+    runSql('without004', migrationSql(migration004))
+    assertExactPreflight(runPreflight('without004'))
+    verifyFunctionalBehavior('without004', '1')
 
-  createDatabase('fullreplay', [
-    ...baseMigrations, migration002, migration003, migration004,
-  ])
-  assert.equal(runPreflight('fullreplay').gateStatus, 'READY')
-  runSql('fullreplay', migrationSql(migration005))
-  assertExactPreflight(runPreflight('fullreplay'))
-  verifyFunctionalBehavior('fullreplay', '4')
+    createDatabase('currentpreview', [...baseMigrations, migration004])
+    const absentCurrent = runPreflight('currentpreview')
+    assert.equal(absentCurrent.gateStatus, 'READY')
+    assert.equal(absentCurrent.targetTable.status, 'absent_expected')
+    runSql('currentpreview', migrationSql(migration005))
+    assert.equal(
+      functionHash('currentpreview', 'public.record_round_tombstone_before_delete()'),
+      expectedHashes.recordTombstone,
+    )
+    assert.equal(
+      functionHash('currentpreview', 'public.reject_tombstoned_round_write()'),
+      expectedHashes.rejectWrite,
+    )
+    assertExactPreflight(runPreflight('currentpreview'))
+    runSql('currentpreview', readFileSync(rollback005Path, 'utf8'))
+    assert.equal(runPreflight('currentpreview').targetTable.status, 'absent_expected')
+    runSql('currentpreview', migrationSql(migration005))
+    verifyFunctionalBehavior('currentpreview', '2')
+    await verifyDeleteRetryLock('currentpreview', '3')
+
+    createDatabase('fullreplay', [
+      ...baseMigrations, migration002, migration003, migration004,
+    ])
+    assert.equal(runPreflight('fullreplay').gateStatus, 'READY')
+    runSql('fullreplay', migrationSql(migration005))
+    assertExactPreflight(runPreflight('fullreplay'))
+    verifyFunctionalBehavior('fullreplay', '4')
+    process.stdout.write('✓ baseline+005+004, baseline+004+005, and full 002+003+004+005 orders pass\n')
+  } else {
+    assert.equal(
+      functionHash('without004', 'public.record_round_tombstone_before_delete()'),
+      expectedHashes.recordTombstone,
+    )
+    assert.equal(
+      functionHash('without004', 'public.reject_tombstoned_round_write()'),
+      expectedHashes.rejectWrite,
+    )
+    runSql('without004', readFileSync(rollback005Path, 'utf8'))
+    assert.equal(runPreflight('without004').targetTable.status, 'absent_expected')
+    runSql('without004', migrationSql(migration005))
+    verifyFunctionalBehavior('without004', '1')
+    await verifyDeleteRetryLock('without004', '2')
+    process.stdout.write('✓ Production-main baseline validates 005 without requiring local-only 001–004 files\n')
+  }
 
   process.stdout.write('✓ 004-missing baseline reports 63 runtime privilege blockers; 005 remains independently applicable\n')
-  process.stdout.write('✓ baseline+005+004, baseline+004+005, and full 002+003+004+005 orders pass\n')
   process.stdout.write('✓ delete creates one minimal tombstone and stale insert is rejected\n')
   process.stdout.write('✓ RLS/ACL isolate tombstones and block browser writes\n')
   process.stdout.write('✓ retryable advisory-lock contention converges to deletion without deadlock\n')
