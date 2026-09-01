@@ -1,3 +1,5 @@
+import { sanitizedAuthCallbackPath } from './auth.js'
+
 const CONSENT_STORAGE_KEY = 'golf-and-me:analytics-consent'
 const AUTH_STARTED_STORAGE_KEY = 'golf-and-me:auth-started-at'
 const LOGIN_MEASUREMENTS_STORAGE_KEY = 'golf-and-me:login-measurements'
@@ -143,13 +145,19 @@ export function initializeAnalytics(config) {
   const resolved = configuredAnalytics(config)
   const currentWindow = browserWindow()
   if (!currentWindow || !resolved.enabled || !isValidMeasurementId(resolved.measurementId) || !isMatchingAnalyticsEnvironment(resolved) || !hasAnalyticsConsent()) return false
+  if (typeof currentWindow.location?.href === 'string' && sanitizedAuthCallbackPath(currentWindow.location.href)) return false
 
   currentWindow[`ga-disable-${resolved.measurementId}`] = false
   if (analyticsReady && activeMeasurementId === resolved.measurementId) return false
   if (!addAnalyticsScript(resolved.measurementId)) return false
 
   currentWindow.gtag('js', new Date())
-  currentWindow.gtag('config', resolved.measurementId, { send_page_view: false })
+  currentWindow.gtag('config', resolved.measurementId, {
+    send_page_view: false,
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false,
+    page_referrer: '',
+  })
   analyticsReady = true
   activeMeasurementId = resolved.measurementId
   return true

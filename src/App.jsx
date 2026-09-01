@@ -10,7 +10,7 @@ import { compactCoursePair } from './lib/roundPresentation.js'
 import { roundCompletionState } from './lib/roundCompletion.js'
 import { applyKnownCourseTemplate, findKnownCourse, getKnownCourse, searchKnownCourses, segmentNamesForCourse, selectKnownCourse } from './data/courseData.js'
 import { PREVIEW_ROUNDS_VERSION, mergePreviewRounds } from './data/previewRounds.js'
-import { authCallbackError, clearAuthCallbackFromAddress, googleOAuthOptions } from './lib/auth.js'
+import { authCallbackError, clearAuthCallbackFromAddress, googleOAuthOptions, sanitizedAuthCallbackPath } from './lib/auth.js'
 import { clearRoundHoleDrafts, latestHoleDraft, removeRoundHoleDraft, upsertRoundHoleDraft } from './lib/roundDrafts.js'
 import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMeters, pairClubsForColumnLayout } from './lib/clubBag.js'
 import { clubBagSyncSignature, loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
@@ -148,6 +148,7 @@ export default function App() {
   const [feedbackError, setFeedbackError] = useState('')
   const [accountOpen, setAccountOpen] = useState(false)
   const [analyticsConsent, setAnalyticsConsentState] = useState(() => getAnalyticsConsent())
+  const [analyticsAddressReady, setAnalyticsAddressReady] = useState(() => !sanitizedAuthCallbackPath(window.location.href))
   const [accountDeletionOpen, setAccountDeletionOpen] = useState(false)
   const [accountDeletionStatus, setAccountDeletionStatus] = useState('idle')
   const [accountDeletionError, setAccountDeletionError] = useState('')
@@ -275,8 +276,8 @@ export default function App() {
   }, [session?.user?.id])
 
   useEffect(() => {
-    if (analyticsConsent === 'granted') initializeAnalytics()
-  }, [analyticsConsent])
+    if (analyticsConsent === 'granted' && analyticsAddressReady) initializeAnalytics()
+  }, [analyticsConsent, analyticsAddressReady])
 
   useEffect(() => {
     if (analyticsConsent !== 'granted') {
@@ -398,6 +399,7 @@ export default function App() {
 
     supabase.auth.getSession().then(({ data, error }) => {
       clearAuthCallbackFromAddress(window)
+      setAnalyticsAddressReady(true)
       if (callbackError) {
         recordLoginFailure('oauth_callback')
         setAuthError('Google 로그인이 완료되지 않았습니다. 다시 시도해주세요.')

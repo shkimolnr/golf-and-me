@@ -25,6 +25,7 @@
 - 선택 안내는 온보딩 위에 함께 표시되며, 선택하지 않아도 `시작하기`와 다음 단계를 진행할 수 있습니다.
 - 이전에 허용한 기기에서는 새로고침·재접속 후 저장된 상태를 읽어 GA4를 다시 초기화합니다.
 - 허용 시 `https://www.googletagmanager.com/gtag/js?id=...`를 한 번만 추가하며 `send_page_view: false`로 자동 페이지뷰를 끕니다.
+- OAuth 코드·토큰·오류값이 주소에 남은 동안은 초기화를 보류하고 주소 정리 후 시작합니다. 설정에서도 `page_referrer`를 비우고 Google Signals·광고 개인화 신호를 명시적으로 끕니다.
 - 철회하면 `ga-disable-<measurement-id>`를 설정하고 `trackEvent()`도 동의 상태를 다시 확인해 이후 이벤트 전송을 중단합니다. 이미 내려받은 스크립트 파일 자체는 브라우저 캐시에서 즉시 삭제할 수 없지만, 데이터 전송은 코드와 GA disable 플래그 양쪽에서 막습니다.
 - SPA 화면 전환은 `screen_view`와 허용된 익명 화면명으로만 전송합니다. React Strict Mode의 중복 렌더링은 마지막 화면 ref로 방지합니다.
 - `VITE_APP_ENV`와 `VITE_ANALYTICS_ENV`가 정확히 같은 경우에만 초기화합니다. Preview는 Preview 전용 측정 ID를 쓰거나 `VITE_ANALYTICS_ENABLED=false`여야 하며, Production ID를 Preview에 넣으면 초기화되지 않습니다.
@@ -53,7 +54,7 @@
 
 ## 검증 결과
 
-- `npm test`: 151 passed, 0 failed
+- `npm test`: 152 passed, 0 failed
 - `npm run build`: passed
 - 빌드 시 기존 `index.html`의 `VITE_SUPABASE_URL` 미설정 경고만 발생했습니다. GA 변경 실패가 아니며 실제 환경변수를 넣으면 해소됩니다.
 - 모바일 크기(390×844) 로컬 확인: 동의 안내와 `시작하기`가 함께 보이고, 미선택 상태로 2/3 단계 진입 후에도 서비스 흐름이 유지됐습니다.
