@@ -123,7 +123,7 @@ Production 행은 사용자 승인 전 실행하지 않습니다. 실제 측정 
 - 최종 Preview 배포 `ae0d42b`에서 로그아웃 후 Google 재로그인 1회를 실행했습니다. DebugView의 실제 발생 순서는 `screen_view → auth_attempt → login_success → screen_view`였고, `auth_attempt`와 해당 로그인 흐름의 `login_success`는 각각 정확히 1회였습니다. Google 계정 선택 화면까지의 click 동작은 네트워크·페이지 로딩을 포함해 582ms였으며 앱 코드가 추가한 대기 시간은 0ms였습니다.
 - 사용자 의미인 `로그인 시작`의 실제 GA4 이벤트명은 `auth_attempt`, 매개변수는 `stage=oauth_request`로 확정합니다. 기존 `login_start`는 실제 Preview에서 수신되지 않아 운영 이벤트명으로 사용하지 않습니다.
 - 후속 Preview 재로그인 검증에서 `auth_attempt(stage=oauth_request)`는 1회, `login_success`는 `session_restored`와 `records_ready`가 각각 1회 수신됐습니다. `duration_ms`는 각각 16,616ms와 17,208ms로 허용 범위 안이었고, 실제 순서도 `auth_attempt → session_restored → records_ready`와 일치했습니다. 두 성공 이벤트의 `page_location`은 고정 비식별 값이었고 `non_personalized_ads=1`도 유지됐습니다.
-- 관리 설정을 읽기 전용으로 재확인한 결과 이벤트 데이터 보관은 2개월, 사용자 데이터 보관은 14개월이며 `새 사용자 활동 발생 시 재설정`은 켜져 있습니다. `Internal Traffic` 제외 필터는 테스트 상태지만 웹 스트림의 내부 트래픽 규칙은 0개라 현재 제외되는 트래픽은 없습니다. Preview는 검증 활동을 보는 환경이므로 내부 트래픽 제외 규칙은 만들지 않고, 보관기간은 현재 최소값을 유지합니다. 재활동 시 보관 재설정을 끌지는 별도 승인 후 결정합니다.
+- 관리 설정을 재확인한 결과 이벤트 데이터 보관은 2개월, 사용자 데이터 보관은 14개월입니다. 사용자 데이터 보관 선택지는 2개월과 14개월이며, 이번 승인 범위에서는 14개월을 유지했습니다. 최소 보관 원칙에 따라 `새 사용자 활동 발생 시 재설정`만 OFF로 저장했고 새로고침 후 OFF 상태를 다시 확인했습니다. `Internal Traffic` 제외 필터는 테스트 상태지만 웹 스트림의 내부 트래픽 규칙은 0개라 현재 제외되는 트래픽은 없습니다. Preview는 검증 활동을 보는 환경이므로 내부 트래픽 제외 규칙은 만들지 않습니다.
 
 ## 컨트롤타워 통합 주의점
 
