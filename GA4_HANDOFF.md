@@ -2,8 +2,9 @@
 
 ## 범위와 상태
 
-- 작업 브랜치: `codex/ga4-direct-consent`
-- 기준 커밋: `6623461`
+- 작업 브랜치: `codex/ga4-consent-audit`
+- 기준 커밋: `d1fde41`
+- 기존 GA4 직접 연동이 main에 통합된 상태에서 동의 UX와 재접속 초기화만 추가 점검했습니다.
 - Production 배포, GA4 속성 생성·활성화, Vercel 환경변수 등록은 수행하지 않았습니다.
 - GTM, Firebase, Sentry와 Supabase 진단 테이블/API는 이 변경에 포함하지 않았습니다.
 
@@ -13,7 +14,7 @@
 |---|---|
 | `.env.example` | GTM 예시를 GA4 직접 연동 환경변수로 교체하고 환경 분리를 명시 |
 | `src/lib/analytics.js` | 동의·직접 `gtag.js` 초기화·이벤트별 allowlist·명시적 SPA 화면 이벤트 구현 |
-| `src/App.jsx` | 온보딩 전 1회 선택 화면, 계정 메뉴의 철회/재허용, 제품 흐름 이벤트 연결 |
+| `src/App.jsx` | 온보딩을 막지 않는 1회 선택 안내, 저장된 허용 상태의 재접속 초기화, 개발 전용 신규 온보딩 확인 경로 |
 | `src/index.css` | 동의 화면과 계정 메뉴 제어 스타일 |
 | `test/analytics.test.js` | 동의, 스크립트, 철회, allowlist, Preview 격리 자동 테스트 |
 
@@ -21,6 +22,8 @@
 
 - 기본값은 `unknown`(OFF)이며 `golf-and-me:analytics-consent`에 `granted` 또는 `denied`만 기기별로 저장합니다. 로그인 세션과는 연결하지 않습니다.
 - 동의 전에는 GA 스크립트를 넣지 않고 이벤트도 보내지 않습니다.
+- 선택 안내는 온보딩 위에 함께 표시되며, 선택하지 않아도 `시작하기`와 다음 단계를 진행할 수 있습니다.
+- 이전에 허용한 기기에서는 새로고침·재접속 후 저장된 상태를 읽어 GA4를 다시 초기화합니다.
 - 허용 시 `https://www.googletagmanager.com/gtag/js?id=...`를 한 번만 추가하며 `send_page_view: false`로 자동 페이지뷰를 끕니다.
 - 철회하면 `ga-disable-<measurement-id>`를 설정하고 `trackEvent()`도 동의 상태를 다시 확인해 이후 이벤트 전송을 중단합니다. 이미 내려받은 스크립트 파일 자체는 브라우저 캐시에서 즉시 삭제할 수 없지만, 데이터 전송은 코드와 GA disable 플래그 양쪽에서 막습니다.
 - SPA 화면 전환은 `screen_view`와 허용된 익명 화면명으로만 전송합니다. React Strict Mode의 중복 렌더링은 마지막 화면 ref로 방지합니다.
@@ -50,9 +53,11 @@
 
 ## 검증 결과
 
-- `npm test`: 123 passed, 0 failed
+- `npm test`: 150 passed, 0 failed
 - `npm run build`: passed
 - 빌드 시 기존 `index.html`의 `VITE_SUPABASE_URL` 미설정 경고만 발생했습니다. GA 변경 실패가 아니며 실제 환경변수를 넣으면 해소됩니다.
+- 모바일 크기(390×844) 로컬 확인: 동의 안내와 `시작하기`가 함께 보이고, 미선택 상태로 2/3 단계 진입 후에도 서비스 흐름이 유지됐습니다.
+- 개발 전용 재현 주소는 `?preview=1&onboarding=1`입니다. `import.meta.env.DEV` 조건이라 Production에서는 활성화되지 않습니다.
 
 ## 사용자가 해야 할 일 — 아직 실행하지 않음
 

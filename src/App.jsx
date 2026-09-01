@@ -16,7 +16,7 @@ import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMete
 import { clubBagSyncSignature, loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
 import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from './data/news.js'
-import { getAnalyticsConsent, measureLoginStage, recordLoginFailure, setAnalyticsConsent, startLoginMeasurement, trackEvent, trackScreen } from './lib/analytics.js'
+import { getAnalyticsConsent, initializeAnalytics, measureLoginStage, recordLoginFailure, setAnalyticsConsent, startLoginMeasurement, trackEvent, trackScreen } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { requestTestAccess } from './lib/testAccessRequest.js'
 import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
@@ -25,6 +25,7 @@ import { recordDiagnosticFailure, resolveDiagnosticFailures } from './lib/diagno
 import { clearDiagnosticQueue, enqueueDiagnosticFailure, enqueueDiagnosticRecovery, flushDiagnosticQueue, setDiagnosticAccessTokenProvider } from './lib/diagnosticsTransport.js'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
+const isPreviewOnboardingMode = isPreviewMode && new URLSearchParams(window.location.search).get('onboarding') === '1'
 const isTestAccessRequestEnabled = import.meta.env.VITE_TEST_ACCESS_REQUEST_ENABLED === 'true'
 const analyticsScreenNames = Object.freeze({
   'new-round': 'new_round',
@@ -246,6 +247,10 @@ export default function App() {
   }, [session?.user?.id, isOnline])
 
   useEffect(() => {
+    if (analyticsConsent === 'granted') initializeAnalytics()
+  }, [analyticsConsent])
+
+  useEffect(() => {
     if (analyticsConsent !== 'granted') {
       lastTrackedScreenRef.current = null
       lastTrackedOnboardingStepRef.current = null
@@ -422,8 +427,8 @@ export default function App() {
     setPendingDeletedRoundIds(queuedDeletionIds)
 
     const storageKey = `golf-and-me:onboarding:${session.user.id}`
-    let savedProfile = window.localStorage.getItem(storageKey)
-    if (isPreviewMode && !savedProfile) {
+    let savedProfile = isPreviewOnboardingMode ? null : window.localStorage.getItem(storageKey)
+    if (isPreviewMode && !isPreviewOnboardingMode && !savedProfile) {
       savedProfile = JSON.stringify({ defaultTee: '화이트', defaultDistanceUnit: 'M' })
       window.localStorage.setItem(storageKey, savedProfile)
     }
@@ -1843,26 +1848,20 @@ export default function App() {
   const distanceBasisChanged = Boolean(latestDistanceSet && latestDistanceSet.basis !== clubDistanceBasis)
   const hasDistanceChanges = Object.values(clubDistanceInputs).some(value => value !== '' && value != null)
 
-  if (screen === 'onboarding' && analyticsConsent === 'unknown') {
-    return (
-      <main className="app-shell onboarding-shell analytics-consent-shell">
-        <section className="analytics-consent-prompt" aria-labelledby="analytics-consent-title">
-          <p className="eyebrow">Golf &amp; Me</p>
-          <h1 id="analytics-consent-title">서비스 개선에<br />도움을 주실래요?</h1>
-          <p>이용 흐름과 오류 발생 여부만 수집하며 계정·골프 기록은 보내지 않아요.</p>
-          <div className="analytics-consent-actions">
-            <button className="primary" type="button" onClick={() => updateAnalyticsConsent(true)}>허용</button>
-            <button className="secondary-button" type="button" onClick={() => updateAnalyticsConsent(false)}>괜찮아요</button>
-          </div>
-          <small>선택은 내 계정에서 언제든 바꿀 수 있어요.</small>
-        </section>
-      </main>
-    )
-  }
-
   if (screen === 'onboarding') {
     return (
       <main className="app-shell onboarding-shell">
+        {analyticsConsent === 'unknown' && (
+          <section className="analytics-consent-prompt" aria-labelledby="analytics-consent-title">
+            <strong id="analytics-consent-title">서비스 개선에 도움을 주실래요?</strong>
+            <p>이용 흐름과 오류 발생 여부만 수집하며 계정·골프 기록은 보내지 않아요.</p>
+            <div className="analytics-consent-actions">
+              <button className="primary" type="button" onClick={() => updateAnalyticsConsent(true)}>허용</button>
+              <button className="secondary-button" type="button" onClick={() => updateAnalyticsConsent(false)}>괜찮아요</button>
+            </div>
+            <small>선택하지 않아도 계속 이용할 수 있고, 내 계정에서 언제든 바꿀 수 있어요.</small>
+          </section>
+        )}
         <div className="onboarding-progress" aria-label={`온보딩 ${onboardingStep}/3 단계`}>
           <span className="active" /><span className={onboardingStep >= 2 ? 'active' : ''} /><span className={onboardingStep >= 3 ? 'active' : ''} />
         </div>
