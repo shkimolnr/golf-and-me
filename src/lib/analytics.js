@@ -29,6 +29,7 @@ const EVENT_SCHEMAS = Object.freeze({
 const allowedEnvironments = new Set(['development', 'preview', 'production'])
 let analyticsReady = false
 let activeMeasurementId = null
+let activeRuntimeEnvironment = null
 
 function browserWindow() {
   return typeof window === 'undefined' ? null : window
@@ -161,6 +162,7 @@ export function initializeAnalytics(config) {
   })
   analyticsReady = true
   activeMeasurementId = resolved.measurementId
+  activeRuntimeEnvironment = resolved.runtimeEnvironment
   return true
 }
 
@@ -178,7 +180,9 @@ export function trackEvent(eventName, parameters = {}) {
   if (!EVENT_SCHEMAS[eventName] || !analyticsReady || !activeMeasurementId || !hasAnalyticsConsent() || currentWindow?.[`ga-disable-${activeMeasurementId}`]) return false
   const safe = safeParameters(eventName, parameters)
   if (!safe || !currentWindow?.gtag) return false
-  currentWindow.gtag('event', eventName, safe)
+  currentWindow.gtag('event', eventName, activeRuntimeEnvironment === 'preview'
+    ? { ...safe, debug_mode: true }
+    : safe)
   return true
 }
 
@@ -238,4 +242,5 @@ export const analyticsEventNames = Object.freeze(Object.keys(EVENT_SCHEMAS))
 export function resetAnalyticsForTests() {
   analyticsReady = false
   activeMeasurementId = null
+  activeRuntimeEnvironment = null
 }

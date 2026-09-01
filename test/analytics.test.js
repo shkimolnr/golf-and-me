@@ -155,6 +155,11 @@ test('Preview 전용 설정은 DebugView 검증을 위해 debug_mode를 켠다',
     page_referrer: '',
     debug_mode: true,
   }])
+  assert.equal(trackScreen('home'), true)
+  assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['event', 'screen_view', {
+    screen_name: 'home',
+    debug_mode: true,
+  }])
 })
 
 test('측정 ID가 없거나 비활성화여도 앱 동작을 막지 않는다', () => {
