@@ -154,7 +154,12 @@ BEFORE trigger는 이미 기존 row lock을 보유할 수 있습니다. 따라�
 
 pending 항목은 기존 호환 형식인 ID 문자열 배열, observed 항목은 `{ id, deletedAt }` 배열로 사용자별
 localStorage에 분리 저장합니다. 삭제 재시도에는 서버 시각이 필요하지 않으므로 pending 형식을
-불필요하게 변환하지 않고, 두 배열을 적용할 때만 하나의 삭제 ID 집합으로 합칩니다.
+불필요하게 변환하지 않고, 두 배열을 적용할 때만 하나의 삭제 ID 집합으로 합칩니다. 이는 의도적인
+MVP 호환 선택입니다. 재시도 시점과 backoff는 개별 요청의 생성 나이가 아니라 현재 queue worker의
+실행 상태, 온라인 복귀, focus/visibility 재개, 직전 실패 결과로 결정합니다. 삭제 완료의 권위 시각은
+서버 `deleted_at`이므로 client `requestedAt`을 추가해도 순서 판정이나 안전성이 개선되지 않습니다.
+추후 per-item 재시도 상한이나 장기 체류 알림이 필요할 때만 `{ id, requestedAt, attempts }`로 additive
+확장하며, 기존 문자열 항목도 계속 읽는 parser를 함께 둡니다.
 
 ### 5.2 원격 조회와 merge
 
