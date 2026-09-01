@@ -5,6 +5,7 @@ const AUTH_STARTED_STORAGE_KEY = 'golf-and-me:auth-started-at'
 const LOGIN_MEASUREMENTS_STORAGE_KEY = 'golf-and-me:login-measurements'
 const SCRIPT_SELECTOR = 'script[data-golf-and-me-ga4]'
 const GA_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]{4,20}$/
+const ANALYTICS_PAGE_LOCATION = 'https://golf-and-me.invalid/'
 
 const EVENT_SCHEMAS = Object.freeze({
   screen_view: { screen_name: ['login', 'onboarding', 'home', 'new_round', 'clubs', 'scorecard', 'hole_detail', 'round_result', 'news', 'feedback'] },
@@ -157,7 +158,10 @@ export function initializeAnalytics(config) {
     send_page_view: false,
     allow_google_signals: false,
     allow_ad_personalization_signals: false,
+    page_location: ANALYTICS_PAGE_LOCATION,
+    page_title: 'Golf & Me',
     page_referrer: '',
+    ignore_referrer: true,
     ...(resolved.runtimeEnvironment === 'preview' ? { debug_mode: true } : {}),
   })
   analyticsReady = true
