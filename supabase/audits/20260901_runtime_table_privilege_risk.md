@@ -5,7 +5,7 @@
 대상: `anon`, `authenticated`, `service_role`이 7개 앱 테이블에 보유한
 `TRUNCATE`, `TRIGGER`, `REFERENCES` effective privilege
 
-상태: Preview/Production 미변경, migration 적용 보류
+상태: Preview 적용·검증 완료, Production 미변경
 
 ## 결론
 
@@ -87,3 +87,18 @@ transaction이 실패하면 원래 ACL이 자동 보존되므로 rollback 파일
 6. 승인된 Preview 테스트 흐름에서 로그인 사용자 CRUD와 진단 API 왕복 확인
 7. orphan·owner·cache mismatch 집계가 계속 0인지 확인
 8. Production 적용은 별도 승인 전 금지
+
+## Preview 적용 결과
+
+2026-09-01 컨트롤타워가 `Golf&Me Preview`에서 이 migration만 단독 transaction으로
+적용했습니다. `002`·`003`과 Production에는 적용하지 않았습니다.
+
+- migration 결과: 성공, 0 rows
+- 위험 effective privilege: 63개 → 0개
+- 필수 authenticated CRUD 누락: 0개
+- anon CRUD 위반: 0개
+- service-role 진단·보관 RPC EXECUTE: 둘 다 유지
+- Preview 앱 새로고침: 로그인 상태·홈 화면 정상, 원격 조회 오류 없음
+
+rollback은 실행하지 않았습니다. 위험 권한을 다시 여는 rollback은 별도 승인 없이는 실행하지
+않습니다.

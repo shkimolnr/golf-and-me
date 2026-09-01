@@ -15,6 +15,8 @@ Production: 미접속·미변경
   **구조적 추정**입니다. SQL Editor에서 수동 적용된 객체는 원래 migration 파일과 완전히 같은
   정의인지 별도의 카탈로그 대조 없이는 확정할 수 없습니다.
 - 신규 `202609010002`, `202609010003`은 Preview에 적용하지 않았습니다.
+- `202609010004_runtime_table_least_privilege.sql`은 Preview에 단독 적용하고 권한·앱 스모크
+  검증을 완료했습니다. Production에는 적용하지 않았습니다.
 - `20260901_preview_readonly_catalog_audit.sql`은 컨트롤타워가 Preview에서 검토한 뒤 실행했으며,
   전체가 오류 없이 `READ ONLY` transaction으로 완료됐습니다. Production에는 실행하지 않았습니다.
 
@@ -30,7 +32,7 @@ Production: 미접속·미변경
 | 6 | `202608310001_round_holes_swing_count.sql` | round_holes 컬럼 조회 완료 | **판정 보류** | `swing_count` 정의 일치 판정 필요 |
 | 7 | `202608310002_app_diagnostics.sql` | 테이블 metadata·RLS·권한과 진단 함수 보안 속성·definition hash 조회 완료 | **부분 적용 확인** | CHECK·인덱스·revoke·service_role 전용 EXECUTE의 로컬 기준 일치 판정 필요 |
 | 8 | `202608310003_round_summary_columns.sql` | `rounds`에 요약 컬럼과 `stats_summary`가 존재하고, 읽기 전용 재계산 결과 두 mismatch 집계가 모두 0 | **구조·현재 cache 정합성 확인** | `rounds_user_status_played_idx` 정의의 로컬 SQL 일치 여부는 카탈로그 결과 교차검토 필요 |
-| 9 | `202609010001_authenticated_table_privileges.sql` | anon/authenticated/service_role의 effective table·sequence 권한 조회 완료 | **판정 보류** | 로컬 권한 기준표와 결과의 상세 일치 판정 필요 |
+| 9 | `202609010001_authenticated_table_privileges.sql` | 필수 CRUD·sequence 권한은 유지됐으나 Supabase 기본 grant로 runtime 역할에 `TRUNCATE`·`REFERENCES`·`TRIGGER` 63개가 남아 있었음 | **부분 적용 확인 — 004로 보완** | 004 적용 뒤 위험 권한 0개 확인 |
 
 ## 신규 migration 상태
 
@@ -38,10 +40,11 @@ Production: 미접속·미변경
 |---|---|---|
 | `202609010002_derived_data_integrity.sql` | **미적용 — 데이터 사전조건 통과, schema/rollback gate 확인 필요** | 미적용 유지 |
 | `202609010003_round_summary_sync.sql` | **미적용 — 데이터 사전조건 통과, 002 검증 후 적용 후보** | 미적용 유지 |
+| `202609010004_runtime_table_least_privilege.sql` | **적용 완료 — 위험 권한 63→0, 필수 CRUD/RPC 보존, 앱 스모크 정상** | 미적용 유지 |
 
-신규 migration은 로컬 PostgreSQL에서 전체 적용·rollback·재적용과 검증 쿼리를 통과했지만,
+002·003은 로컬 PostgreSQL에서 전체 적용·rollback·재적용과 검증 쿼리를 통과했지만,
 Preview 적용은 이 문서의 사전확인과 명시적 승인을 모두 충족한 뒤 별도 작업으로 진행합니다.
-이번 감사와 문서 갱신은 적용 승인이 아닙니다.
+004 적용 완료는 002·003의 적용 승인을 의미하지 않습니다.
 
 ## Preview 읽기 전용 데이터 감사 결과
 
@@ -82,10 +85,20 @@ Preview 적용은 이 문서의 사전확인과 명시적 승인을 모두 충�
 |---|---|---|
 | 7개 public 테이블의 컬럼·default·NOT NULL·CHECK·FK·index | 조회 완료 | 카탈로그 결과와 로컬 SQL의 상세 교차검토 필요 |
 | 7개 테이블의 RLS와 policy 식 | 조회 완료 | 로컬 SQL의 상세 교차검토 필요 |
-| anon/authenticated/service_role의 table·sequence·function effective 권한 | 조회 완료 | 적용 전 권한 기준표와 상세 교차검토 필요 |
-| 대상 함수의 owner·보안 속성·설정·정의 hash | 조회 완료 | 기존 함수 hash와 rollback 기준 일치 여부 확인 필요 |
+| anon/authenticated/service_role의 table·sequence·function effective 권한 | 조회·로컬 교차검토 완료 | 위험 권한 63개는 004로 0개 처리, 필수 CRUD·RPC 보존 확인 |
+| 대상 함수의 owner·보안 속성·설정·정의 hash | 조회·로컬 교차검토 완료 | `sync_round_children_from_payload()` baseline hash 일치 |
 | orphan·owner·cache mismatch 집계 | 조회·재확인 완료 | **모두 0, 데이터 사전조건 통과** |
 | `rls_auto_enable` owner·보안 속성·EXECUTE·정의 hash | 조회 완료 | 생성 목적과 유지 여부는 컨트롤타워 결정 필요 |
+
+추가 판정:
+
+- Preview와 같은 PostgreSQL 17.6 기준으로 전체 schema-only catalog를 비교했습니다.
+- `sync_round_children_from_payload()` 정의 hash는 기대값
+  `117d20b5e9c660b31d6a8fefcd8354da`와 일치했습니다.
+- 004 적용 뒤 통합 집계는 `risky_violation_count=0`,
+  `required_privilege_missing_count=0`, `anon_crud_violation_count=0`이며 진단 RPC 두 개의
+  service-role EXECUTE가 모두 `true`였습니다.
+- 플랫폼 고유 drift인 `rls_auto_enable`·`ensure_rls`와 추가 extension은 변경하지 않았습니다.
 
 ## 신규 002·003 Preview 적용 제안
 
