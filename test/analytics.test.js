@@ -154,6 +154,11 @@ test('Preview 전용 측정은 DebugView 검증 표식을 추가한다', () => {
     page_referrer: '',
     debug_mode: true,
   }])
+  assert.equal(trackScreen('home'), true)
+  assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['event', 'screen_view', {
+    screen_name: 'home',
+    debug_mode: true,
+  }])
 })
 
 test('측정 ID가 없거나 비활성화여도 앱 동작을 막지 않는다', () => {
