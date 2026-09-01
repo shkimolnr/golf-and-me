@@ -110,7 +110,7 @@ test('화면 전환은 명시적 허용 목록 이벤트로 한 번씩만 보낼
   assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['event', 'screen_view', { screen_name: 'home' }])
 })
 
-test('OAuth 시작은 동의 상태에서만 대기 표시하고 앱 복귀 후 login_start를 한 번 보낸다', () => {
+test('OAuth 시작은 동의 상태에서만 대기 표시하고 앱 복귀 후 시작 이벤트를 한 번 보낸다', () => {
   installBrowser()
   setAnalyticsConsent(true, productionConfig)
 
@@ -119,9 +119,9 @@ test('OAuth 시작은 동의 상태에서만 대기 표시하고 앱 복귀 후 
   assert.equal(Number.isFinite(storedLoginAttempt.startedAt), true)
   assert.equal(storedLoginAttempt.analyticsAllowed, true)
   assert.equal(storedLoginAttempt.startTracked, false)
-  assert.notEqual(Array.from(window.dataLayer.at(-1))[1], 'login_start')
+  assert.notEqual(Array.from(window.dataLayer.at(-1))[1], 'auth_attempt')
   assert.equal(flushPendingLoginStartMeasurement(), true)
-  assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['event', 'login_start', {
+  assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['event', 'auth_attempt', {
     stage: 'oauth_request',
   }])
   assert.equal(JSON.parse(window.sessionStorage.getItem('golf-and-me:auth-started-at')).startTracked, true)
@@ -134,7 +134,7 @@ test('분석 미동의 상태의 로그인은 나중에 허용해도 과거 시�
   startLoginMeasurement()
   setAnalyticsConsent(true, productionConfig)
   assert.equal(flushPendingLoginStartMeasurement(), false)
-  assert.notEqual(Array.from(window.dataLayer.at(-1))[1], 'login_start')
+  assert.notEqual(Array.from(window.dataLayer.at(-1))[1], 'auth_attempt')
 })
 
 test('앱 복귀 후 로그인 성공과 실패는 대기 중인 시작 이벤트 다음에 기록한다', () => {
@@ -143,14 +143,14 @@ test('앱 복귀 후 로그인 성공과 실패는 대기 중인 시작 이벤�
   startLoginMeasurement()
   measureLoginStage('session_restored')
   assert.deepEqual(window.dataLayer.slice(-2).map(entry => Array.from(entry).slice(0, 2)), [
-    ['event', 'login_start'],
+    ['event', 'auth_attempt'],
     ['event', 'login_success'],
   ])
 
   startLoginMeasurement()
   recordLoginFailure('oauth_callback')
   assert.deepEqual(window.dataLayer.slice(-2).map(entry => Array.from(entry).slice(0, 2)), [
-    ['event', 'login_start'],
+    ['event', 'auth_attempt'],
     ['event', 'login_fail'],
   ])
 })
