@@ -16,7 +16,7 @@ import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMete
 import { clubBagSyncSignature, loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
 import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from './data/news.js'
-import { getAnalyticsConsent, initializeAnalytics, measureLoginStage, recordLoginFailure, setAnalyticsConsent, startLoginMeasurement, trackEvent, trackScreen } from './lib/analytics.js'
+import { flushPendingLoginStartMeasurement, getAnalyticsConsent, initializeAnalytics, measureLoginStage, recordLoginFailure, setAnalyticsConsent, startLoginMeasurement, trackEvent, trackScreen } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { requestTestAccess } from './lib/testAccessRequest.js'
 import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
@@ -278,7 +278,10 @@ export default function App() {
   }, [session?.user?.id])
 
   useEffect(() => {
-    if (analyticsConsent === 'granted' && analyticsAddressReady) initializeAnalytics()
+    if (analyticsConsent === 'granted' && analyticsAddressReady) {
+      initializeAnalytics()
+      flushPendingLoginStartMeasurement()
+    }
   }, [analyticsConsent, analyticsAddressReady])
 
   useEffect(() => {
@@ -837,7 +840,7 @@ export default function App() {
     if (!supabase) return
     setAuthError('')
     setAuthLoading(true)
-    await startLoginMeasurement()
+    startLoginMeasurement()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: googleOAuthOptions(window.location.origin),
