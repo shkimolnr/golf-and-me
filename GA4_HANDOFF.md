@@ -78,6 +78,17 @@
 5. Preview에서 테스트할 경우 Preview 전용 속성의 DebugView를 열고, 허용 전 네트워크 요청이 없는지와 허용 후 각 이벤트·매개변수를 확인합니다.
 6. 개인정보처리방침 확정, GA4 실제 설정 검토, DebugView 검증 뒤에만 Production 활성화를 승인합니다.
 
+## 외부 설정 변경 요청서 — Sol 실행, 현재 미실행
+
+| 서비스 | 환경 | 항목 | 목적 | 기대 결과 | 검증 방법 |
+|---|---|---|---|---|---|
+| GA4 | 공통 | Golf & Me 계정·속성 생성, 광고 기능·Google Signals·리마케팅 비활성화, 짧은 보관기간 설정 | 제품 분석 전용 속성 준비 | 광고 목적 기능 없이 선택 동의 데이터만 수집할 기반 확보 | GA4 관리 화면의 데이터 설정·보관·신호 설정 캡처와 값 교차검증 |
+| GA4 | Preview | Preview 전용 웹 데이터 스트림 생성 | Production 데이터와 테스트 이벤트 분리 | `G-...` 형식의 Preview 측정 ID 발급 | DebugView에서 Preview 기기 이벤트만 표시되는지 확인 |
+| Vercel | Preview | `VITE_GA_MEASUREMENT_ID`, `VITE_ANALYTICS_ENABLED=true`, `VITE_APP_ENV=preview`, `VITE_ANALYTICS_ENV=preview` | 검증용 빌드에서만 GA4 활성화 | 환경 일치 시에만 Preview GA 스크립트 로드 | 배포 환경변수 범위 확인 후 분석 거부·허용·철회 시나리오 실행 |
+| GA4/Vercel | Production | Production 웹 스트림·측정 ID와 Production 환경변수 | 공개 서비스 제품 분석 활성화 | Preview와 분리된 Production 이벤트 수집 | 사용자 승인, 처리방침 확정, Preview DebugView 통과 후 별도 Production 검증 |
+
+Production 행은 사용자 승인 전 실행하지 않습니다. 실제 측정 ID나 비밀값은 저장소와 handoff에 기록하지 않습니다.
+
 ## DebugView·수동 확인 시나리오
 
 1. 깨끗한 브라우저 저장소에서 로그인 후 온보딩 선택 화면이 보이는지 확인합니다. 개발자 도구 Network에서 허용 전 `googletagmanager.com/gtag/js`와 `google-analytics.com` 요청이 없어야 합니다.
