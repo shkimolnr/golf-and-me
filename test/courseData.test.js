@@ -77,3 +77,28 @@ test('기존 TIGER/TIGER 저장 기록도 1–9번과 10–18번으로 호환한
   assert.equal(templated.holes[0].sourceOfficialHole, 1)
   assert.equal(templated.holes[9].sourceOfficialHole, 10)
 })
+
+test('티 템플릿을 다시 적용해도 사용자가 고친 플레이 거리는 원본 거리와 분리해 보존한다', () => {
+  const redTemplate = applyKnownCourseTemplate(emptyRound({
+    courseId: 'plaza-yongin',
+    courseName: '플라자CC 용인',
+    frontCourseName: 'TIGER OUT',
+    backCourseName: 'TIGER IN',
+  }))
+  const playedDistance = redTemplate.holes[0].distance + 13
+  const editedRound = {
+    ...redTemplate,
+    tee: '화이트',
+    holes: redTemplate.holes.map((hole, index) => index === 0
+      ? { ...hole, distance: playedDistance, distanceSource: 'user' }
+      : hole),
+  }
+
+  const whiteTemplate = applyKnownCourseTemplate(editedRound)
+  assert.equal(whiteTemplate.holes[0].distance, playedDistance)
+  assert.equal(whiteTemplate.holes[0].distanceSource, 'user')
+  assert.notEqual(whiteTemplate.holes[0].sourceDistanceMeters, redTemplate.holes[0].sourceDistanceMeters)
+  assert.notEqual(whiteTemplate.holes[0].distance, whiteTemplate.holes[0].sourceDistanceMeters)
+  assert.equal(whiteTemplate.holes[1].distanceSource, 'course_database')
+  assert.equal(whiteTemplate.holes[1].distance, whiteTemplate.holes[1].sourceDistanceMeters)
+})
