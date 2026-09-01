@@ -226,18 +226,69 @@ DELETE와 tombstone trigger 자체는 멱등이어야 합니다.
 
 ## 8. 기존 migration과 선후관계
 
+### 8.1 Preview 004 적용 상태와 근거
+
+2026-09-01 현재 Golf&Me Preview에는 `004`가 적용되어 있습니다. 상태의 권위 있는 로컬 증적은
+컨트롤타워 커밋 `2076120`(`Record Preview privilege hardening`)의 다음 두 문서입니다.
+
+- `20260901_preview_migration_matrix.md`: 004 단독 적용 완료, 위험 권한 63→0,
+  필수 CRUD/RPC 보존, 앱 스모크 정상
+- `20260901_runtime_table_privilege_risk.md`: migration transaction 성공, 통합 권한 검증 성공,
+  rollback 미실행, Production 미적용
+
+이 기록은 안전 통합 브랜치의 최신 기준 `d49e783`에도 유지되어 있습니다. 이후 002 preflight가
+Preview에서 `riskyRuntimePrivileges=0`을 반환한 것도 같은 상태를 뒷받침합니다.
+
+DB 전담 커밋 `36d8668`의 “Preview/Production 실행·적용 없음”은 004 SQL과 테스트를 컨트롤타워에
+처음 전달한 **그 시점의 상태**입니다. 이후 컨트롤타워가 `6137b65`로 통합 검증하고 Preview에
+단독 적용한 다음 `2076120`으로 결과를 기록했습니다. 따라서 두 보고는 서로 다른 시점을 설명하며,
+이 문서의 “현재 Preview 적용 완료”는 오기가 아닙니다.
+
+공식 Supabase migration history는 여전히 0건이므로 “적용 완료”는 Dashboard SQL transaction과
+적용 후 catalog/권한 검증 증적에 근거한 운영 상태입니다. migration history row가 있다는 뜻은
+아닙니다.
+
+### 8.2 충돌·의존성
+
 | migration | 충돌·의존성 | 계획 |
 |---|---|---|
 | 002 derived integrity | AFTER INSERT/UPDATE에서 child cache 재생성 | tombstoned write가 BEFORE에서 실패하므로 child trigger 미실행. 함수 hash 자체는 영향 없음 |
 | 003 summary sync | BEFORE INSERT/payload UPDATE에서 summary 재계산 | tombstone guard trigger 이름을 `rounds_00_*`로 두어 summary 계산보다 먼저 거부. 003 함수/trigger hash 영향 없음 |
 | 004 least privilege | 현재 Preview 적용 완료, rounds DELETE 유지 | 새 table에 같은 위험 권한 revoke를 005에서 명시. 기존 004 재작성 금지 |
 
-005의 hard dependency는 기본 `rounds`, auth user, RLS 구조이며 002/003 자체는 아닙니다. 따라서 P0
-승인이 먼저라면 현재 Preview의 004 상태 위에 005만 적용할 수 있도록 설계하고, 별도 로컬 시험에서
-다음 두 경로를 모두 검증합니다.
+005의 hard dependency는 기본 `rounds`, auth user, RLS 구조이며 002/003/004의 객체 자체는
+아닙니다. 004는 ACL hardening이므로 005 함수가 참조할 table/function을 만들지 않습니다. 따라서
+P0 승인이 먼저라면 현재 Preview의 검증된 004 상태 위에 005만 적용할 수 있도록 설계합니다.
 
-1. 현재 Preview 순서: 기존 9개 baseline + 004 + 005
-2. 전체 재생 순서: 기존 baseline + 002 + 003 + 004 + 005
+### 8.3 004 미적용 환경의 독립 구현·검증 순서
+
+004가 적용되지 않은 새 로컬/일회성 환경에서도 005 자체의 기능과 권한을 독립 검증할 수 있어야
+합니다. 이 경로는 현재 Preview 상태를 뜻하지 않으며, 004를 생략해도 안전하다는 운영 승인도
+아닙니다.
+
+1. 기존 9개 baseline만 적용하고 002/003/004는 적용하지 않습니다.
+2. 005 preflight에서 target table·index·function·trigger가 absent/exact인지 확인합니다.
+3. 005를 적용합니다. 005는 새 `round_tombstones`에 대해 PUBLIC·anon·authenticated·service_role의
+   위험 권한과 직접 write를 자체적으로 revoke하고 authenticated owner SELECT만 명시적으로
+   부여해야 합니다.
+4. 새 table·함수·trigger의 RLS/ACL과 delete→tombstone→stale upsert 차단을 검증합니다.
+5. 이 시나리오에서는 기존 7개 app table에 004 이전 위험 권한이 남아 있는 것이 예상됩니다.
+   따라서 “전체 runtime 위험 권한 0”을 005 성공으로 오판하지 않고, `existing004Status=MISSING`과
+   기존 위험 권한 집계를 별도 blocker로 보고합니다.
+6. 같은 DB에 004를 뒤이어 적용하고 기존 7개 table 위험 권한이 0이 되는지 확인합니다. 004는
+   `round_tombstones`를 열거하지 않으므로 새 table은 005가 닫은 ACL을 그대로 유지해야 합니다.
+7. rollback/reapply 뒤에도 005 tombstone ACL과 004 기존 table ACL을 각각 분리 검증합니다.
+
+외부 환경에서 004가 실제로 미적용이라면 권장 적용 순서는 **004 → 004 검증 → 005 preflight →
+005 → 005 검증**입니다. P0 사유로 005를 먼저 적용해야 한다면 005가 새 객체를 자체 hardening한
+상태에서도 기존 7개 table의 004 위험이 남는다는 점을 별도 승인받고, 004 후속 적용을 생략하지
+않아야 합니다.
+
+최종 로컬 시험 matrix는 다음 세 경로입니다.
+
+1. 004 미적용 독립성: 기존 9개 baseline + 005, 이어서 004 적용
+2. 현재 Preview 순서: 기존 9개 baseline + 004 + 005
+3. 전체 재생 순서: 기존 baseline + 002 + 003 + 004 + 005
 
 운영상 가장 단순한 최종 순서는 002 → 003 → 005지만, TASK-049를 위해 002/003 승인을 묶어서
 요구하지 않습니다. 어떤 순서를 택하든 각 migration preflight와 별도 승인이 필요합니다.
