@@ -54,18 +54,16 @@
 
 ## 검증 결과
 
-- `npm test`: 152 passed, 0 failed
+- `npm test`: 156 passed, 0 failed
 - `npm run build`: passed
 - 빌드 시 기존 `index.html`의 `VITE_SUPABASE_URL` 미설정 경고만 발생했습니다. GA 변경 실패가 아니며 실제 환경변수를 넣으면 해소됩니다.
 - 모바일 크기(390×844) 로컬 확인: 동의 안내와 `시작하기`가 함께 보이고, 미선택 상태로 2/3 단계 진입 후에도 서비스 흐름이 유지됐습니다.
 - 개발 전용 재현 주소는 `?preview=1&onboarding=1`입니다. `import.meta.env.DEV` 조건이라 Production에서는 활성화되지 않습니다.
 - 제품 이벤트 중복 감사: 완료 홀 열람·수정은 `hole_start`·`hole_complete`·`round_milestone`을 다시 만들지 않고, 같은 온보딩 단계 완료와 같은 저장 지연 재시도는 세션에서 한 번만 집계합니다. 원격 조회 실패에는 누락돼 있던 `save_delayed(remote_load)`를 복구 이벤트와 짝지었습니다.
 
-## 사용자가 해야 할 일 — 아직 실행하지 않음
+## Production 활성화 전 남은 일
 
-1. GA4에서 광고 기능, Google Signals, 리마케팅·광고 개인화를 끄고 웹 데이터 스트림을 만듭니다.
-2. Development/Preview/Production을 분리합니다. Development는 `VITE_ANALYTICS_ENABLED=false`, Preview는 비활성화 또는 별도 Preview 속성 ID, Production은 별도 Production 속성 ID를 사용합니다.
-3. 각 Vercel 환경에 아래를 해당 환경 값으로 등록합니다. 실제 ID는 저장소에 커밋하지 않습니다.
+Preview 전용 계정·속성·웹 스트림과 Vercel 브랜치 환경 분리는 완료했습니다. Development는 비활성 상태이며 Production은 변경하지 않았습니다. Production 승인 시 별도 Production 속성·스트림과 아래 환경값을 준비합니다. 실제 ID는 저장소에 커밋하지 않습니다.
 
    ```text
    VITE_GA_MEASUREMENT_ID=G-...
@@ -74,11 +72,10 @@
    VITE_ANALYTICS_ENV=development|preview|production
    ```
 
-4. GA4 데이터 보관기간을 가능한 짧게 설정하고 내부 운영자/개발자 트래픽 필터를 검토합니다.
-5. Preview에서 테스트할 경우 Preview 전용 속성의 DebugView를 열고, 허용 전 네트워크 요청이 없는지와 허용 후 각 이벤트·매개변수를 확인합니다.
-6. 개인정보처리방침 확정, GA4 실제 설정 검토, DebugView 검증 뒤에만 Production 활성화를 승인합니다.
+1. GA4 데이터 보관기간을 가능한 짧게 설정하고 내부 운영자/개발자 트래픽 필터를 검토합니다.
+2. 개인정보처리방침 확정과 GA4 실제 설정 검토 뒤에만 Production 활성화를 승인합니다.
 
-## 외부 설정 변경 요청서 — Sol 실행, 현재 미실행
+## 외부 설정 기준
 
 | 서비스 | 환경 | 항목 | 목적 | 기대 결과 | 검증 방법 |
 |---|---|---|---|---|---|
@@ -109,7 +106,17 @@ Production 행은 사용자 승인 전 실행하지 않습니다. 실제 측정 
 - 새로고침: 허용 상태 유지, 스크립트 1개로 재초기화
 - 동의 안내와 온보딩 `시작하기`는 함께 표시되며 서비스 흐름을 막지 않음
 
-남은 검증은 실제 Preview 측정 ID가 설정된 뒤 GA4 DebugView에서 허용 이벤트·파라미터와 철회 후 전송 중단을 확인하는 것입니다.
+로컬 시나리오 검증 뒤 실제 Preview 측정 ID를 연결해 아래 종단 검증까지 완료했습니다.
+
+## 2026-09-01 실제 GA4 Preview 종단 검증
+
+- Analytics 계정 `Golf & Me`, 속성 `Golf & Me Preview`, Preview 전용 웹 스트림을 사용했습니다.
+- 측정 ID와 분석 활성화 값은 Vercel의 `codex/preview-diagnostics` Preview 브랜치에만 적용했습니다. Production은 변경하지 않았습니다.
+- 배포 `75ad883`에서 실시간 활성 사용자 1명과 `screen_view`, `user_engagement`, `first_visit`, `session_start`, `save_delayed`, `save_recovered` 수신을 확인했습니다.
+- Preview 이벤트에만 `debug_mode`를 붙여 DebugView에서 `screen_view`와 `user_engagement`를 확인했습니다.
+- 실제 URL·query·fragment·referrer는 보내지 않고 `page_location=https://golf-and-me.invalid/`, 고정 `page_title`, 빈 referrer만 전송되는 것을 DebugView에서 확인했습니다.
+- 분석 허용을 끈 뒤 새소식 화면 전환과 새로고침을 실행해도 추가 이벤트가 생기지 않았습니다. 검증 후 기존 허용 상태로 복원했습니다.
+- 이메일·UUID·토큰·골프장명·스코어·홀/샷/클럽 원본·메모·자유 입력은 DebugView 이벤트 매개변수에 없었습니다.
 
 ## 컨트롤타워 통합 주의점
 
