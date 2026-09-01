@@ -53,11 +53,12 @@
 
 ## 검증 결과
 
-- `npm test`: 150 passed, 0 failed
+- `npm test`: 151 passed, 0 failed
 - `npm run build`: passed
 - 빌드 시 기존 `index.html`의 `VITE_SUPABASE_URL` 미설정 경고만 발생했습니다. GA 변경 실패가 아니며 실제 환경변수를 넣으면 해소됩니다.
 - 모바일 크기(390×844) 로컬 확인: 동의 안내와 `시작하기`가 함께 보이고, 미선택 상태로 2/3 단계 진입 후에도 서비스 흐름이 유지됐습니다.
 - 개발 전용 재현 주소는 `?preview=1&onboarding=1`입니다. `import.meta.env.DEV` 조건이라 Production에서는 활성화되지 않습니다.
+- 제품 이벤트 중복 감사: 완료 홀 열람·수정은 `hole_start`·`hole_complete`·`round_milestone`을 다시 만들지 않고, 같은 온보딩 단계 완료와 같은 저장 지연 재시도는 세션에서 한 번만 집계합니다. 원격 조회 실패에는 누락돼 있던 `save_delayed(remote_load)`를 복구 이벤트와 짝지었습니다.
 
 ## 사용자가 해야 할 일 — 아직 실행하지 않음
 
