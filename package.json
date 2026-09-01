@@ -12,6 +12,7 @@
     "test:db-integrity": "node scripts/verifyDerivedIntegrityMigration.mjs",
     "test:db-integrity-preflight": "node scripts/verifyDerivedIntegrityPreflight.mjs",
     "test:db-privileges": "node scripts/verifyRuntimeTablePrivileges.mjs",
+    "test:db-integration": "node scripts/verifyRoundSummarySqlParity.mjs",
     "verify:ledger": "node scripts/verifyProjectLedger.mjs"
   },
   "dependencies": {
