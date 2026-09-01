@@ -23,6 +23,7 @@ import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
 import { scheduleRemoteHydrationRetry, shouldScheduleRemoteHydrationRetry } from './lib/remoteHydrationRetry.js'
 import { recordDiagnosticFailure, resolveDiagnosticFailures } from './lib/diagnostics.js'
 import { clearDiagnosticQueue, enqueueDiagnosticFailure, enqueueDiagnosticRecovery, flushDiagnosticQueue, setDiagnosticAccessTokenProvider } from './lib/diagnosticsTransport.js'
+import golfBallLogo from './assets/golf-ball-logo.png'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
 const isTestAccessRequestEnabled = import.meta.env.VITE_TEST_ACCESS_REQUEST_ENABLED === 'true'
@@ -1771,10 +1772,8 @@ export default function App() {
   if (!session) {
     return (
       <main className="app-shell auth-shell">
-        <div className="auth-logo"><span className="brand-mark">G</span></div>
+        <div className="auth-logo"><img className="auth-ball-logo" src={golfBallLogo} alt="" /></div>
         <h1>골프와 나</h1>
-        <p className="eyebrow">Listen to your game.</p>
-        <p className="description">오늘의 플레이에서<br />내일의 골프를 발견하세요</p>
         <button className="google-button" type="button" onClick={signInWithGoogle} disabled={!isSupabaseConfigured}>
           <span className="google-mark" aria-hidden="true">
             <svg viewBox="0 0 48 48" focusable="false">
@@ -1797,9 +1796,9 @@ export default function App() {
                   <input type="email" inputMode="email" autoComplete="email" required maxLength="254" placeholder="example@gmail.com" value={testAccessEmail} onChange={event => setTestAccessEmail(event.target.value)} />
                 </label>
                 <input hidden type="text" name="website" tabIndex="-1" autoComplete="off" aria-hidden="true" />
-                {testAccessError && <p className="error-message" role="alert">{testAccessError}</p>}
                 <button type="submit" disabled={testAccessStatus === 'submitting' || !testAccessEmail.trim()}>{testAccessStatus === 'submitting' ? '요청 중…' : '승인 요청'}</button>
               </form>
+              {testAccessError && <p className="test-access-error error-message" role="alert">{testAccessError}</p>}
               </>
             )}
             {testAccessStatus === 'sent' && <p className="test-access-success" role="status">승인 요청을 보냈어요.</p>}
@@ -1931,7 +1930,7 @@ export default function App() {
     <main className="app-shell">
       {screen === 'home' && (
         <header className="app-header">
-          <div className="brand"><span className="brand-mark">G</span> Golf &amp; Me</div>
+          <div className="brand"><img className="brand-ball-logo" src={golfBallLogo} alt="" /><span className="brand-wordmark">Golf<br />&amp; Me</span></div>
           <div className="home-header-actions">
             <button className="news-header-button" type="button" onClick={openNews} aria-label={unseenNews ? '새소식, 새 글 있음' : '새소식'}>
               <MegaphoneIcon />
@@ -2036,7 +2035,7 @@ export default function App() {
             <span>보내주신 내용은 서비스를 다듬는 데 참고할게요.</span>
             <button className="primary" type="button" onClick={() => setScreen('home')}>홈으로</button>
           </div> : <form className="feedback-form" onSubmit={submitFeedback}>
-            <label htmlFor="feedback-message">의견</label>
+            <label htmlFor="feedback-message">🔒 익명보장</label>
             <textarea id="feedback-message" rows="7" maxLength={MAX_FEEDBACK_LENGTH} value={feedbackMessage} onChange={event => setFeedbackMessage(event.target.value)} placeholder="불편했던 점이나 있으면 좋을 기능을 알려주세요." />
             <span className="feedback-count">{feedbackMessage.length}/{MAX_FEEDBACK_LENGTH}</span>
             {feedbackError && <p className="error-message" role="alert">{feedbackError}</p>}
@@ -2466,8 +2465,8 @@ export default function App() {
           <button className="account-backdrop" onClick={() => setClubSetupPromptOpen(false)} aria-label="클럽 등록 안내 닫기" />
           <section className="account-sheet club-setup-sheet" role="dialog" aria-modal="true" aria-labelledby="club-setup-title" aria-describedby="club-setup-description">
             <div className="sheet-handle" />
-            <div className="account-heading"><h2 id="club-setup-title">클럽 정보가 부족해요</h2><button className="close-button" type="button" onClick={() => setClubSetupPromptOpen(false)} aria-label="닫기">×</button></div>
-            <p id="club-setup-description">라운드에서 사용한 클럽을 정확하게 기록하려면 먼저 골프백을 확인해주세요.</p>
+            <div className="account-heading"><h2 id="club-setup-title"><span aria-hidden="true">⚠️</span> 클럽 정보가 부족해요</h2><button className="close-button" type="button" onClick={() => setClubSetupPromptOpen(false)} aria-label="닫기">×</button></div>
+            <p id="club-setup-description">라운드에서 사용한 클럽을 기록하려면 먼저 골프백을 확인해 주세요.</p>
             <div className="sheet-actions"><button className="secondary-button" type="button" onClick={() => setClubSetupPromptOpen(false)}>돌아가기</button><button className="primary" type="button" onClick={() => { setClubSetupPromptOpen(false); setClubSetupReturn('new-round'); setClubStage('composition'); setClubCompositionEditing(true); setScreen('clubs') }}>클럽 등록하기</button></div>
           </section>
         </div>
