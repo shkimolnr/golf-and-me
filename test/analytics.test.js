@@ -76,7 +76,10 @@ test('허용 후 GA4를 정확히 한 번 초기화하고 자동 page_view를 �
     send_page_view: false,
     allow_google_signals: false,
     allow_ad_personalization_signals: false,
+    page_location: 'https://golf-and-me.invalid/',
+    page_title: 'Golf & Me',
     page_referrer: '',
+    ignore_referrer: true,
   }])
 })
 
@@ -151,7 +154,10 @@ test('Preview 전용 측정은 DebugView 검증 표식을 추가한다', () => {
     send_page_view: false,
     allow_google_signals: false,
     allow_ad_personalization_signals: false,
+    page_location: 'https://golf-and-me.invalid/',
+    page_title: 'Golf & Me',
     page_referrer: '',
+    ignore_referrer: true,
     debug_mode: true,
   }])
   assert.equal(trackScreen('home'), true)
@@ -159,6 +165,14 @@ test('Preview 전용 측정은 DebugView 검증 표식을 추가한다', () => {
     screen_name: 'home',
     debug_mode: true,
   }])
+})
+
+test('GA4에는 실제 브라우저 URL과 referrer 대신 고정된 비식별 문맥만 설정한다', () => {
+  installBrowser(createStorage(), 'https://preview.example.test/private?source=beta#secret-fragment')
+  setAnalyticsConsent(true, productionConfig)
+  const serialized = JSON.stringify(window.dataLayer)
+  assert.match(serialized, /golf-and-me\.invalid/)
+  assert.doesNotMatch(serialized, /preview\.example\.test|source=beta|secret-fragment/)
 })
 
 test('측정 ID가 없거나 비활성화여도 앱 동작을 막지 않는다', () => {
