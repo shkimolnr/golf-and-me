@@ -5,6 +5,7 @@ import {
   clearAuthCallbackFromAddress,
   googleOAuthOptions,
   sanitizedAuthCallbackPath,
+  shouldReportAuthCallbackFailure,
 } from '../src/lib/auth.js'
 
 test('Google 재로그인은 계정 선택 화면을 표시하고 현재 접속 주소로 돌아온다', () => {
@@ -46,4 +47,10 @@ test('OAuth 오류 설명을 읽고 주소를 정리한다', () => {
     title: '',
     path: '/',
   })
+})
+
+test('유효한 세션이 복원되면 과거 OAuth 오류를 현재 로그인 실패로 표시하지 않는다', () => {
+  assert.equal(shouldReportAuthCallbackFailure('OAuth state expired', { user: { id: 'user-1' } }), false)
+  assert.equal(shouldReportAuthCallbackFailure('OAuth state expired', null), true)
+  assert.equal(shouldReportAuthCallbackFailure('', null), false)
 })
