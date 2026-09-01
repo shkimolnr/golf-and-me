@@ -100,7 +100,7 @@ Production 행은 사용자 승인 전 실행하지 않습니다. 실제 측정 
 
 ## 컨트롤타워 통합 주의점
 
-- 현재 main의 미커밋 `analytics.js`/`App.jsx`는 GA4와 운영 진단을 함께 전송하는 이전 구조입니다. 이 브랜치를 통합할 때 `recordDiagnosticEvent` 경로를 되살리지 마세요.
+- GA4 제품 분석과 Supabase 운영 진단은 분리된 현재 구조를 유지합니다. GA4 경로에 `recordDiagnosticEvent`를 다시 연결하거나 운영 진단 데이터를 섞지 마세요.
 - 공유 충돌 지점은 `src/App.jsx`의 analytics import, 진단 helper, OAuth/원격 hydration/계정 삭제 호출부와 계정 메뉴입니다. DB 트랙이 diagnostics transport를 넣을 때 GA 코드와 수동으로 병합해야 합니다.
 - `README.md`, `PRD.md`, `DECISIONS.md`, `OPERATIONS.md`, `BACKLOG.md`, `PROJECT_RULES.md`, `PRIVACY_POLICY_DRAFT.md`의 최종 통합은 컨트롤타워가 합니다. 반드시 반영할 결정은 다음입니다: **Golf & Me는 GTM·Firebase를 사용하지 않고 GA4를 직접 연동하며, 제품 분석은 선택 동의 대상이다. 최소 운영 오류 진단은 Supabase 별도 체계로 분리하고, 개인정보·골프 기록·자유 입력은 어느 쪽에도 보내지 않는다.**
 
