@@ -61,8 +61,11 @@ not enabled by the app configuration.
 Local consent, duplicate-event, and OAuth URL privacy checks have passed. The
 Preview configuration adds GA4 `debug_mode` only in the Preview environment so
 the real stream can be inspected in DebugView without changing Production.
-The remaining `TASK-038` work is to verify the deployed Preview with the real
-measurement ID in GA4 DebugView, separately from operational diagnostics.
+The deployed Preview was verified with the real measurement ID on 2026-09-01:
+Realtime and DebugView received the allowlisted events, actual URL/referrer
+context was replaced with a fixed non-identifying value, and no new events were
+received after consent was withdrawn. The original consent state was restored
+after the test. Production remained unchanged.
 
 ## Documentation integration requested from the control tower
 
