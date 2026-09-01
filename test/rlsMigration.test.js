@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises'
 
 const migrationPath = new URL('../supabase/migrations/202608300001_initial_golf_schema.sql', import.meta.url)
 const sql = (await readFile(migrationPath, 'utf8')).replace(/\s+/g, ' ')
+const privilegeMigrationPath = new URL('../supabase/migrations/202609010001_authenticated_table_privileges.sql', import.meta.url)
+const privilegeSql = (await readFile(privilegeMigrationPath, 'utf8')).replace(/\s+/g, ' ')
 
 const ownerColumns = {
   profiles: 'id',
@@ -49,4 +51,18 @@ test('삭제 가능한 라운드·샷·클럽 데이터는 소유 행만 삭제�
       new RegExp(`create policy "[^"]+_delete_own" on public\\.${table} for delete using \\(auth\\.uid\\(\\) = user_id\\)`, 'i'),
     )
   }
+})
+
+test('RLS 정책을 적용할 수 있도록 로그인 사용자에게 필요한 테이블 권한을 부여한다', () => {
+  assert.match(privilegeSql, /grant select, insert, update on table public\.profiles to authenticated/i)
+  for (const table of ['rounds', 'round_holes', 'round_shots', 'user_clubs', 'club_distance_history']) {
+    assert.match(privilegeSql, new RegExp(`public\\.${table}`, 'i'))
+  }
+  assert.match(privilegeSql, /grant select, insert, update, delete on table .* to authenticated/i)
+  assert.match(privilegeSql, /grant usage, select on sequence public\.club_distance_history_id_seq to authenticated/i)
+})
+
+test('익명 사용자에게 사용자 데이터 CRUD 권한을 열지 않는다', () => {
+  assert.match(privilegeSql, /revoke select, insert, update, delete on table .* from anon/i)
+  assert.doesNotMatch(privilegeSql, /grant [^;]+ to anon/i)
 })
