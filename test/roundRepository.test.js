@@ -2,11 +2,15 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   createRemoteRoundVersionMap,
+  deleteRemoteRound,
   deserializeRemoteRoundSummary,
+  isRoundTombstonedError,
   loadRemoteRoundDetail,
   loadRemoteRounds,
+  loadRemoteRoundSyncState,
   markRoundsAsRemoteSaved,
   mergeRoundCollections,
+  mergeRoundCollectionsWithDeletions,
   resolveOnboardingProfile,
   saveRemoteRounds,
   selectRoundsNeedingRemoteSave,
@@ -29,6 +33,25 @@ test('같은 라운드는 가장 최근 수정본을 사용하고 양쪽의 고�
   assert.equal(merged.find(round => round.id === 'shared').courseName, '서버')
 })
 
+test('삭제 표식은 로컬·원격 어느 쪽이 최신이어도 병합 결과보다 우선한다', () => {
+  const local = [
+    { id: 'deleted-local', updatedAt: '2026-09-01T03:00:00.000Z' },
+    { id: 'keep', updatedAt: '2026-09-01T01:00:00.000Z' },
+  ]
+  const remote = [
+    { id: 'deleted-remote', updatedAt: '2026-09-01T04:00:00.000Z' },
+    { id: 'keep', updatedAt: '2026-09-01T02:00:00.000Z' },
+  ]
+
+  const merged = mergeRoundCollectionsWithDeletions(
+    local,
+    remote,
+    ['deleted-local', 'deleted-remote'],
+  )
+  assert.deepEqual(merged.map(round => round.id), ['keep'])
+  assert.equal(merged[0].updatedAt, '2026-09-01T02:00:00.000Z')
+})
+
 test('서버와 수정 시각이 다른 라운드만 저장 대상으로 고른다', () => {
   const remote = [
     { id: 'same', updatedAt: '2026-08-30T01:00:00.000Z' },
@@ -42,6 +65,10 @@ test('서버와 수정 시각이 다른 라운드만 저장 대상으로 고른�
 
   const versions = createRemoteRoundVersionMap(remote)
   assert.deepEqual(selectRoundsNeedingRemoteSave(local, versions).map(round => round.id), ['changed', 'new'])
+  assert.deepEqual(
+    selectRoundsNeedingRemoteSave(local, versions, ['changed', 'new']).map(round => round.id),
+    [],
+  )
 })
 
 test('늦게 끝난 과거 저장 요청이 최신 동기화 시각을 되돌리지 않는다', () => {
@@ -134,6 +161,20 @@ test('첫 원격 조회는 작성 중 원본과 완료 요약을 분리해 가�
   assert.equal(rounds[1].remoteSummaryOnly, true)
 })
 
+test('동기화 조회는 활성 라운드와 서버 tombstone을 분리해 반환한다', async () => {
+  const selections = []
+  const results = [
+    { data: [{ payload: { id: 'draft', status: 'in_progress' } }], error: null },
+    { data: [], error: null },
+    { data: [{ round_id: 'deleted', deleted_at: '2026-09-01T01:00:00.000Z' }], error: null },
+  ]
+  const client = { from() { return queryResult(results.shift(), selections) } }
+  const state = await loadRemoteRoundSyncState(client, 'user-1')
+  assert.deepEqual(state.rounds.map(round => round.id), ['draft'])
+  assert.deepEqual(state.tombstones, [{ id: 'deleted', deletedAt: '2026-09-01T01:00:00.000Z' }])
+  assert.equal(selections[2], 'round_id, deleted_at')
+})
+
 test('완료 요약을 연 뒤에는 해당 라운드 payload 한 건만 가져온다', async () => {
   const selections = []
   const detail = { id: 'complete', status: 'completed', holes: [{ holeNumber: 1, score: 4 }] }
@@ -167,6 +208,71 @@ test('요약 컬럼 마이그레이션 전 서버에도 기존 라운드 형식�
   assert.equal('stats_summary' in savedRows[1][0], false)
   assert.equal('entered_holes' in savedRows[1][0], false)
   assert.equal(savedRows[1][0].payload.id, 'legacy-compatible')
+})
+
+test('저장 직전 삭제 ID를 다시 제외해 오래된 저장 작업의 재생성을 막는다', async () => {
+  const savedRows = []
+  const client = {
+    from() {
+      return {
+        async upsert(rows) {
+          savedRows.push(rows)
+          return { error: null }
+        },
+      }
+    },
+  }
+  const rounds = [
+    { id: 'keep', status: 'in_progress', holes: [], updatedAt: '2026-09-01T01:00:00.000Z' },
+    { id: 'deleted', status: 'in_progress', holes: [], updatedAt: '2026-09-01T02:00:00.000Z' },
+  ]
+  await saveRemoteRounds(client, 'user-1', rounds, ['deleted'])
+  assert.deepEqual(savedRows[0].map(row => row.id), ['keep'])
+})
+
+test('DB tombstone guard 오류를 일반 저장 오류와 구분한다', () => {
+  assert.equal(isRoundTombstonedError({ code: '23505', message: 'round_tombstoned' }), true)
+  assert.equal(isRoundTombstonedError({ code: '23505', message: 'other unique key' }), false)
+  assert.equal(isRoundTombstonedError({ code: '500', message: 'round_tombstoned' }), false)
+})
+
+function deleteConfirmationClient(tombstone) {
+  let table = ''
+  return {
+    from(nextTable) {
+      table = nextTable
+      return {
+        delete() { return this },
+        select() { return this },
+        eq() { return this },
+        then(resolve) {
+          return Promise.resolve(resolve({ error: null }))
+        },
+        maybeSingle() {
+          return Promise.resolve({
+            data: table === 'round_tombstones' && tombstone
+              ? { round_id: tombstone.id, deleted_at: tombstone.deletedAt }
+              : null,
+            error: null,
+          })
+        },
+      }
+    },
+  }
+}
+
+test('서버 삭제는 tombstone 확인 뒤에만 durable queue 성공으로 판정한다', async () => {
+  const tombstone = await deleteRemoteRound(
+    deleteConfirmationClient({ id: 'round-1', deletedAt: '2026-09-01T03:00:00.000Z' }),
+    'user-1',
+    'round-1',
+  )
+  assert.deepEqual(tombstone, { id: 'round-1', deletedAt: '2026-09-01T03:00:00.000Z' })
+
+  await assert.rejects(
+    deleteRemoteRound(deleteConfirmationClient(null), 'user-1', 'round-1'),
+    error => error?.code === 'ROUND_DELETE_NOT_CONFIRMED',
+  )
 })
 
 test('작성 중 기록은 최근 수정 순으로 모든 기기에서 동일하게 정렬한다', () => {
