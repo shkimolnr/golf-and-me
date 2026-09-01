@@ -8,8 +8,11 @@ export function createRemoteRoundVersionMap(rounds = []) {
   return new Map(rounds.filter(round => round?.id).map(round => [String(round.id), roundTimestamp(round)]))
 }
 
-export function selectRoundsNeedingRemoteSave(rounds = [], remoteVersions = new Map()) {
-  return rounds.filter(round => round?.id && remoteVersions.get(String(round.id)) !== roundTimestamp(round))
+export function selectRoundsNeedingRemoteSave(rounds = [], remoteVersions = new Map(), deletedRoundIds = []) {
+  const deleted = new Set((deletedRoundIds || []).map(String))
+  return rounds.filter(round => round?.id
+    && !deleted.has(String(round.id))
+    && remoteVersions.get(String(round.id)) !== roundTimestamp(round))
 }
 
 export function markRoundsAsRemoteSaved(remoteVersions, rounds = []) {
@@ -54,6 +57,12 @@ export function mergeRoundCollections(localRounds = [], remoteRounds = []) {
   })
 
   return [...merged.values()]
+}
+
+export function mergeRoundCollectionsWithDeletions(localRounds = [], remoteRounds = [], deletedRoundIds = []) {
+  const deleted = new Set((deletedRoundIds || []).map(String))
+  return mergeRoundCollections(localRounds, remoteRounds)
+    .filter(round => round?.id && !deleted.has(String(round.id)))
 }
 
 export function resolveOnboardingProfile(localProfile, remoteProfile) {
@@ -182,6 +191,38 @@ export async function loadRemoteRounds(client, userId) {
   ]
 }
 
+export async function loadRemoteRoundTombstones(client, userId) {
+  const { data, error } = await client
+    .from('round_tombstones')
+    .select('round_id, deleted_at')
+    .eq('user_id', userId)
+    .order('deleted_at', { ascending: false })
+  if (error) throw error
+  return (data || []).map(row => ({
+    id: String(row.round_id),
+    deletedAt: row.deleted_at || null,
+  }))
+}
+
+export async function loadRemoteRoundSyncState(client, userId) {
+  const [rounds, tombstones] = await Promise.all([
+    loadRemoteRounds(client, userId),
+    loadRemoteRoundTombstones(client, userId),
+  ])
+  return { rounds, tombstones }
+}
+
+export async function loadRemoteRoundTombstone(client, userId, roundId) {
+  const { data, error } = await client
+    .from('round_tombstones')
+    .select('round_id, deleted_at')
+    .eq('user_id', userId)
+    .eq('round_id', String(roundId))
+    .maybeSingle()
+  if (error) throw error
+  return data ? { id: String(data.round_id), deletedAt: data.deleted_at || null } : null
+}
+
 export async function loadRemoteRoundDetail(client, userId, roundId) {
   const { data, error } = await client
     .from('rounds')
@@ -193,9 +234,11 @@ export async function loadRemoteRoundDetail(client, userId, roundId) {
   return data?.payload || null
 }
 
-export async function saveRemoteRounds(client, userId, rounds) {
-  if (!rounds.length) return
-  const rows = rounds.map(round => serializeRoundRow(userId, round))
+export async function saveRemoteRounds(client, userId, rounds, deletedRoundIds = []) {
+  const deleted = new Set((deletedRoundIds || []).map(String))
+  const safeRounds = (rounds || []).filter(round => round?.id && !deleted.has(String(round.id)))
+  if (!safeRounds.length) return
+  const rows = safeRounds.map(round => serializeRoundRow(userId, round))
   let { error } = await client
     .from('rounds')
     .upsert(rows, { onConflict: 'id' })
@@ -230,6 +273,20 @@ export async function deleteRemoteRound(client, userId, roundId) {
     .eq('id', String(roundId))
 
   if (error) throw error
+  const tombstone = await loadRemoteRoundTombstone(client, userId, roundId)
+  if (!tombstone) {
+    const confirmationError = new Error('round_delete_not_confirmed')
+    confirmationError.code = 'ROUND_DELETE_NOT_CONFIRMED'
+    throw confirmationError
+  }
+  return tombstone
+}
+
+export function isRoundTombstonedError(error) {
+  return String(error?.code || '') === '23505'
+    && /round_tombstoned|rounds_tombstone_guard/i.test(
+      `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`,
+    )
 }
 
 export async function loadRemoteProfile(client, userId) {

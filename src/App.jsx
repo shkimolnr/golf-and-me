@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { isSupabaseConfigured, supabase } from './lib/supabase.js'
-import { createRemoteRoundVersionMap, deleteRemoteRound, loadRemoteProfile, loadRemoteRoundDetail, loadRemoteRounds, markRoundsAsRemoteSaved, mergeRoundCollections, resolveOnboardingProfile, saveRemoteProfile, saveRemoteRounds, selectRoundsNeedingRemoteSave, sortRoundsForList } from './lib/roundRepository.js'
-import { excludePendingRoundDeletions, loadPendingRoundDeletions, savePendingRoundDeletions } from './lib/pendingRoundDeletions.js'
+import { createRemoteRoundVersionMap, deleteRemoteRound, isRoundTombstonedError, loadRemoteProfile, loadRemoteRoundDetail, loadRemoteRoundSyncState, loadRemoteRoundTombstone, markRoundsAsRemoteSaved, mergeRoundCollectionsWithDeletions, resolveOnboardingProfile, saveRemoteProfile, saveRemoteRounds, selectRoundsNeedingRemoteSave, sortRoundsForList } from './lib/roundRepository.js'
+import { clearDeletedRoundLocalArtifacts, excludePendingRoundDeletions, loadObservedRoundTombstones, loadPendingRoundDeletions, mergeObservedRoundTombstones, roundDeletionIds, saveObservedRoundTombstones, savePendingRoundDeletions } from './lib/pendingRoundDeletions.js'
 import { isRoundStructureLocked, needsRoundStructureChoice } from './lib/roundPolicy.js'
 import { calculateHoleTotals, isRecordedShot, terminalLieForShot, validateHoleCompletion } from './lib/scoring.js'
 import { calculateCumulativeStats, calculateRoundStats, formatPercent } from './lib/roundStats.js'
@@ -188,6 +188,7 @@ export default function App() {
   const [syncRetryNonce, setSyncRetryNonce] = useState(0)
   const [remoteHydrationRetryNonce, setRemoteHydrationRetryNonce] = useState(0)
   const [pendingDeletedRoundIds, setPendingDeletedRoundIds] = useState([])
+  const [observedRoundTombstones, setObservedRoundTombstones] = useState([])
   const [clubDrafts, setClubDrafts] = useState(initialClubDrafts)
   const [inactiveClubDrafts, setInactiveClubDrafts] = useState([])
   const [clubStage, setClubStage] = useState('composition')
@@ -310,6 +311,23 @@ export default function App() {
   }, [isOnline])
 
   useEffect(() => {
+    if (!session || !supabase || isPreviewMode) return
+    const userId = session.user.id
+    function refreshRoundDeletionState() {
+      if (!navigator.onLine || document.visibilityState === 'hidden') return
+      setRemoteRoundsHydratedUserId(current => current === userId ? null : current)
+    }
+    window.addEventListener('online', refreshRoundDeletionState)
+    window.addEventListener('focus', refreshRoundDeletionState)
+    document.addEventListener('visibilitychange', refreshRoundDeletionState)
+    return () => {
+      window.removeEventListener('online', refreshRoundDeletionState)
+      window.removeEventListener('focus', refreshRoundDeletionState)
+      document.removeEventListener('visibilitychange', refreshRoundDeletionState)
+    }
+  }, [session])
+
+  useEffect(() => {
     if (!session) {
       setClubBagHydrated(false)
       clubOnboardingCompletedRef.current = false
@@ -405,6 +423,7 @@ export default function App() {
       setCourseHistory([])
       setNavigationReady(false)
       setPendingDeletedRoundIds([])
+      setObservedRoundTombstones([])
       return
     }
 
@@ -426,7 +445,9 @@ export default function App() {
     setDefaultDistanceUnit('M')
     setRound(newRoundForm())
     const queuedDeletionIds = loadPendingRoundDeletions(window.localStorage, session.user.id)
+    const cachedTombstones = loadObservedRoundTombstones(window.localStorage, session.user.id)
     setPendingDeletedRoundIds(queuedDeletionIds)
+    setObservedRoundTombstones(cachedTombstones)
 
     const storageKey = `golf-and-me:onboarding:${session.user.id}`
     let savedProfile = window.localStorage.getItem(storageKey)
@@ -456,7 +477,15 @@ export default function App() {
       const savedRound = window.localStorage.getItem(`golf-and-me:active-round:${session.user.id}`)
       if (savedRound) savedRounds = JSON.stringify([JSON.parse(savedRound)])
     }
-    const loadedRounds = excludePendingRoundDeletions(savedRounds ? JSON.parse(savedRounds) : [], queuedDeletionIds)
+    const loadedRounds = excludePendingRoundDeletions(
+      savedRounds ? JSON.parse(savedRounds) : [],
+      roundDeletionIds(queuedDeletionIds, cachedTombstones),
+    )
+    clearDeletedRoundLocalArtifacts(
+      window.localStorage,
+      session.user.id,
+      roundDeletionIds(queuedDeletionIds, cachedTombstones),
+    )
     window.localStorage.setItem(roundsKey, JSON.stringify(loadedRounds))
     setRounds(loadedRounds)
     const navigationKey = `golf-and-me:navigation:${session.user.id}`
@@ -507,7 +536,7 @@ export default function App() {
       const settle = promise => promise.then(value => ({ value }), error => ({ error }))
       const [profileResult, roundsResult, clubBagResult] = await Promise.all([
         needsProfile ? settle(loadRemoteProfile(supabase, userId)) : { skipped: true },
-        needsRounds ? settle(loadRemoteRounds(supabase, userId)) : { skipped: true },
+        needsRounds ? settle(loadRemoteRoundSyncState(supabase, userId)) : { skipped: true },
         needsClubBag ? settle(loadRemoteClubBag(supabase, userId)) : { skipped: true },
       ])
       if (cancelled) return
@@ -573,11 +602,34 @@ export default function App() {
           roundsFailed = true
           reportDiagnosticFailure('rounds_load', roundsResult.error)
         } else {
-          remoteRoundVersionsRef.current = createRemoteRoundVersionMap(roundsResult.value)
+          const mergedTombstones = mergeObservedRoundTombstones(
+            observedRoundTombstones,
+            roundsResult.value.tombstones,
+          )
+          const deletedRoundIds = roundDeletionIds(pendingDeletedRoundIds, mergedTombstones)
+          const deletedRoundIdSet = new Set(deletedRoundIds)
+          saveObservedRoundTombstones(window.localStorage, userId, mergedTombstones)
+          clearDeletedRoundLocalArtifacts(window.localStorage, userId, deletedRoundIds)
+          setObservedRoundTombstones(mergedTombstones)
+          remoteRoundVersionsRef.current = createRemoteRoundVersionMap(roundsResult.value.rounds)
           setRounds(currentRounds => {
-            const mergedRounds = excludePendingRoundDeletions(mergeRoundCollections(currentRounds, roundsResult.value), pendingDeletedRoundIds)
+            const mergedRounds = mergeRoundCollectionsWithDeletions(
+              currentRounds,
+              roundsResult.value.rounds,
+              deletedRoundIds,
+            )
             window.localStorage.setItem(`golf-and-me:rounds:${userId}`, JSON.stringify(mergedRounds))
-            setActiveRound(currentRound => currentRound ? mergedRounds.find(item => item.id === currentRound.id) || currentRound : currentRound)
+            setActiveRound(currentRound => {
+              if (currentRound && deletedRoundIdSet.has(String(currentRound.id))) {
+                setHoleDraft(null)
+                setEditingActiveRound(false)
+                setScreen('home')
+                return null
+              }
+              return currentRound
+                ? mergedRounds.find(item => item.id === currentRound.id) || currentRound
+                : currentRound
+            })
             return mergedRounds
           })
           setRemoteRoundsHydratedUserId(userId)
@@ -652,7 +704,7 @@ export default function App() {
       cancelled = true
       cancelRemoteHydrationRetry?.()
     }
-  }, [session, clubBagHydrated, remoteProfileHydratedUserId, remoteRoundsHydratedUserId, remoteClubBagHydratedUserId, isOnline, pendingDeletedRoundIds, remoteHydrationRetryNonce])
+  }, [session, clubBagHydrated, remoteProfileHydratedUserId, remoteRoundsHydratedUserId, remoteClubBagHydratedUserId, isOnline, pendingDeletedRoundIds, observedRoundTombstones, remoteHydrationRetryNonce])
 
   useEffect(() => {
     if (!session || !supabase || isPreviewMode) return
@@ -665,7 +717,12 @@ export default function App() {
     }
     let retryTimer = null
     const timer = window.setTimeout(async () => {
-      const roundsToSave = selectRoundsNeedingRemoteSave(rounds, remoteRoundVersionsRef.current)
+      const deletedRoundIds = roundDeletionIds(pendingDeletedRoundIds, observedRoundTombstones)
+      const roundsToSave = selectRoundsNeedingRemoteSave(
+        rounds,
+        remoteRoundVersionsRef.current,
+        deletedRoundIds,
+      )
       const currentClubBag = {
         clubs: clubDrafts,
         inactiveClubs: inactiveClubDrafts,
@@ -677,33 +734,54 @@ export default function App() {
       const currentClubBagSignature = clubBagSyncSignature(currentClubBag)
       const clubBagNeedsSave = currentClubBagSignature !== remoteClubBagSignatureRef.current
       try {
-        const [roundsSaveResult, roundsDeleteResult, clubBagSaveResult] = await Promise.all([
-          saveRemoteRounds(supabase, session.user.id, roundsToSave).then(() => ({ ok: true }), error => ({ error })),
-          Promise.all(pendingDeletedRoundIds.map(roundId => deleteRemoteRound(supabase, session.user.id, roundId))).then(() => ({ ok: true }), error => ({ error })),
+        const deletionResults = []
+        for (const roundId of pendingDeletedRoundIds) {
+          try {
+            const tombstone = await deleteRemoteRound(supabase, session.user.id, roundId)
+            deletionResults.push({ roundId: String(roundId), tombstone })
+          } catch (error) {
+            deletionResults.push({ roundId: String(roundId), error })
+          }
+        }
+        const successfulDeletions = deletionResults.filter(result => !result.error)
+        const failedDeletions = deletionResults.filter(result => result.error)
+        if (successfulDeletions.length) {
+          const successfulIds = new Set(successfulDeletions.map(result => result.roundId))
+          const nextObserved = mergeObservedRoundTombstones(
+            observedRoundTombstones,
+            successfulDeletions.map(result => result.tombstone),
+          )
+          const remainingPending = pendingDeletedRoundIds.filter(id => !successfulIds.has(String(id)))
+          saveObservedRoundTombstones(window.localStorage, session.user.id, nextObserved)
+          savePendingRoundDeletions(window.localStorage, session.user.id, remainingPending)
+          setObservedRoundTombstones(nextObserved)
+          setPendingDeletedRoundIds(remainingPending)
+          successfulIds.forEach(roundId => remoteRoundVersionsRef.current.delete(roundId))
+        }
+        const roundsDeleteError = failedDeletions[0]?.error || null
+        const [roundsSaveResult, clubBagSaveResult] = await Promise.all([
+          saveRemoteRounds(supabase, session.user.id, roundsToSave, deletedRoundIds)
+            .then(() => ({ ok: true }), error => ({ error })),
           (clubBagNeedsSave ? saveRemoteClubBag(supabase, session.user.id, currentClubBag) : Promise.resolve())
             .then(() => ({ ok: true }), error => ({ error })),
         ])
         if (roundsSaveResult.error) reportDiagnosticFailure('rounds_save', roundsSaveResult.error)
-        if (roundsDeleteResult.error) reportDiagnosticFailure('rounds_delete', roundsDeleteResult.error)
+        if (roundsDeleteError) reportDiagnosticFailure('rounds_delete', roundsDeleteError)
         if (clubBagSaveResult.error) reportDiagnosticFailure('club_bag_save', clubBagSaveResult.error)
         if (!roundsSaveResult.error) {
           remoteRoundVersionsRef.current = markRoundsAsRemoteSaved(remoteRoundVersionsRef.current, roundsToSave)
           reportDiagnosticRecovery('rounds_save')
         }
-        if (!roundsDeleteResult.error) {
-          pendingDeletedRoundIds.forEach(roundId => remoteRoundVersionsRef.current.delete(String(roundId)))
+        if (!roundsDeleteError) {
           reportDiagnosticRecovery('rounds_delete')
         }
         if (!clubBagSaveResult.error) {
           if (clubBagNeedsSave) remoteClubBagSignatureRef.current = currentClubBagSignature
           reportDiagnosticRecovery('club_bag_save')
         }
-        if (!roundsDeleteResult.error && pendingDeletedRoundIds.length) {
-          savePendingRoundDeletions(window.localStorage, session.user.id, [])
-          setPendingDeletedRoundIds([])
-        }
+        if (isRoundTombstonedError(roundsSaveResult.error)) setRemoteRoundsHydratedUserId(null)
         if (roundsSaveResult.error) throw roundsSaveResult.error
-        if (roundsDeleteResult.error) throw roundsDeleteResult.error
+        if (roundsDeleteError) throw roundsDeleteError
         if (clubBagSaveResult.error) throw clubBagSaveResult.error
         setSyncError('')
         if (hadSyncIssueRef.current) {
@@ -722,7 +800,7 @@ export default function App() {
       window.clearTimeout(timer)
       if (retryTimer) window.clearTimeout(retryTimer)
     }
-  }, [rounds, clubDrafts, inactiveClubDrafts, clubDistanceSets, clubCompositionCompleted, clubDistanceUnit, clubBagUpdatedAt, pendingDeletedRoundIds, session, remoteRoundsHydratedUserId, remoteClubBagHydratedUserId, isOnline, syncRetryNonce])
+  }, [rounds, clubDrafts, inactiveClubDrafts, clubDistanceSets, clubCompositionCompleted, clubDistanceUnit, clubBagUpdatedAt, pendingDeletedRoundIds, observedRoundTombstones, session, remoteRoundsHydratedUserId, remoteClubBagHydratedUserId, isOnline, syncRetryNonce])
 
   useEffect(() => {
     if (!restoreHoleNumber || !activeRound) return
@@ -1237,7 +1315,26 @@ export default function App() {
     if (selectedRound.remoteSummaryOnly && supabase && session && !isPreviewMode) {
       try {
         const remoteRound = await loadRemoteRoundDetail(supabase, session.user.id, selectedRound.id)
-        if (!remoteRound) throw new Error('Round detail not found')
+        if (!remoteRound) {
+          const tombstone = await loadRemoteRoundTombstone(supabase, session.user.id, selectedRound.id)
+          if (tombstone) {
+            const nextObserved = mergeObservedRoundTombstones(observedRoundTombstones, [tombstone])
+            const deletedIds = roundDeletionIds(pendingDeletedRoundIds, nextObserved)
+            const nextRounds = excludePendingRoundDeletions(rounds, deletedIds)
+            saveObservedRoundTombstones(window.localStorage, session.user.id, nextObserved)
+            clearDeletedRoundLocalArtifacts(window.localStorage, session.user.id, deletedIds)
+            window.localStorage.setItem(`golf-and-me:rounds:${session.user.id}`, JSON.stringify(nextRounds))
+            setObservedRoundTombstones(nextObserved)
+            setRounds(nextRounds)
+            setActiveRound(null)
+            setHoleDraft(null)
+            setEditingActiveRound(false)
+            setScreen('home')
+            setSyncError('다른 기기에서 삭제한 기록을 이 기기에서도 반영했어요.')
+            return
+          }
+          throw new Error('Round detail not found')
+        }
         resolvedRound = remoteRound
         const nextRounds = rounds.map(item => item.id === remoteRound.id ? remoteRound : item)
         window.localStorage.setItem(`golf-and-me:rounds:${session.user.id}`, JSON.stringify(nextRounds))
@@ -1278,12 +1375,8 @@ export default function App() {
     const nextPendingDeletedRoundIds = savePendingRoundDeletions(window.localStorage, session.user.id, [...pendingDeletedRoundIds, deletedRoundId])
     setPendingDeletedRoundIds(nextPendingDeletedRoundIds)
     setRoundPendingDeletion(null)
-    if (supabase && !isPreviewMode) {
-      deleteRemoteRound(supabase, session.user.id, deletedRoundId).then(() => {
-        setPendingDeletedRoundIds(current => savePendingRoundDeletions(window.localStorage, session.user.id, current.filter(id => id !== deletedRoundId)))
-      }).catch(() => {
-        setSyncError('기기에서는 삭제했어요. 계정 기록에서도 삭제될 때까지 자동으로 다시 시도할게요.')
-      })
+    if (!navigator.onLine) {
+      setSyncError('기기에서는 삭제했어요. 온라인이 되면 계정 기록에서도 삭제하도록 자동으로 다시 시도할게요.')
     }
   }
 

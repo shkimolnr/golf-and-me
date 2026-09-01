@@ -1,6 +1,7 @@
 # TASK-049 다중 기기 라운드 삭제 동기화 감사·설계안
 
-상태: **감사 및 설계만 완료**. migration·rollback·앱 변경은 작성하거나 적용하지 않았습니다.
+상태: **로컬 구현 및 격리검증 완료, 외부 미적용**. migration·rollback·preflight와 앱 변경을
+`codex/db-architecture`에 준비했으며 Preview·Production에는 적용하지 않았습니다.
 
 적용 금지 범위: Golf&Me Preview, Production, 외부 설정, `main`.
 
@@ -151,8 +152,9 @@ BEFORE trigger는 이미 기존 row lock을 보유할 수 있습니다. 따라�
 - `pending deletion`: 이 기기에서 발생했지만 서버 DELETE 성공을 확인하지 못한 요청
 - `observed tombstone`: 서버에서 확인해 모든 local 상태보다 우선할 삭제 표식
 
-pending 항목은 최소 `{ id, requestedAt }`, observed 항목은 `{ id, deletedAt }`로 사용자별
-localStorage에 저장합니다. 기존 문자열 배열은 additive parser로 읽어 `{id}` 형태로 승격합니다.
+pending 항목은 기존 호환 형식인 ID 문자열 배열, observed 항목은 `{ id, deletedAt }` 배열로 사용자별
+localStorage에 분리 저장합니다. 삭제 재시도에는 서버 시각이 필요하지 않으므로 pending 형식을
+불필요하게 변환하지 않고, 두 배열을 적용할 때만 하나의 삭제 ID 집합으로 합칩니다.
 
 ### 5.2 원격 조회와 merge
 
@@ -213,16 +215,17 @@ DELETE와 tombstone trigger 자체는 멱등이어야 합니다.
 `delete_own_account()`가 auth user를 제거해 이후 어떤 기기도 해당 사용자로 저장할 수 없으므로
 라운드별 tombstone을 장기 보존할 이유가 없습니다.
 
-통합시험으로 계정 삭제 시 다음을 확인해야 합니다.
+PostgreSQL 17.6 격리 통합시험으로 계정 삭제 시 다음을 확인했습니다.
 
 - rounds·children·tombstones가 모두 0
 - tombstone trigger가 auth cascade를 막지 않음
 - 사용자 local pending/observed marker도 `clearLocalUserData()`로 제거
 - 다른 사용자의 tombstone은 영향 없음
 
-필요할 때만 account-delete transaction flag로 tombstone INSERT를 생략하는 후속안을 사용합니다.
-우선은 실제 PostgreSQL cascade 순서를 격리시험으로 확인하고 선제적으로 함수를 복잡하게 만들지
-않습니다.
+첫 구현은 계정 cascade 중 DELETE trigger가 tombstone FK를 삽입하려 해 실패했습니다. 최종 함수는
+`auth.users` 부모가 이미 보이지 않는 계정 삭제 transaction에서는 tombstone 생성을 생략합니다.
+이 방식으로 해당 사용자의 rounds·children·tombstone은 모두 제거되고 다른 사용자의 tombstone은
+유지됐습니다. 따라서 별도 account-delete transaction flag는 필요하지 않다고 판정했습니다.
 
 ## 8. 기존 migration과 선후관계
 
@@ -293,9 +296,9 @@ P0 승인이 먼저라면 현재 Preview의 검증된 004 상태 위에 005만 �
 운영상 가장 단순한 최종 순서는 002 → 003 → 005지만, TASK-049를 위해 002/003 승인을 묶어서
 요구하지 않습니다. 어떤 순서를 택하든 각 migration preflight와 별도 승인이 필요합니다.
 
-## 9. migration 계획
+## 9. migration 구현
 
-구현 승인 뒤 한 개의 additive transaction으로 준비합니다.
+005는 한 개의 additive transaction으로 다음을 구현했습니다.
 
 1. 같은 이름 table/function/trigger의 부재 또는 exact 정의를 READ ONLY preflight로 확인
 2. 기존 orphan·owner mismatch와 위험 runtime 권한이 0인지 재확인
@@ -327,13 +330,13 @@ rollback SQL에는 적용 전 tombstone count, active/tombstone ID overlap count
 현재 client version 확인을 중단 조건으로 넣습니다. 실제 사용자 tombstone ID는 보고서나 Git에
 복사하지 않습니다.
 
-## 11. 자동 검증 계획
+## 11. 자동 검증 결과
 
 ### PostgreSQL 격리 통합시험
 
-- migration 전 target 객체 absent/exact/collision preflight
-- migration apply와 깨끗한 Preview rollback/reapply
-- 본인 DELETE 한 번으로 round·children 0, tombstone 1
+- migration 전 target 객체 absent/exact/collision preflight 통과
+- migration apply와 깨끗한 로컬 DB rollback/reapply 통과
+- 본인 DELETE 한 번으로 round 0, tombstone 1
 - 중복 DELETE는 성공하며 tombstone 1 유지
 - 다른 사용자의 round DELETE 및 tombstone SELECT 차단
 - anon 모든 접근 차단, authenticated tombstone 직접 write 차단
@@ -341,19 +344,19 @@ rollback SQL에는 적용 전 tombstone count, active/tombstone ID overlap count
 - 두 DB session의 DELETE↔upsert 양쪽 lock 순서에서 교착이 없고, 필요 시 DELETE가 retryable
   실패한 뒤 재시도해 최종 round 0/tombstone 1
 - 250개 round 회귀시험에서 삭제하지 않은 저장 쿼리 수·조회 성능 변화 측정
-- 계정 삭제 후 해당 사용자의 round·children·tombstone 모두 0
-- current Preview 순서와 full 002/003/004 순서 모두 통과
+- 계정 삭제 후 해당 사용자의 round·children·tombstone 모두 0, 다른 사용자 marker 유지
+- baseline+005+004, baseline+004+005, baseline+002+003+004+005 모두 통과
 
 ### JavaScript 단위·통합시험
 
-- tombstone ID가 local/remote 어느 쪽에 있어도 merge 결과에서 제외
+- tombstone ID가 local/remote 어느 쪽에 있어도 merge 결과에서 제외: 통과
 - tombstone ID가 화면 목록, 누적 통계, 상세 조회 대상, save batch에 포함되지 않음
 - pending과 observed marker의 구버전 localStorage 승격·중복 제거
 - remote version보다 local timestamp가 최신이어도 tombstone 우선
 - 삭제 직전 예약된 save closure에서도 최종 filter가 ID 차단
 - 오프라인 삭제 → 재시작 → 온라인 복귀 → DELETE 성공 → pending 제거
 - tombstone 거부 오류 시 일반 upsert 반복 대신 remote deletion rehydrate
-- activeRound·hole draft·navigation checkpoint 정리
+- activeRound·hole draft·navigation checkpoint 정리: 통과
 
 ### PC ↔ 모바일 Preview 회귀시험
 
@@ -369,13 +372,18 @@ rollback SQL에는 적용 전 tombstone count, active/tombstone ID overlap count
 
 실제 사용자 기록 값, UUID, 코스명, 샷 값은 캡처·로그·보고서에 남기지 않습니다.
 
-## 12. 승인 전에 필요한 결정
+## 12. 남은 승인 결정
 
-컨트롤타워와 사용자가 구현 전에 확정할 항목:
+보관 정책과 로컬 구현은 승인됐습니다. 외부 적용 전에 남은 항목:
 
-1. tombstone을 계정 수명 동안 보관하는 기본 정책 승인
-2. P0 005를 002/003보다 먼저 Preview에 독립 적용할지, 002 → 003 뒤 적용할지
-3. Preview PC↔모바일 시험에 사용할 전용 테스트 계정과 실행 시점
-4. 계정 삭제 cascade 격리시험 결과에 따라 transaction flag가 필요한지 여부
+1. P0 005를 002/003보다 먼저 Preview에 독립 적용할지, 002 → 003 뒤 적용할지
+2. Preview PC↔모바일 시험에 사용할 전용 테스트 계정과 실행 시점
+3. 005 preflight의 Preview READ ONLY 실행 및 이후 실제 적용 승인
 
-이 문서는 migration 작성·Preview 실행·Production 적용 승인이 아닙니다.
+배포 순서는 반드시 **005 DB preflight → 005 적용·post-check → 신규 client 배포**입니다. 신규 client는
+활성 라운드와 tombstone 조회를 함께 성공해야 hydration을 완료하는 fail-closed 방식이므로, 005보다
+먼저 배포하면 원격 라운드 동기화가 지연됩니다. 반대로 005는 구버전 client의 기존 DELETE도 trigger로
+표식하므로 DB를 먼저 적용해도 삭제 재생성 방지에 안전합니다.
+
+계정 cascade 격리시험 결과 별도 transaction flag는 필요하지 않습니다. 이 문서는 Preview 실행·
+적용 또는 Production 적용 승인이 아닙니다.
