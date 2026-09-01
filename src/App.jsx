@@ -837,7 +837,7 @@ export default function App() {
     if (!supabase) return
     setAuthError('')
     setAuthLoading(true)
-    startLoginMeasurement()
+    await startLoginMeasurement()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: googleOAuthOptions(window.location.origin),

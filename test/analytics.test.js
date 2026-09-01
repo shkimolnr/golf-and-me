@@ -9,6 +9,7 @@ import {
   initializeAnalytics,
   resetAnalyticsForTests,
   setAnalyticsConsent,
+  startLoginMeasurement,
   trackEvent,
   trackScreen,
 } from '../src/lib/analytics.js'
@@ -106,6 +107,34 @@ test('화면 전환은 명시적 허용 목록 이벤트로 한 번씩만 보낼
   assert.equal(trackScreen('home'), true)
   assert.equal(trackScreen('unknown-screen'), false)
   assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['event', 'screen_view', { screen_name: 'home' }])
+})
+
+test('OAuth 이동 전 login_start 처리 콜백을 기다리되 허용 목록 밖 값은 받지 않는다', async () => {
+  installBrowser()
+  setAnalyticsConsent(true, productionConfig)
+
+  const loginMeasurement = startLoginMeasurement()
+  const [command, eventName, parameters] = Array.from(window.dataLayer.at(-1))
+  assert.equal(command, 'event')
+  assert.equal(eventName, 'login_start')
+  assert.equal(parameters.stage, 'oauth_request')
+  assert.equal(parameters.event_timeout, 200)
+  assert.equal(typeof parameters.event_callback, 'function')
+  assert.deepEqual(Object.keys(parameters).sort(), [
+    'event_callback',
+    'event_timeout',
+    'stage',
+  ])
+
+  parameters.event_callback()
+  assert.equal(await loginMeasurement, true)
+  assert.match(appSource, /await startLoginMeasurement\(\)/)
+})
+
+test('분석 미동의 상태의 로그인은 기다리지 않고 계속한다', async () => {
+  installBrowser()
+  assert.equal(await startLoginMeasurement(), false)
+  assert.equal(window.dataLayer, undefined)
 })
 
 test('이벤트별 allowlist는 허용되지 않은 개인정보와 임의 매개변수를 제거한다', () => {

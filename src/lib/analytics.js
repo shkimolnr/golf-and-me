@@ -6,6 +6,7 @@ const LOGIN_MEASUREMENTS_STORAGE_KEY = 'golf-and-me:login-measurements'
 const SCRIPT_SELECTOR = 'script[data-golf-and-me-ga4]'
 const GA_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]{4,20}$/
 const ANALYTICS_PAGE_LOCATION = 'https://golf-and-me.invalid/'
+const LOGIN_EVENT_TIMEOUT_MS = 200
 
 // Google 태그가 동의 후 자체 생성하는 기본 이벤트다. 앱에서는 이 이름을 직접 전송하지 않는다.
 export const ga4AutomaticEventNames = Object.freeze([
@@ -197,6 +198,37 @@ export function trackEvent(eventName, parameters = {}) {
   return true
 }
 
+function trackEventBeforeNavigation(eventName, parameters = {}) {
+  const currentWindow = browserWindow()
+  if (!EVENT_SCHEMAS[eventName] || !analyticsReady || !activeMeasurementId || !hasAnalyticsConsent() || currentWindow?.[`ga-disable-${activeMeasurementId}`]) return Promise.resolve(false)
+  const safe = safeParameters(eventName, parameters)
+  if (!safe || !currentWindow?.gtag) return Promise.resolve(false)
+
+  return new Promise(resolve => {
+    let settled = false
+    let timeoutId = null
+    function finish() {
+      if (settled) return
+      settled = true
+      if (timeoutId !== null) clearTimeout(timeoutId)
+      resolve(true)
+    }
+
+    timeoutId = setTimeout(finish, LOGIN_EVENT_TIMEOUT_MS)
+    try {
+      currentWindow.gtag('event', eventName, {
+        ...(activeRuntimeEnvironment === 'preview' ? { ...safe, debug_mode: true } : safe),
+        event_callback: finish,
+        event_timeout: LOGIN_EVENT_TIMEOUT_MS,
+      })
+    } catch {
+      clearTimeout(timeoutId)
+      settled = true
+      resolve(false)
+    }
+  })
+}
+
 export function trackScreen(screenName) {
   return trackEvent('screen_view', { screen_name: screenName })
 }
@@ -209,7 +241,7 @@ export function startLoginMeasurement() {
   } catch {
     // 성능 측정 저장 실패는 로그인 흐름에 영향을 주지 않는다.
   }
-  trackEvent('login_start', { stage: 'oauth_request' })
+  return trackEventBeforeNavigation('login_start', { stage: 'oauth_request' })
 }
 
 export function measureLoginStage(stage) {
