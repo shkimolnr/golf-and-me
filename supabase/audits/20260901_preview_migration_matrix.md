@@ -38,13 +38,33 @@ Production: 미접속·미변경
 
 | 로컬 migration | Preview 상태 | Production 상태 |
 |---|---|---|
-| `202609010002_derived_data_integrity.sql` | **미적용 — 데이터 사전조건 통과, schema/rollback gate 확인 필요** | 미적용 유지 |
+| `202609010002_derived_data_integrity.sql` | **미적용 — 읽기 전용 preflight READY, 별도 적용 승인 필요** | 미적용 유지 |
 | `202609010003_round_summary_sync.sql` | **미적용 — 데이터 사전조건 통과, 002 검증 후 적용 후보** | 미적용 유지 |
 | `202609010004_runtime_table_least_privilege.sql` | **적용 완료 — 위험 권한 63→0, 필수 CRUD/RPC 보존, 앱 스모크 정상** | 미적용 유지 |
 
 002·003은 로컬 PostgreSQL에서 전체 적용·rollback·재적용과 검증 쿼리를 통과했지만,
 Preview 적용은 이 문서의 사전확인과 명시적 승인을 모두 충족한 뒤 별도 작업으로 진행합니다.
 004 적용 완료는 002·003의 적용 승인을 의미하지 않습니다.
+
+## 002 적용 전 읽기 전용 gate 결과
+
+2026-09-01 컨트롤타워가 `Golf&Me Preview`에서
+`supabase/verification/202609010002_derived_data_integrity_preflight.sql`을 READ ONLY로 실행했습니다.
+
+| 항목 | 결과 |
+|---|---:|
+| gateStatus | **READY** |
+| blockerCount 합계 | 0 |
+| 다른 이름의 동등 객체 advisory | 0 |
+| 필수 컬럼 불일치 | 0 |
+| 함수 baseline·trigger 불일치 | 0 |
+| 부모 orphan·소유자 mismatch | 0 |
+| 004 위험 runtime 권한 재발 | 0 |
+
+대상 unique index 3개와 동일 소유자 FK 3개는 모두 `absent_expected`였고, 함수 hash는
+`117d20b5e9c660b31d6a8fefcd8354da`, PostgreSQL은 17.6(`170006`)으로 확인했습니다.
+이 결과는 현재 Preview가 002 검토를 계속할 수 있다는 뜻일 뿐이며, **002 적용 승인이나 실행을
+의미하지 않습니다.**
 
 ## Preview 읽기 전용 데이터 감사 결과
 
