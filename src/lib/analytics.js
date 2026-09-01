@@ -1,7 +1,10 @@
+import { sanitizedAuthCallbackPath } from './auth.js'
+
 const CONSENT_STORAGE_KEY = 'golf-and-me:analytics-consent'
 const AUTH_STARTED_STORAGE_KEY = 'golf-and-me:auth-started-at'
 const LOGIN_MEASUREMENTS_STORAGE_KEY = 'golf-and-me:login-measurements'
 const SCRIPT_SELECTOR = 'script[data-golf-and-me-ga4]'
+const GA_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]{4,20}$/
 
 const EVENT_SCHEMAS = Object.freeze({
   screen_view: { screen_name: ['login', 'onboarding', 'home', 'new_round', 'clubs', 'scorecard', 'hole_detail', 'round_result', 'news', 'feedback'] },
@@ -79,6 +82,10 @@ function isMatchingAnalyticsEnvironment(config) {
     && config.targetEnvironment === config.runtimeEnvironment
 }
 
+function isValidMeasurementId(value) {
+  return typeof value === 'string' && GA_MEASUREMENT_ID_PATTERN.test(value)
+}
+
 function isAllowedValue(rule, value) {
   if (Array.isArray(rule)) return rule.includes(value)
   if (rule === 'boolean') return typeof value === 'boolean'
@@ -127,24 +134,30 @@ export function getAnalyticsConfiguration(config) {
   const resolved = configuredAnalytics(config)
   return Object.freeze({
     enabled: Boolean(resolved.enabled),
-    measurementIdConfigured: Boolean(resolved.measurementId),
+    measurementIdConfigured: isValidMeasurementId(resolved.measurementId),
     targetEnvironment: resolved.targetEnvironment || 'unset',
     runtimeEnvironment: resolved.runtimeEnvironment,
-    canInitialize: Boolean(resolved.enabled && resolved.measurementId && isMatchingAnalyticsEnvironment(resolved)),
+    canInitialize: Boolean(resolved.enabled && isValidMeasurementId(resolved.measurementId) && isMatchingAnalyticsEnvironment(resolved)),
   })
 }
 
 export function initializeAnalytics(config) {
   const resolved = configuredAnalytics(config)
   const currentWindow = browserWindow()
-  if (!currentWindow || !resolved.enabled || !resolved.measurementId || !isMatchingAnalyticsEnvironment(resolved) || !hasAnalyticsConsent()) return false
+  if (!currentWindow || !resolved.enabled || !isValidMeasurementId(resolved.measurementId) || !isMatchingAnalyticsEnvironment(resolved) || !hasAnalyticsConsent()) return false
+  if (typeof currentWindow.location?.href === 'string' && sanitizedAuthCallbackPath(currentWindow.location.href)) return false
 
   currentWindow[`ga-disable-${resolved.measurementId}`] = false
   if (analyticsReady && activeMeasurementId === resolved.measurementId) return false
   if (!addAnalyticsScript(resolved.measurementId)) return false
 
   currentWindow.gtag('js', new Date())
-  currentWindow.gtag('config', resolved.measurementId, { send_page_view: false })
+  currentWindow.gtag('config', resolved.measurementId, {
+    send_page_view: false,
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false,
+    page_referrer: '',
+  })
   analyticsReady = true
   activeMeasurementId = resolved.measurementId
   return true
@@ -154,7 +167,7 @@ export function setAnalyticsConsent(granted, config) {
   const resolved = configuredAnalytics(config)
   const currentWindow = browserWindow()
   writeStorage(CONSENT_STORAGE_KEY, granted ? 'granted' : 'denied')
-  if (resolved.measurementId && currentWindow) currentWindow[`ga-disable-${resolved.measurementId}`] = !granted
+  if (isValidMeasurementId(resolved.measurementId) && currentWindow) currentWindow[`ga-disable-${resolved.measurementId}`] = !granted
   if (granted) initializeAnalytics(resolved)
   return getAnalyticsConsent()
 }

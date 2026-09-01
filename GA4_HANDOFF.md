@@ -2,8 +2,9 @@
 
 ## 범위와 상태
 
-- 작업 브랜치: `codex/ga4-direct-consent`
-- 기준 커밋: `6623461`
+- 작업 브랜치: `codex/ga4-consent-audit`
+- 기준 커밋: `d1fde41`
+- 기존 GA4 직접 연동이 main에 통합된 상태에서 동의 UX와 재접속 초기화만 추가 점검했습니다.
 - Production 배포, GA4 속성 생성·활성화, Vercel 환경변수 등록은 수행하지 않았습니다.
 - GTM, Firebase, Sentry와 Supabase 진단 테이블/API는 이 변경에 포함하지 않았습니다.
 
@@ -13,7 +14,7 @@
 |---|---|
 | `.env.example` | GTM 예시를 GA4 직접 연동 환경변수로 교체하고 환경 분리를 명시 |
 | `src/lib/analytics.js` | 동의·직접 `gtag.js` 초기화·이벤트별 allowlist·명시적 SPA 화면 이벤트 구현 |
-| `src/App.jsx` | 온보딩 전 1회 선택 화면, 계정 메뉴의 철회/재허용, 제품 흐름 이벤트 연결 |
+| `src/App.jsx` | 온보딩을 막지 않는 1회 선택 안내, 저장된 허용 상태의 재접속 초기화, 개발 전용 신규 온보딩 확인 경로 |
 | `src/index.css` | 동의 화면과 계정 메뉴 제어 스타일 |
 | `test/analytics.test.js` | 동의, 스크립트, 철회, allowlist, Preview 격리 자동 테스트 |
 
@@ -21,7 +22,10 @@
 
 - 기본값은 `unknown`(OFF)이며 `golf-and-me:analytics-consent`에 `granted` 또는 `denied`만 기기별로 저장합니다. 로그인 세션과는 연결하지 않습니다.
 - 동의 전에는 GA 스크립트를 넣지 않고 이벤트도 보내지 않습니다.
+- 선택 안내는 온보딩 위에 함께 표시되며, 선택하지 않아도 `시작하기`와 다음 단계를 진행할 수 있습니다.
+- 이전에 허용한 기기에서는 새로고침·재접속 후 저장된 상태를 읽어 GA4를 다시 초기화합니다.
 - 허용 시 `https://www.googletagmanager.com/gtag/js?id=...`를 한 번만 추가하며 `send_page_view: false`로 자동 페이지뷰를 끕니다.
+- OAuth 코드·토큰·오류값이 주소에 남은 동안은 초기화를 보류하고 주소 정리 후 시작합니다. 설정에서도 `page_referrer`를 비우고 Google Signals·광고 개인화 신호를 명시적으로 끕니다.
 - 철회하면 `ga-disable-<measurement-id>`를 설정하고 `trackEvent()`도 동의 상태를 다시 확인해 이후 이벤트 전송을 중단합니다. 이미 내려받은 스크립트 파일 자체는 브라우저 캐시에서 즉시 삭제할 수 없지만, 데이터 전송은 코드와 GA disable 플래그 양쪽에서 막습니다.
 - SPA 화면 전환은 `screen_view`와 허용된 익명 화면명으로만 전송합니다. React Strict Mode의 중복 렌더링은 마지막 화면 ref로 방지합니다.
 - `VITE_APP_ENV`와 `VITE_ANALYTICS_ENV`가 정확히 같은 경우에만 초기화합니다. Preview는 Preview 전용 측정 ID를 쓰거나 `VITE_ANALYTICS_ENABLED=false`여야 하며, Production ID를 Preview에 넣으면 초기화되지 않습니다.
@@ -50,9 +54,12 @@
 
 ## 검증 결과
 
-- `npm test`: 123 passed, 0 failed
+- `npm test`: 152 passed, 0 failed
 - `npm run build`: passed
 - 빌드 시 기존 `index.html`의 `VITE_SUPABASE_URL` 미설정 경고만 발생했습니다. GA 변경 실패가 아니며 실제 환경변수를 넣으면 해소됩니다.
+- 모바일 크기(390×844) 로컬 확인: 동의 안내와 `시작하기`가 함께 보이고, 미선택 상태로 2/3 단계 진입 후에도 서비스 흐름이 유지됐습니다.
+- 개발 전용 재현 주소는 `?preview=1&onboarding=1`입니다. `import.meta.env.DEV` 조건이라 Production에서는 활성화되지 않습니다.
+- 제품 이벤트 중복 감사: 완료 홀 열람·수정은 `hole_start`·`hole_complete`·`round_milestone`을 다시 만들지 않고, 같은 온보딩 단계 완료와 같은 저장 지연 재시도는 세션에서 한 번만 집계합니다. 원격 조회 실패에는 누락돼 있던 `save_delayed(remote_load)`를 복구 이벤트와 짝지었습니다.
 
 ## 사용자가 해야 할 일 — 아직 실행하지 않음
 
@@ -71,6 +78,17 @@
 5. Preview에서 테스트할 경우 Preview 전용 속성의 DebugView를 열고, 허용 전 네트워크 요청이 없는지와 허용 후 각 이벤트·매개변수를 확인합니다.
 6. 개인정보처리방침 확정, GA4 실제 설정 검토, DebugView 검증 뒤에만 Production 활성화를 승인합니다.
 
+## 외부 설정 변경 요청서 — Sol 실행, 현재 미실행
+
+| 서비스 | 환경 | 항목 | 목적 | 기대 결과 | 검증 방법 |
+|---|---|---|---|---|---|
+| GA4 | 공통 | Golf & Me 계정·속성 생성, 광고 기능·Google Signals·리마케팅 비활성화, 짧은 보관기간 설정 | 제품 분석 전용 속성 준비 | 광고 목적 기능 없이 선택 동의 데이터만 수집할 기반 확보 | GA4 관리 화면의 데이터 설정·보관·신호 설정 캡처와 값 교차검증 |
+| GA4 | Preview | Preview 전용 웹 데이터 스트림 생성 | Production 데이터와 테스트 이벤트 분리 | `G-...` 형식의 Preview 측정 ID 발급 | DebugView에서 Preview 기기 이벤트만 표시되는지 확인 |
+| Vercel | Preview | `VITE_GA_MEASUREMENT_ID`, `VITE_ANALYTICS_ENABLED=true`, `VITE_APP_ENV=preview`, `VITE_ANALYTICS_ENV=preview` | 검증용 빌드에서만 GA4 활성화 | 환경 일치 시에만 Preview GA 스크립트 로드 | 배포 환경변수 범위 확인 후 분석 거부·허용·철회 시나리오 실행 |
+| GA4/Vercel | Production | Production 웹 스트림·측정 ID와 Production 환경변수 | 공개 서비스 제품 분석 활성화 | Preview와 분리된 Production 이벤트 수집 | 사용자 승인, 처리방침 확정, Preview DebugView 통과 후 별도 Production 검증 |
+
+Production 행은 사용자 승인 전 실행하지 않습니다. 실제 측정 ID나 비밀값은 저장소와 handoff에 기록하지 않습니다.
+
 ## DebugView·수동 확인 시나리오
 
 1. 깨끗한 브라우저 저장소에서 로그인 후 온보딩 선택 화면이 보이는지 확인합니다. 개발자 도구 Network에서 허용 전 `googletagmanager.com/gtag/js`와 `google-analytics.com` 요청이 없어야 합니다.
@@ -80,9 +98,22 @@
 5. 계정 메뉴에서 다시 끕니다. 이후 화면 전환·기록에 대해 GA 요청과 DebugView 이벤트가 새로 생기지 않아야 합니다. 서비스 기능은 유지되어야 합니다.
 6. 모바일 Safari에서도 `허용`과 `괜찮아요` 모두 눌리는지, 텍스트가 잘리지 않는지 확인합니다.
 
+## 2026-09-01 로컬 Preview 종단 검증
+
+실제 GA4 속성을 오염시키지 않도록 테스트 측정 ID `G-TEST1234`와 Preview 환경 일치 조건으로 브라우저 검증했습니다.
+
+- 동의 전 GA 스크립트: 0개
+- `허용` 직후 GA 스크립트: 1개
+- 계정 메뉴에서 철회: 체크 해제, 새 스크립트 추가 없음
+- 재허용: 체크 복원, 스크립트는 계속 1개로 중복 없음
+- 새로고침: 허용 상태 유지, 스크립트 1개로 재초기화
+- 동의 안내와 온보딩 `시작하기`는 함께 표시되며 서비스 흐름을 막지 않음
+
+남은 검증은 실제 Preview 측정 ID가 설정된 뒤 GA4 DebugView에서 허용 이벤트·파라미터와 철회 후 전송 중단을 확인하는 것입니다.
+
 ## 컨트롤타워 통합 주의점
 
-- 현재 main의 미커밋 `analytics.js`/`App.jsx`는 GA4와 운영 진단을 함께 전송하는 이전 구조입니다. 이 브랜치를 통합할 때 `recordDiagnosticEvent` 경로를 되살리지 마세요.
+- GA4 제품 분석과 Supabase 운영 진단은 분리된 현재 구조를 유지합니다. GA4 경로에 `recordDiagnosticEvent`를 다시 연결하거나 운영 진단 데이터를 섞지 마세요.
 - 공유 충돌 지점은 `src/App.jsx`의 analytics import, 진단 helper, OAuth/원격 hydration/계정 삭제 호출부와 계정 메뉴입니다. DB 트랙이 diagnostics transport를 넣을 때 GA 코드와 수동으로 병합해야 합니다.
 - `README.md`, `PRD.md`, `DECISIONS.md`, `OPERATIONS.md`, `BACKLOG.md`, `PROJECT_RULES.md`, `PRIVACY_POLICY_DRAFT.md`의 최종 통합은 컨트롤타워가 합니다. 반드시 반영할 결정은 다음입니다: **Golf & Me는 GTM·Firebase를 사용하지 않고 GA4를 직접 연동하며, 제품 분석은 선택 동의 대상이다. 최소 운영 오류 진단은 Supabase 별도 체계로 분리하고, 개인정보·골프 기록·자유 입력은 어느 쪽에도 보내지 않는다.**
 

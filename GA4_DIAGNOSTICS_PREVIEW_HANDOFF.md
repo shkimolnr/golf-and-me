@@ -25,8 +25,8 @@ deployment is the only deployment intended to receive the Preview overrides.
   values so they no longer target Preview. Their values were not changed.
 - Added branch-specific overrides for `codex/preview-diagnostics`:
   `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_APP_ENV=preview`,
-  `VITE_ANALYTICS_ENV=preview`, `VITE_ANALYTICS_ENABLED=false`, and
-  `VITE_TEST_ACCESS_REQUEST_ENABLED=false`.
+  `VITE_ANALYTICS_ENV=preview`, `VITE_ANALYTICS_ENABLED=true`,
+  `VITE_GA_MEASUREMENT_ID`, and `VITE_TEST_ACCESS_REQUEST_ENABLED=false`.
 
 The branch-specific mechanism is important: Vercel uses it to override the
 normal Preview value only for this testing branch, leaving Production and
@@ -48,11 +48,19 @@ other branches untouched.
 
 ## GA4 status
 
-GA4 remains disabled for this branch (`VITE_ANALYTICS_ENABLED=false`). No GA4
-measurement ID, Google Signals, advertising feature, or production analytics
-collection was enabled as part of this setup. GA4 consent and DebugView work
-remain `TASK-038` work and must be tested separately from operational
-diagnostics.
+GA4 is enabled only for the `codex/preview-diagnostics` Preview deployment.
+The Preview measurement ID is stored in Vercel rather than the repository and
+is restricted to the same branch. Production analytics remains unchanged.
+
+The Preview stream belongs to the dedicated `Golf & Me` Analytics account and
+the `Golf & Me Preview` property. Enhanced Measurement is disabled so the app's
+consent-aware event allowlist remains the source of product analytics events.
+Google Signals, advertising features, remarketing, and ad personalization are
+not enabled by the app configuration.
+
+Local consent, duplicate-event, and OAuth URL privacy checks have passed. The
+remaining `TASK-038` work is to verify the deployed Preview with the real
+measurement ID in GA4 DebugView, separately from operational diagnostics.
 
 ## Documentation integration requested from the control tower
 

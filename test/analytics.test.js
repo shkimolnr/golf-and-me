@@ -30,12 +30,13 @@ function createStorage() {
   }
 }
 
-function installBrowser() {
+function installBrowser(storage = createStorage(), href = 'https://golf-and-me.vercel.app/') {
   const scripts = []
   global.window = {
-    localStorage: createStorage(),
+    localStorage: storage,
     sessionStorage: createStorage(),
     performance: { mark() {} },
+    location: new URL(href),
   }
   global.document = {
     head: { appendChild: script => scripts.push(script) },
@@ -71,7 +72,27 @@ test('허용 후 GA4를 정확히 한 번 초기화하고 자동 page_view를 �
   assert.equal(scripts[0].src, 'https://www.googletagmanager.com/gtag/js?id=G-TEST1234')
   assert.equal(initializeAnalytics(productionConfig), false)
   assert.equal(scripts.length, 1)
-  assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['config', 'G-TEST1234', { send_page_view: false }])
+  assert.deepEqual(Array.from(window.dataLayer.at(-1)), ['config', 'G-TEST1234', {
+    send_page_view: false,
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false,
+    page_referrer: '',
+  }])
+})
+
+test('새로고침 뒤 저장된 허용 상태로 GA4를 다시 초기화한다', () => {
+  const storage = createStorage()
+  installBrowser(storage)
+  setAnalyticsConsent(true, productionConfig)
+
+  resetAnalyticsForTests()
+  delete global.window
+  delete global.document
+  const scripts = installBrowser(storage)
+
+  assert.equal(getAnalyticsConsent(), 'granted')
+  assert.equal(initializeAnalytics(productionConfig), true)
+  assert.equal(scripts.length, 1)
 })
 
 test('화면 전환은 명시적 허용 목록 이벤트로 한 번씩만 보낼 수 있다', () => {
@@ -127,6 +148,27 @@ test('측정 ID가 없거나 비활성화여도 앱 동작을 막지 않는다',
   assert.equal(scripts.length, 0)
 })
 
+test('GA4 형식이 아닌 측정 ID는 초기화하지 않는다', () => {
+  const scripts = installBrowser()
+  const invalidConfig = { ...productionConfig, measurementId: 'not-a-ga4-id' }
+  setAnalyticsConsent(true, invalidConfig)
+  assert.equal(getAnalyticsConfiguration(invalidConfig).measurementIdConfigured, false)
+  assert.equal(initializeAnalytics(invalidConfig), false)
+  assert.equal(scripts.length, 0)
+})
+
+test('OAuth 토큰이나 콜백 코드가 주소에 남아 있으면 GA4 초기화를 보류한다', () => {
+  const scripts = installBrowser(createStorage(), 'https://golf-and-me.vercel.app/?code=one-time-code#access_token=secret')
+  assert.equal(setAnalyticsConsent(true, productionConfig), 'granted')
+  assert.equal(initializeAnalytics(productionConfig), false)
+  assert.equal(scripts.length, 0)
+
+  window.location = new URL('https://golf-and-me.vercel.app/')
+  assert.equal(initializeAnalytics(productionConfig), true)
+  assert.equal(scripts.length, 1)
+  assert.doesNotMatch(JSON.stringify(window.dataLayer), /one-time-code|access_token|secret/)
+})
+
 test('GA4는 GTM과 운영 진단 이벤트를 사용하지 않는다', () => {
   assert.match(analyticsSource, /gtag\/js\?id=/)
   assert.doesNotMatch(analyticsSource, /gtm\.js/)
@@ -137,10 +179,22 @@ test('온보딩 전 선택과 계정 설정 변경 UI가 있으며 제품 흐름
   assert.match(appSource, /서비스 개선에[\s\S]*도움을 주실래요/)
   assert.match(appSource, />허용</)
   assert.match(appSource, />괜찮아요</)
+  assert.doesNotMatch(appSource, /analytics-consent-shell/)
+  assert.match(appSource, /analyticsConsent === 'unknown' && \([\s\S]*onboarding-progress/)
+  assert.match(appSource, /initializeAnalytics\(\)/)
+  assert.match(appSource, /analyticsConsent === 'granted' && analyticsAddressReady/)
   assert.match(appSource, /서비스 개선 분석 허용/)
   assert.match(appSource, /trackScreen\(analyticsScreen\)/)
   assert.match(appSource, /trackEvent\('onboarding_complete'/)
   assert.match(appSource, /trackEvent\('round_complete'/)
   assert.match(appSource, /trackEvent\('onboarding_complete'/)
   assert.match(appSource, /서비스 개선 분석 허용/)
+})
+
+test('제품 이벤트는 재시도와 완료 기록 수정에서 중복 집계되지 않는다', () => {
+  assert.match(appSource, /completedOnboardingStepsRef\.current\.has\(step\)/)
+  assert.match(appSource, /analyticsSyncIssueStagesRef\.current\.has\(stage\)/)
+  assert.match(appSource, /trackSaveDelayed\('remote_load'/)
+  assert.match(appSource, /if \(!completedHole\) trackEvent\('hole_start'/)
+  assert.match(appSource, /if \(!holeWasCompleted\) \{[\s\S]*trackEvent\('hole_complete'[\s\S]*trackEvent\('round_milestone'/)
 })

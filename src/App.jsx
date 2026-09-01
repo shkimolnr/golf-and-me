@@ -10,13 +10,13 @@ import { compactCoursePair } from './lib/roundPresentation.js'
 import { roundCompletionState } from './lib/roundCompletion.js'
 import { applyKnownCourseTemplate, findKnownCourse, getKnownCourse, searchKnownCourses, segmentNamesForCourse, selectKnownCourse } from './data/courseData.js'
 import { PREVIEW_ROUNDS_VERSION, mergePreviewRounds } from './data/previewRounds.js'
-import { authCallbackError, clearAuthCallbackFromAddress, googleOAuthOptions } from './lib/auth.js'
+import { authCallbackError, clearAuthCallbackFromAddress, googleOAuthOptions, sanitizedAuthCallbackPath } from './lib/auth.js'
 import { clearRoundHoleDrafts, latestHoleDraft, removeRoundHoleDraft, upsertRoundHoleDraft } from './lib/roundDrafts.js'
 import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMeters, pairClubsForColumnLayout } from './lib/clubBag.js'
 import { clubBagSyncSignature, loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
 import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from './data/news.js'
-import { getAnalyticsConsent, measureLoginStage, recordLoginFailure, setAnalyticsConsent, startLoginMeasurement, trackEvent, trackScreen } from './lib/analytics.js'
+import { getAnalyticsConsent, initializeAnalytics, measureLoginStage, recordLoginFailure, setAnalyticsConsent, startLoginMeasurement, trackEvent, trackScreen } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { requestTestAccess } from './lib/testAccessRequest.js'
 import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
@@ -28,6 +28,7 @@ const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location
 const isDiagnosticSmokeMode = window.location.hostname.endsWith('.vercel.app')
   && window.location.hostname !== 'golf-and-me.vercel.app'
   && new URLSearchParams(window.location.search).get('diagnostics-smoke') === '1'
+const isPreviewOnboardingMode = isPreviewMode && new URLSearchParams(window.location.search).get('onboarding') === '1'
 const isTestAccessRequestEnabled = import.meta.env.VITE_TEST_ACCESS_REQUEST_ENABLED === 'true'
 const analyticsScreenNames = Object.freeze({
   'new-round': 'new_round',
@@ -150,6 +151,7 @@ export default function App() {
   const [feedbackError, setFeedbackError] = useState('')
   const [accountOpen, setAccountOpen] = useState(false)
   const [analyticsConsent, setAnalyticsConsentState] = useState(() => getAnalyticsConsent())
+  const [analyticsAddressReady, setAnalyticsAddressReady] = useState(() => !sanitizedAuthCallbackPath(window.location.href))
   const [accountDeletionOpen, setAccountDeletionOpen] = useState(false)
   const [accountDeletionStatus, setAccountDeletionStatus] = useState('idle')
   const [accountDeletionError, setAccountDeletionError] = useState('')
@@ -218,6 +220,8 @@ export default function App() {
   const clubDistanceCanonicalInputsRef = useRef({})
   const lastTrackedScreenRef = useRef(null)
   const lastTrackedOnboardingStepRef = useRef(null)
+  const completedOnboardingStepsRef = useRef(new Set())
+  const analyticsSyncIssueStagesRef = useRef(new Set())
 
   const unseenNews = hasUnseenNews(lastSeenNewsId)
 
@@ -256,6 +260,25 @@ export default function App() {
     setAnalyticsConsentState(setAnalyticsConsent(granted))
   }
 
+  function trackOnboardingStepComplete(step) {
+    if (completedOnboardingStepsRef.current.has(step)) return false
+    const tracked = trackEvent('onboarding_step', { step, status: 'complete' })
+    if (tracked) completedOnboardingStepsRef.current.add(step)
+    return tracked
+  }
+
+  function trackSaveDelayed(stage, online) {
+    if (analyticsSyncIssueStagesRef.current.has(stage)) return false
+    const tracked = trackEvent('save_delayed', { stage, online })
+    if (tracked) analyticsSyncIssueStagesRef.current.add(stage)
+    return tracked
+  }
+
+  function trackSaveRecovered(stage) {
+    const wasTracked = analyticsSyncIssueStagesRef.current.delete(stage)
+    return wasTracked ? trackEvent('save_recovered', { stage, online: true }) : false
+  }
+
   useEffect(() => {
     if (!session) {
       setLastSeenNewsId(null)
@@ -268,6 +291,17 @@ export default function App() {
     if (!session || !isOnline || isPreviewMode) return
     void flushDiagnosticQueue()
   }, [session?.user?.id, isOnline])
+
+  useEffect(() => {
+    lastTrackedScreenRef.current = null
+    lastTrackedOnboardingStepRef.current = null
+    completedOnboardingStepsRef.current.clear()
+    analyticsSyncIssueStagesRef.current.clear()
+  }, [session?.user?.id])
+
+  useEffect(() => {
+    if (analyticsConsent === 'granted' && analyticsAddressReady) initializeAnalytics()
+  }, [analyticsConsent, analyticsAddressReady])
 
   useEffect(() => {
     if (analyticsConsent !== 'granted') {
@@ -389,6 +423,7 @@ export default function App() {
 
     supabase.auth.getSession().then(({ data, error }) => {
       clearAuthCallbackFromAddress(window)
+      setAnalyticsAddressReady(true)
       if (callbackError) {
         recordLoginFailure('oauth_callback')
         const previewDetail = import.meta.env.VITE_APP_ENV === 'preview' ? ` (${callbackError})` : ''
@@ -447,8 +482,8 @@ export default function App() {
     setPendingDeletedRoundIds(queuedDeletionIds)
 
     const storageKey = `golf-and-me:onboarding:${session.user.id}`
-    let savedProfile = window.localStorage.getItem(storageKey)
-    if (isPreviewMode && !savedProfile) {
+    let savedProfile = isPreviewOnboardingMode ? null : window.localStorage.getItem(storageKey)
+    if (isPreviewMode && !isPreviewOnboardingMode && !savedProfile) {
       savedProfile = JSON.stringify({ defaultTee: '화이트', defaultDistanceUnit: 'M' })
       window.localStorage.setItem(storageKey, savedProfile)
     }
@@ -647,12 +682,13 @@ export default function App() {
         if (hadSyncIssueRef.current) {
           hadSyncIssueRef.current = false
           setSyncRecoveredNotice('기록을 최신 상태로 저장했어요.')
-          trackEvent('save_recovered', { stage: 'remote_load', online: true })
+          trackSaveRecovered('remote_load')
         }
         return
       }
 
       hadSyncIssueRef.current = true
+      trackSaveDelayed('remote_load', navigator.onLine)
       const willRetry = shouldScheduleRemoteHydrationRetry(remoteHydrationRetryAttemptsRef.current, navigator.onLine)
       setSyncError(willRetry
         ? '일부 계정 기록을 불러오지 못했어요. 이 기기의 기록으로 계속할 수 있고, 잠시 후 한 번 더 시도할게요.'
@@ -678,9 +714,10 @@ export default function App() {
     if (!isOnline) {
       hadSyncIssueRef.current = true
       setSyncError('인터넷 연결이 없어요. 입력은 이 기기에 안전하게 저장하고 있으며, 연결되면 계정에도 자동 저장됩니다.')
-      trackEvent('save_delayed', { stage: 'offline', online: false })
+      trackSaveDelayed('offline', false)
       return
     }
+    analyticsSyncIssueStagesRef.current.delete('offline')
     let retryTimer = null
     const timer = window.setTimeout(async () => {
       const roundsToSave = selectRoundsNeedingRemoteSave(rounds, remoteRoundVersionsRef.current)
@@ -727,12 +764,12 @@ export default function App() {
         if (hadSyncIssueRef.current) {
           hadSyncIssueRef.current = false
           setSyncRecoveredNotice('기록을 최신 상태로 저장했어요.')
-          trackEvent('save_recovered', { stage: 'remote_save', online: true })
+          trackSaveRecovered('remote_save')
         }
       } catch {
         hadSyncIssueRef.current = true
         setSyncError('입력은 이 기기에 안전하게 저장됐어요. 계정 저장이 늦어지고 있지만 자동으로 다시 시도할게요. 계속 기록해도 괜찮아요.')
-        trackEvent('save_delayed', { stage: 'remote_save', online: navigator.onLine })
+        trackSaveDelayed('remote_save', navigator.onLine)
         retryTimer = window.setTimeout(() => setSyncRetryNonce(value => value + 1), 5000)
       }
     }, 500)
@@ -920,7 +957,7 @@ export default function App() {
     setRound(current => ({ ...current, tee: defaultTee, distanceUnit: defaultDistanceUnit }))
     setClubSetupReturn(null)
     setScreen('home')
-    trackEvent('onboarding_step', { step: 3, status: 'complete' })
+    trackOnboardingStepComplete(3)
     trackEvent('onboarding_complete', { status: 'complete' })
     if (supabase && !isPreviewMode) {
       saveRemoteProfile(supabase, session.user.id, { defaultTee, defaultDistanceUnit })
@@ -1559,7 +1596,7 @@ export default function App() {
     setPuttMoreOpen(false)
     setCustomPutts(Number.isFinite(putts) && putts >= 5 ? String(putts) : '5')
     setScreen('hole-detail')
-    trackEvent('hole_start', { completed_holes: enteredHoles.length })
+    if (!completedHole) trackEvent('hole_start', { completed_holes: enteredHoles.length })
   }
 
   function leaveHoleDetail() {
@@ -1744,6 +1781,7 @@ export default function App() {
     const greenReachedIn = totals.swingCount + totals.penaltyStrokes
     const officialPutts = holeDraft.puttingStartLie === 'fringe' ? Math.max(holeDraft.putts - 1, 0) : holeDraft.putts
     const savedHole = { ...holeDraft, shots: usedShots, swingCount: totals.swingCount, obCount, penaltyCount, penaltyStrokes: totals.penaltyStrokes, score: totals.score, officialPutts, fir: holeDraft.par === 3 ? null : !teeShot.troubleType, gir: holeDraft.puttingStartLie !== 'fringe' && greenReachedIn <= holeDraft.par - 2 }
+    const holeWasCompleted = activeRound.holes.some(hole => hole.holeNumber === savedHole.holeNumber && Number.isFinite(hole.score))
     const nextHoles = activeRound.holes.map(hole => hole.holeNumber === savedHole.holeNumber ? savedHole : hole)
     const nextRound = removeRoundHoleDraft({ ...activeRound, holes: nextHoles }, savedHole.holeNumber, new Date().toISOString())
     const nextRounds = rounds.map(item => item.id === nextRound.id ? nextRound : item)
@@ -1753,9 +1791,11 @@ export default function App() {
     setRounds(nextRounds)
     setScreen(activeRound.status === 'completed' ? 'round-result' : 'scorecard')
     const completedHoles = nextHoles.filter(hole => Number.isFinite(hole.score)).length
-    trackEvent('hole_complete', { completed_holes: completedHoles })
-    if ([1, 3, 9, 18].includes(completedHoles)) {
-      trackEvent('round_milestone', { milestone: completedHoles, completed_holes: completedHoles })
+    if (!holeWasCompleted) {
+      trackEvent('hole_complete', { completed_holes: completedHoles })
+      if ([1, 3, 9, 18].includes(completedHoles)) {
+        trackEvent('round_milestone', { milestone: completedHoles, completed_holes: completedHoles })
+      }
     }
   }
 
@@ -1868,26 +1908,20 @@ export default function App() {
   const distanceBasisChanged = Boolean(latestDistanceSet && latestDistanceSet.basis !== clubDistanceBasis)
   const hasDistanceChanges = Object.values(clubDistanceInputs).some(value => value !== '' && value != null)
 
-  if (screen === 'onboarding' && analyticsConsent === 'unknown') {
-    return (
-      <main className="app-shell onboarding-shell analytics-consent-shell">
-        <section className="analytics-consent-prompt" aria-labelledby="analytics-consent-title">
-          <p className="eyebrow">Golf &amp; Me</p>
-          <h1 id="analytics-consent-title">서비스 개선에<br />도움을 주실래요?</h1>
-          <p>이용 흐름과 오류 발생 여부만 수집하며 계정·골프 기록은 보내지 않아요.</p>
-          <div className="analytics-consent-actions">
-            <button className="primary" type="button" onClick={() => updateAnalyticsConsent(true)}>허용</button>
-            <button className="secondary-button" type="button" onClick={() => updateAnalyticsConsent(false)}>괜찮아요</button>
-          </div>
-          <small>선택은 내 계정에서 언제든 바꿀 수 있어요.</small>
-        </section>
-      </main>
-    )
-  }
-
   if (screen === 'onboarding') {
     return (
       <main className="app-shell onboarding-shell">
+        {analyticsConsent === 'unknown' && (
+          <section className="analytics-consent-prompt" aria-labelledby="analytics-consent-title">
+            <strong id="analytics-consent-title">서비스 개선에 도움을 주실래요?</strong>
+            <p>이용 흐름과 오류 발생 여부만 수집하며 계정·골프 기록은 보내지 않아요.</p>
+            <div className="analytics-consent-actions">
+              <button className="primary" type="button" onClick={() => updateAnalyticsConsent(true)}>허용</button>
+              <button className="secondary-button" type="button" onClick={() => updateAnalyticsConsent(false)}>괜찮아요</button>
+            </div>
+            <small>선택하지 않아도 계속 이용할 수 있고, 내 계정에서 언제든 바꿀 수 있어요.</small>
+          </section>
+        )}
         <div className="onboarding-progress" aria-label={`온보딩 ${onboardingStep}/3 단계`}>
           <span className="active" /><span className={onboardingStep >= 2 ? 'active' : ''} /><span className={onboardingStep >= 3 ? 'active' : ''} />
         </div>
@@ -1899,7 +1933,7 @@ export default function App() {
             <p className="description">당신의 골프 성장 여정을 시작해볼게요.<br />기록은 가볍게, 변화는 선명하게.</p>
             <button className="primary" type="button" onClick={() => {
               setOnboardingStep(2)
-              trackEvent('onboarding_step', { step: 1, status: 'complete' })
+              trackOnboardingStepComplete(1)
             }}>시작하기</button>
           </section>
         ) : (
@@ -1932,7 +1966,7 @@ export default function App() {
             </div>
             <button className="primary" type="button" onClick={() => {
               setOnboardingStep(3)
-              trackEvent('onboarding_step', { step: 2, status: 'complete' })
+              trackOnboardingStepComplete(2)
               setClubSetupReturn('onboarding')
               setClubStage('composition')
               setClubCompositionEditing(true)
