@@ -13,7 +13,7 @@
 
 ## 2. 배포 절차
 
-1. `npm test`와 `npm run build`를 통과합니다.
+1. `npm run verify:field-release`를 실행해 자동 테스트, 빌드, 비밀 설정 파일의 Git 추적 여부와 작업 트리를 한 번에 점검합니다.
 2. 비밀키와 개인정보가 Git 또는 빌드 결과에 포함되지 않았는지 확인합니다.
 3. GitHub `main`에 푸시해 연결된 Vercel Production 배포를 시작합니다.
 4. Vercel Production 주소에서 로그인 → 홈 → 라운드 열기 → 저장 → 재접속을 확인합니다.

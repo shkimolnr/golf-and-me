@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test",
+    "verify:field-release": "node scripts/verifyFieldRelease.mjs",
     "test:db-catalog": "node scripts/compareDbCatalogSnapshot.mjs",
     "test:db-integrity-preflight": "node scripts/verifyDerivedIntegrityPreflight.mjs",
     "test:db-integration": "node scripts/verifyRoundSummarySqlParity.mjs",
