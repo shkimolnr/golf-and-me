@@ -23,6 +23,7 @@ import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
 import { scheduleRemoteHydrationRetry, shouldScheduleRemoteHydrationRetry } from './lib/remoteHydrationRetry.js'
 import { recordDiagnosticFailure, resolveDiagnosticFailures } from './lib/diagnostics.js'
 import { clearDiagnosticQueue, enqueueDiagnosticFailure, enqueueDiagnosticRecovery, flushDiagnosticQueue, setDiagnosticAccessTokenProvider } from './lib/diagnosticsTransport.js'
+import golfBallLogo from './assets/golf-ball-logo.png'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
 const isPreviewOnboardingMode = isPreviewMode && new URLSearchParams(window.location.search).get('onboarding') === '1'
@@ -1822,12 +1823,18 @@ export default function App() {
   if (!session) {
     return (
       <main className="app-shell auth-shell">
-        <div className="auth-logo"><span className="brand-mark">G</span></div>
-        <p className="eyebrow">당신의 골프 성장 파트너</p>
+        <div className="auth-logo"><img className="auth-ball-logo" src={golfBallLogo} alt="" /></div>
         <h1>골프와 나</h1>
-        <p className="description">라운드를 간편하게 기록하고<br />내 플레이의 변화를 발견하세요.</p>
         <button className="google-button" type="button" onClick={signInWithGoogle} disabled={!isSupabaseConfigured}>
-          <span className="google-mark">G</span> Google로 계속하기
+          <span className="google-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48" focusable="false">
+              <path fill="#EA4335" d="M24 9.5c3.5 0 6.7 1.2 9.2 3.6l6.9-6.9C35.9 2.4 30.5 0 24 0 14.6 0 6.5 5.4 2.6 13.2l8 6.2C12.4 13.7 17.7 9.5 24 9.5Z" />
+              <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.1 5.5c4.1-3.8 7.2-9.4 7.2-16.4Z" />
+              <path fill="#FBBC05" d="M10.5 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6l-8-6.2C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.9-6.2Z" />
+              <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.1-5.5c-2 1.3-4.5 2.1-8.8 2.1-6.3 0-11.6-4.2-13.5-9.9l-8 6.2C6.5 42.6 14.6 48 24 48Z" />
+            </svg>
+          </span>
+          Google로 계속하기
         </button>
         <p className="legal">계속하면 서비스 이용약관 및 개인정보 처리방침에 동의하게 됩니다.</p>
         {isTestAccessRequestEnabled && (
@@ -1840,9 +1847,9 @@ export default function App() {
                   <input type="email" inputMode="email" autoComplete="email" required maxLength="254" placeholder="example@gmail.com" value={testAccessEmail} onChange={event => setTestAccessEmail(event.target.value)} />
                 </label>
                 <input hidden type="text" name="website" tabIndex="-1" autoComplete="off" aria-hidden="true" />
-                {testAccessError && <p className="error-message" role="alert">{testAccessError}</p>}
                 <button type="submit" disabled={testAccessStatus === 'submitting' || !testAccessEmail.trim()}>{testAccessStatus === 'submitting' ? '요청 중…' : '승인 요청'}</button>
               </form>
+              {testAccessError && <p className="test-access-error error-message" role="alert">{testAccessError}</p>}
               </>
             )}
             {testAccessStatus === 'sent' && <p className="test-access-success" role="status">승인 요청을 보냈어요.</p>}
@@ -1968,7 +1975,7 @@ export default function App() {
     <main className="app-shell">
       {screen === 'home' && (
         <header className="app-header">
-          <div className="brand"><span className="brand-mark">G</span> Golf &amp; Me</div>
+          <div className="brand"><img className="brand-ball-logo" src={golfBallLogo} alt="" /><span className="brand-wordmark">Golf<br />&amp; Me</span></div>
           <div className="home-header-actions">
             <button className="news-header-button" type="button" onClick={openNews} aria-label={unseenNews ? '새소식, 새 글 있음' : '새소식'}>
               <MegaphoneIcon />
@@ -1989,9 +1996,12 @@ export default function App() {
 
       {screen === 'home' && (
         <section className="home">
-          <p className="eyebrow">오늘도 한 타씩, 더 나답게</p>
-          <h1>라운드를 기록하고<br />내 골프를 발견하세요.</h1>
-          <p className="description">매홀 기록은 간단하게, 라운드 후 분석은 깊게.</p>
+          <h1>
+            {rounds.length > 0
+              ? <>오늘의 라운드도<br />기록해 볼까요?</>
+              : <>라운드 기록을<br />시작해 볼까요?</>}
+          </h1>
+          <p className="description">기록은 간단하게, 분석은 깊이 있게.</p>
           <button className="primary" type="button" onClick={startNewRound}>새 라운드 기록하기</button>
           {rounds.length > 0 && <section className="home-report" aria-labelledby="home-report-title">
             <div className="home-report-heading">
@@ -2000,12 +2010,12 @@ export default function App() {
             </div>
             {cumulativeStats.roundCount > 0 ? (
               <div className="home-report-grid">
-                <div><strong>{cumulativeStats.averageScore.toFixed(1)}</strong><span>평균 스코어</span></div>
+                <div><strong>{cumulativeStats.averageScore.toFixed(1)}타</strong><span>평균 스코어</span></div>
+                <div><strong>{cumulativeStats.bestScore}타</strong><span>베스트 스코어</span></div>
                 <div><strong>{cumulativeStats.roundCount}</strong><span>총 라운드</span></div>
+                <div><strong>{formatPercent(cumulativeStats.firHits, cumulativeStats.firAttempts)}</strong><span>FIR 평균</span></div>
                 <div><strong>{formatPercent(cumulativeStats.girHits, cumulativeStats.girAttempts)}</strong><span>GIR 평균</span></div>
                 <div><strong>{cumulativeStats.averagePutts === null ? '—' : cumulativeStats.averagePutts.toFixed(1)}</strong><span>평균 퍼팅</span></div>
-                <div><strong>{formatPercent(cumulativeStats.firHits, cumulativeStats.firAttempts)}</strong><span>FIR 평균</span></div>
-                <div><strong>{cumulativeStats.bestScore}타</strong><span>베스트 스코어</span></div>
               </div>
             ) : (
               <div className="home-report-empty">
@@ -2071,6 +2081,7 @@ export default function App() {
             <button className="primary" type="button" onClick={() => setScreen('home')}>홈으로</button>
           </div> : <form className="feedback-form" onSubmit={submitFeedback}>
             <label htmlFor="feedback-message">의견</label>
+            <small className="feedback-privacy-note">이메일과 계정 정보는 운영 채널에 보내지 않아요.</small>
             <textarea id="feedback-message" rows="7" maxLength={MAX_FEEDBACK_LENGTH} value={feedbackMessage} onChange={event => setFeedbackMessage(event.target.value)} placeholder="불편했던 점이나 있으면 좋을 기능을 알려주세요." />
             <span className="feedback-count">{feedbackMessage.length}/{MAX_FEEDBACK_LENGTH}</span>
             {feedbackError && <p className="error-message" role="alert">{feedbackError}</p>}
@@ -2500,8 +2511,8 @@ export default function App() {
           <button className="account-backdrop" onClick={() => setClubSetupPromptOpen(false)} aria-label="클럽 등록 안내 닫기" />
           <section className="account-sheet club-setup-sheet" role="dialog" aria-modal="true" aria-labelledby="club-setup-title" aria-describedby="club-setup-description">
             <div className="sheet-handle" />
-            <div className="account-heading"><h2 id="club-setup-title">클럽 정보가 부족해요</h2><button className="close-button" type="button" onClick={() => setClubSetupPromptOpen(false)} aria-label="닫기">×</button></div>
-            <p id="club-setup-description">라운드에서 사용한 클럽을 정확하게 기록하려면 먼저 골프백을 확인해주세요.</p>
+            <div className="account-heading"><h2 id="club-setup-title"><span aria-hidden="true">⚠️</span> 클럽 정보가 부족해요</h2><button className="close-button" type="button" onClick={() => setClubSetupPromptOpen(false)} aria-label="닫기">×</button></div>
+            <p id="club-setup-description">라운드에서 사용한 클럽을 기록하려면 먼저 골프백을 확인해 주세요.</p>
             <div className="sheet-actions"><button className="secondary-button" type="button" onClick={() => setClubSetupPromptOpen(false)}>돌아가기</button><button className="primary" type="button" onClick={() => { setClubSetupPromptOpen(false); setClubSetupReturn('new-round'); setClubStage('composition'); setClubCompositionEditing(true); setScreen('clubs') }}>클럽 등록하기</button></div>
           </section>
         </div>
