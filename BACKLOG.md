@@ -108,7 +108,7 @@
 - [ ] GA4 광고 기능·Google Signals·리마케팅·광고 개인화가 꺼져 있고, Preview와 Production 속성/측정 ID가 분리됐는지 확인
 - [ ] 미선택·거부 상태에서 `googletagmanager.com/gtag/js`와 `google-analytics.com` 요청이 없는지 확인
 - [ ] 허용 상태에서 스크립트가 한 번만 로드되고, Preview DebugView에 `screen_view`와 허용 이벤트만 수집되는지 확인
-- [ ] 동의한 테스트 계정에서 `login_start`가 수집되는지 확인
+- [x] 동의한 테스트 계정의 로그인 시작이 실제 GA4 이벤트 `auth_attempt`(`stage=oauth_request`)로 1회 수집되고, 같은 흐름의 `login_success`도 1회 수집되는지 확인 — Preview DebugView 검증 완료
 - [ ] 계정 메뉴에서 `서비스 개선 분석 허용`을 켜고 끌 때 GA4 제품 분석만 시작·중단되는지 확인
 - [ ] `login_success`의 `session_restored`, `records_ready` 단계와 `duration_ms`가 각각 수집되는지 DebugView에서 확인
 - [ ] `onboarding_complete` → `round_create` → `hole_start` → 1·3·9·18홀 이정표 → `round_complete` 퍼널과 완료 `duration_ms`가 확인되는지 검증

@@ -36,7 +36,7 @@
 | 이벤트 | 허용 매개변수 |
 |---|---|
 | `screen_view` | `screen_name`: login, onboarding, home, new_round, clubs, scorecard, hole_detail, round_result, news, feedback |
-| `login_start` | `stage`: oauth_request |
+| `auth_attempt` | `stage`: oauth_request — 사용자 의미는 `로그인 시작` |
 | `login_success` | `stage`: session_restored, records_ready; `duration_ms`: 0~24시간 |
 | `login_fail` | `stage`: oauth_start, oauth_callback |
 | `onboarding_step` | `step`: 1~3; `status`: viewed, complete |
@@ -119,6 +119,8 @@ Production 행은 사용자 승인 전 실행하지 않습니다. 실제 측정 
 - 실제 URL·query·fragment·referrer는 보내지 않고 `page_location=https://golf-and-me.invalid/`, 고정 `page_title`, 빈 referrer만 전송되는 것을 DebugView에서 확인했습니다.
 - 분석 허용을 끈 뒤 새소식 화면 전환과 새로고침을 실행해도 추가 이벤트가 생기지 않았습니다. 검증 후 기존 허용 상태로 복원했습니다.
 - 이메일·UUID·토큰·골프장명·스코어·홀/샷/클럽 원본·메모·자유 입력은 DebugView 이벤트 매개변수에 없었습니다.
+- 최종 Preview 배포 `ae0d42b`에서 로그아웃 후 Google 재로그인 1회를 실행했습니다. DebugView의 실제 발생 순서는 `screen_view → auth_attempt → login_success → screen_view`였고, `auth_attempt`와 해당 로그인 흐름의 `login_success`는 각각 정확히 1회였습니다. Google 계정 선택 화면까지의 click 동작은 네트워크·페이지 로딩을 포함해 582ms였으며 앱 코드가 추가한 대기 시간은 0ms였습니다.
+- 사용자 의미인 `로그인 시작`의 실제 GA4 이벤트명은 `auth_attempt`, 매개변수는 `stage=oauth_request`로 확정합니다. 기존 `login_start`는 실제 Preview에서 수신되지 않아 운영 이벤트명으로 사용하지 않습니다.
 
 ## 컨트롤타워 통합 주의점
 
