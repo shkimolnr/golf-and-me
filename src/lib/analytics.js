@@ -16,7 +16,7 @@ export const ga4AutomaticEventNames = Object.freeze([
 
 const EVENT_SCHEMAS = Object.freeze({
   screen_view: { screen_name: ['login', 'onboarding', 'home', 'new_round', 'clubs', 'scorecard', 'hole_detail', 'round_result', 'news', 'feedback'] },
-  login_start: { stage: ['oauth_request'] },
+  auth_attempt: { stage: ['oauth_request'] },
   login_success: { stage: ['session_restored', 'records_ready'], duration_ms: 'duration' },
   login_fail: { stage: ['oauth_start', 'oauth_callback'] },
   onboarding_step: { step: [1, 2, 3], status: ['viewed', 'complete'] },
@@ -255,7 +255,7 @@ export function startLoginMeasurement() {
 export function flushPendingLoginStartMeasurement() {
   const attempt = readLoginAttempt()
   if (!attempt?.analyticsAllowed || attempt.startTracked) return false
-  const tracked = trackEvent('login_start', { stage: 'oauth_request' })
+  const tracked = trackEvent('auth_attempt', { stage: 'oauth_request' })
   if (tracked) writeLoginAttempt({ ...attempt, startTracked: true })
   return tracked
 }
