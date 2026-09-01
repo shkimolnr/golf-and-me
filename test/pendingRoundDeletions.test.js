@@ -42,12 +42,27 @@ test('관측한 삭제 ID는 홀 draft와 복귀 화면에서도 제거한다', 
   const storage = memoryStorage()
   storage.setItem('golf-and-me:hole-draft:user-1:deleted:1', '{}')
   storage.setItem('golf-and-me:hole-draft:user-1:kept:1', '{}')
+  storage.setItem('golf-and-me:active-round:user-1', JSON.stringify({ id: 'deleted', holes: [] }))
   storage.setItem('golf-and-me:navigation:user-1', JSON.stringify({ screen: 'scorecard', roundId: 'deleted' }))
   const removed = clearDeletedRoundLocalArtifacts(storage, 'user-1', ['deleted'])
-  assert.deepEqual(removed, ['golf-and-me:hole-draft:user-1:deleted:1'])
+  assert.deepEqual(removed, [
+    'golf-and-me:hole-draft:user-1:deleted:1',
+    'golf-and-me:active-round:user-1',
+  ])
   assert.equal(storage.getItem('golf-and-me:hole-draft:user-1:deleted:1'), null)
   assert.notEqual(storage.getItem('golf-and-me:hole-draft:user-1:kept:1'), null)
+  assert.equal(storage.getItem('golf-and-me:active-round:user-1'), null)
   assert.equal(JSON.parse(storage.getItem('golf-and-me:navigation:user-1')).screen, 'home')
+})
+
+test('삭제 ID와 다른 legacy active round는 fallback 호환을 위해 유지한다', () => {
+  const storage = memoryStorage()
+  const activeRoundKey = 'golf-and-me:active-round:user-1'
+  storage.setItem(activeRoundKey, JSON.stringify({ id: 'kept', holes: [] }))
+
+  clearDeletedRoundLocalArtifacts(storage, 'user-1', ['deleted'])
+
+  assert.equal(JSON.parse(storage.getItem(activeRoundKey)).id, 'kept')
 })
 
 test('서버 삭제 완료 후 대기 목록을 비운다', () => {

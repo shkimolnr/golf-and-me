@@ -86,6 +86,18 @@ export function clearDeletedRoundLocalArtifacts(storage, userId, roundIds) {
   }
   removed.forEach(key => storage.removeItem(key))
 
+  const legacyActiveRoundKey = `golf-and-me:active-round:${userId}`
+  try {
+    const legacyActiveRound = JSON.parse(storage.getItem(legacyActiveRoundKey) || 'null')
+    if (deleted.has(String(legacyActiveRound?.id))) {
+      storage.removeItem(legacyActiveRoundKey)
+      removed.push(legacyActiveRoundKey)
+    }
+  } catch {
+    // A malformed legacy fallback cannot be safely restored as a round.
+    storage.removeItem(legacyActiveRoundKey)
+  }
+
   const navigationKey = `golf-and-me:navigation:${userId}`
   try {
     const checkpoint = JSON.parse(storage.getItem(navigationKey) || 'null')
