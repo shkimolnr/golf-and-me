@@ -118,9 +118,11 @@ Production 행은 사용자 승인 전 실행하지 않습니다. 실제 측정 
 - Preview 이벤트에만 `debug_mode`를 붙여 DebugView에서 `screen_view`와 `user_engagement`를 확인했습니다.
 - 실제 URL·query·fragment·referrer는 보내지 않고 `page_location=https://golf-and-me.invalid/`, 고정 `page_title`, 빈 referrer만 전송되는 것을 DebugView에서 확인했습니다.
 - 분석 허용을 끈 뒤 새소식 화면 전환과 새로고침을 실행해도 추가 이벤트가 생기지 않았습니다. 검증 후 기존 허용 상태로 복원했습니다.
+- 거부 상태에서 같은 Preview 주소를 새 문서로 다시 열었을 때 GA 스크립트는 0개였고, 새소식 화면으로 이동한 뒤에도 0개를 유지했습니다. DebugView에도 거부 전 마지막 이벤트 이후 신규 이벤트가 없었으며 로그인·홈·새소식 기능은 정상 작동했습니다. 검증 후 허용을 다시 켰을 때 스크립트는 정확히 1개였습니다.
 - 이메일·UUID·토큰·골프장명·스코어·홀/샷/클럽 원본·메모·자유 입력은 DebugView 이벤트 매개변수에 없었습니다.
 - 최종 Preview 배포 `ae0d42b`에서 로그아웃 후 Google 재로그인 1회를 실행했습니다. DebugView의 실제 발생 순서는 `screen_view → auth_attempt → login_success → screen_view`였고, `auth_attempt`와 해당 로그인 흐름의 `login_success`는 각각 정확히 1회였습니다. Google 계정 선택 화면까지의 click 동작은 네트워크·페이지 로딩을 포함해 582ms였으며 앱 코드가 추가한 대기 시간은 0ms였습니다.
 - 사용자 의미인 `로그인 시작`의 실제 GA4 이벤트명은 `auth_attempt`, 매개변수는 `stage=oauth_request`로 확정합니다. 기존 `login_start`는 실제 Preview에서 수신되지 않아 운영 이벤트명으로 사용하지 않습니다.
+- 후속 Preview 재로그인 검증에서 `auth_attempt(stage=oauth_request)`는 1회, `login_success`는 `session_restored`와 `records_ready`가 각각 1회 수신됐습니다. `duration_ms`는 각각 16,616ms와 17,208ms로 허용 범위 안이었고, 실제 순서도 `auth_attempt → session_restored → records_ready`와 일치했습니다. 두 성공 이벤트의 `page_location`은 고정 비식별 값이었고 `non_personalized_ads=1`도 유지됐습니다.
 
 ## 컨트롤타워 통합 주의점
 

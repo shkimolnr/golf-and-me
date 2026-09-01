@@ -105,14 +105,15 @@
 
 ### TASK-038 GA4 Preview·Production 활성화 및 로그인 속도 점검 체크리스트
 
-- [ ] GA4 광고 기능·Google Signals·리마케팅·광고 개인화가 꺼져 있고, Preview와 Production 속성/측정 ID가 분리됐는지 확인
-- [ ] 미선택·거부 상태에서 `googletagmanager.com/gtag/js`와 `google-analytics.com` 요청이 없는지 확인
-- [ ] 허용 상태에서 스크립트가 한 번만 로드되고, Preview DebugView에 `screen_view`와 허용 이벤트만 수집되는지 확인
-- [x] 동의한 테스트 계정의 로그인 시작이 실제 GA4 이벤트 `auth_attempt`(`stage=oauth_request`)로 1회 수집되고, 같은 흐름의 `login_success`도 1회 수집되는지 확인 — Preview DebugView 검증 완료
-- [ ] 계정 메뉴에서 `서비스 개선 분석 허용`을 켜고 끌 때 GA4 제품 분석만 시작·중단되는지 확인
-- [ ] `login_success`의 `session_restored`, `records_ready` 단계와 `duration_ms`가 각각 수집되는지 DebugView에서 확인
-- [ ] `onboarding_complete` → `round_create` → `hole_start` → 1·3·9·18홀 이정표 → `round_complete` 퍼널과 완료 `duration_ms`가 확인되는지 검증
-- [ ] 이메일·Google 계정 정보·사용자 UUID·골프 기록 원본이 이벤트와 매개변수에 포함되지 않는지 확인
+- [x] Preview에서 광고 기능·Google Signals·리마케팅·광고 개인화가 꺼졌는지 확인 — 광고 개인 최적화 허용 지역 0/307, Signals 미사용, `non_personalized_ads=1` 확인
+- [ ] Production 속성·측정 ID를 만들 때 Preview와 완전히 분리하고 동일한 광고 비활성 정책을 적용
+- [x] 거부 상태에서 GA 스크립트가 로드되지 않고 신규 이벤트가 전송되지 않는지 실제 Preview에서 확인 — 새 문서·화면 이동 모두 스크립트 0개, DebugView 신규 이벤트 0개
+- [x] 허용 상태에서 스크립트가 한 번만 로드되고, Preview DebugView에 `screen_view`와 허용 이벤트만 수집되는지 확인
+- [x] 동의한 테스트 계정의 로그인 시작이 실제 GA4 이벤트 `auth_attempt`(`stage=oauth_request`)로 정확히 1회 수집되는지 확인
+- [x] 계정 메뉴에서 `서비스 개선 분석 허용`을 철회하면 이후 화면 이동·새로고침의 GA4 제품 분석이 중단되고 서비스 기능은 유지되는지 확인
+- [x] `login_success`의 `session_restored`, `records_ready` 단계와 `duration_ms`가 각각 1회 수집되는지 DebugView에서 확인 — 16,616ms/17,208ms, 순서·범위·중복 없음 검증
+- [x] `onboarding_complete` → `round_create` → `hole_start` → 임시 저장 → 1·3·9·18홀 이정표 → `round_complete` → 결과 보기 퍼널을 검증 — 실제 Preview 18홀 종단 검증 및 재진입 `hole_start` 중복 회귀 테스트 완료
+- [x] 이메일·Google 계정 정보·사용자 UUID·토큰·전체 URL·골프 기록 원본·자유 입력이 이벤트와 매개변수에 포함되지 않는지 확인
 - [ ] 모바일 Safari와 데스크톱을 구분해 로그인 준비 시간의 평균과 추세를 확인
 - [ ] 느린 사례가 반복되면 Google 계정 선택 전 외부 인증 구간과 Golf & Me 복귀 후 앱 준비 구간을 분리해 원인을 재점검
 - [ ] Beta 초반 표본이 쌓인 뒤 현재 모바일 영상 기준(앱 복귀 후 약 0.1~0.5초)에서 체감 저하가 없는지 확인
