@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "node --test",
     "test:db-catalog": "node scripts/compareDbCatalogSnapshot.mjs",
-    "test:db-integration": "node scripts/verifyRoundSummarySqlParity.mjs"
+    "test:db-integration": "node scripts/verifyRoundSummarySqlParity.mjs",
+    "test:db-privileges": "node scripts/verifyRuntimeTablePrivileges.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
