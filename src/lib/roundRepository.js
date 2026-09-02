@@ -1,5 +1,7 @@
 import { calculateRoundStats } from './roundStats.js'
 
+export const COMPLETED_ROUNDS_PAGE_SIZE = 25
+
 function roundTimestamp(round) {
   return round?.updatedAt || round?.completedAt || round?.createdAt || ''
 }
@@ -132,6 +134,31 @@ function missingRoundSummarySchema(error) {
     || (message.includes('column') && ['entered_holes', 'stats_summary'].some(column => message.includes(column)))
 }
 
+function missingHomeRoundStateFunction(error) {
+  const code = String(error?.code || '')
+  const message = String(error?.message || '').toLowerCase()
+  return ['42883', 'PGRST202'].includes(code)
+    || (message.includes('get_home_round_state') && message.includes('function'))
+}
+
+function normalizeCumulativeStats(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const numberOrNull = input => input == null ? null : Number(input)
+  return {
+    roundCount: Number(value.roundCount) || 0,
+    scoredRoundCount: Number(value.scoredRoundCount) || 0,
+    averageScore: numberOrNull(value.averageScore),
+    bestScore: numberOrNull(value.bestScore),
+    totalPutts: Number(value.totalPutts) || 0,
+    puttAttempts: Number(value.puttAttempts) || 0,
+    averagePutts: numberOrNull(value.averagePutts),
+    firHits: Number(value.firHits) || 0,
+    firAttempts: Number(value.firAttempts) || 0,
+    girHits: Number(value.girHits) || 0,
+    girAttempts: Number(value.girAttempts) || 0,
+  }
+}
+
 export function deserializeRemoteRoundSummary(row) {
   const statsSummary = {
     enteredHoles: Number(row.entered_holes) || 0,
@@ -163,6 +190,52 @@ export function deserializeRemoteRoundSummary(row) {
     statsSummary,
     remoteSummaryOnly: true,
   }
+}
+
+export async function loadRemoteHomeRoundState(
+  client,
+  { limit = COMPLETED_ROUNDS_PAGE_SIZE, offset = 0 } = {},
+) {
+  if (typeof client?.rpc !== 'function') return null
+  const { data, error } = await client.rpc('get_home_round_state', {
+    p_limit: limit,
+    p_offset: offset,
+  })
+  if (missingHomeRoundStateFunction(error)) return null
+  if (error) throw error
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null
+  return {
+    completedRounds: Array.isArray(data.completedRounds)
+      ? data.completedRounds.map(deserializeRemoteRoundSummary)
+      : [],
+    completedTotal: Number(data.completedTotal) || 0,
+    cumulativeStats: normalizeCumulativeStats(data.cumulativeStats),
+    versions: Array.isArray(data.versions)
+      ? data.versions
+        .filter(item => item?.id)
+        .map(item => ({ id: String(item.id), updatedAt: item.updatedAt || null }))
+      : [],
+  }
+}
+
+async function loadRemoteDraftRounds(client, userId) {
+  const { data, error } = await client
+    .from('rounds')
+    .select('payload')
+    .eq('user_id', userId)
+    .eq('status', 'in_progress')
+    .order('updated_at', { ascending: false })
+  if (error) throw error
+  return (data || []).map(row => row.payload).filter(Boolean)
+}
+
+export async function loadRemoteCompletedRoundsPage(client, options = {}) {
+  const state = await loadRemoteHomeRoundState(client, options)
+  return state ? {
+    rounds: state.completedRounds,
+    total: state.completedTotal,
+    cumulativeStats: state.cumulativeStats,
+  } : null
 }
 
 async function loadLegacyRemoteRounds(client, userId) {
@@ -205,11 +278,44 @@ export async function loadRemoteRoundTombstones(client, userId) {
 }
 
 export async function loadRemoteRoundSyncState(client, userId) {
-  const [rounds, tombstones] = await Promise.all([
-    loadRemoteRounds(client, userId),
+  if (typeof client?.rpc !== 'function') {
+    const [rounds, tombstones] = await Promise.all([
+      loadRemoteRounds(client, userId),
+      loadRemoteRoundTombstones(client, userId),
+    ])
+    return {
+      rounds,
+      tombstones,
+      versions: rounds,
+      cumulativeStats: null,
+      completedTotal: rounds.filter(round => round.status === 'completed').length,
+      optimized: false,
+    }
+  }
+  const [homeState, draftRounds, tombstones] = await Promise.all([
+    loadRemoteHomeRoundState(client),
+    loadRemoteDraftRounds(client, userId),
     loadRemoteRoundTombstones(client, userId),
   ])
-  return { rounds, tombstones }
+  if (!homeState) {
+    const rounds = await loadRemoteRounds(client, userId)
+    return {
+      rounds,
+      tombstones,
+      versions: rounds,
+      cumulativeStats: null,
+      completedTotal: rounds.filter(round => round.status === 'completed').length,
+      optimized: false,
+    }
+  }
+  return {
+    rounds: [...draftRounds, ...homeState.completedRounds],
+    tombstones,
+    versions: homeState.versions,
+    cumulativeStats: homeState.cumulativeStats,
+    completedTotal: homeState.completedTotal,
+    optimized: true,
+  }
 }
 
 export async function loadRemoteRoundTombstone(client, userId, roundId) {
