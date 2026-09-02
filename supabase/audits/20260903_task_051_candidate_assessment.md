@@ -66,6 +66,27 @@ Preview에서 실행할 파일:
 로컬 Production-equivalent 순서(`001·004·005` 적용 뒤 002 미적용)에서는 위 조건이 모두
 0으로 재현되었습니다. 이 로컬 결과는 실제 Preview 결과를 대신하지 않습니다.
 
+### Preview 실행 결과
+
+컨트롤타워 승인에 따라 2026-09-03T08:51:06+09:00에 `Golf&Me Preview`에서 이 SQL만
+READ ONLY로 실행했습니다.
+
+- 기준 commit: `5208a37df906b5d6b5773c41689fa1bedf6e06c0`
+- query SHA-256: `d981a8b7498c2b616d07dad9f0bf73118e11c03754c40196442bc9b984e9215c`
+- result SHA-256: `e1d7fd1deaef60f389646bc95b1b43356baa7d2ef0f0b9171c46c0f5b23f4382`
+- `gateStatus`: `READY`
+- blocker 7종: 모두 `0`
+- advisory: `0`
+- target unique index 3개와 composite FK 3개: 모두 `absent_expected`
+- `sync_round_children_from_payload()`: `exact_baseline`, SECURITY DEFINER,
+  `search_path=public`, definition hash `117d20b5e9c660b31d6a8fefcd8354da`
+- `rounds_sync_children`: `exact_existing`, payload UPDATE 대상, enabled
+- parent orphan·owner mismatch 6종: 모두 `0`
+
+원문과 metadata는 Git 밖의 전용 비공개 임시 폴더에 각각 mode 600으로 보관했습니다. 원문에는
+UUID 형식 값과 이메일이 없음을 확인했습니다. 이 실행에서 migration, DDL, DML, 권한 변경은
+수행하지 않았습니다.
+
 ## rollback 한계
 
 - rollback은 002가 만든 composite FK 3개와 unique index 3개를 제거하고, child DML을
@@ -80,7 +101,6 @@ Preview에서 실행할 파일:
 
 ## 다음 승인 gate
 
-컨트롤타워가 승인된 `Golf&Me Preview`에서 위 SQL을 READ ONLY로 실행해 결과와 SHA-256을
-비공개로 보관한 뒤, blocker/advisory 0과 target 6개 `absent_expected`를 확인해야 합니다.
-그 결과에 대한 별도 사용자·컨트롤타워 승인 전에는 migration 002를 Preview에 적용하지 않습니다.
+컨트롤타워는 위 Preview 결과와 migration DDL을 교차검토해야 합니다. 별도 사용자·컨트롤타워
+승인 전에는 migration 002를 Preview에 적용하지 않습니다.
 Production 적용, push, main 통합, 배포도 이 문서의 범위가 아닙니다.
