@@ -44,13 +44,14 @@ input[inputmode='decimal'],
 .par-strip .par-choices button,
 .putting-choices button { font-family: var(--font-cherrie); letter-spacing: .04em; font-synthesis: weight; }
 * { box-sizing: border-box; }
-html, body, #root { width: 100%; max-width: 100%; overflow-x: hidden; }
-body { margin: 0; overscroll-behavior-x: none; }
+html, body, #root { width: 100%; max-width: 100%; min-height: 100%; overflow-x: hidden; }
+html { -webkit-text-size-adjust: 100%; }
+body { min-height: 100dvh; margin: 0; overscroll-behavior-x: none; }
 button, input, select, textarea { max-width: 100%; font: inherit; letter-spacing: inherit; }
 select { appearance: none; padding-right: 36px !important; background-color: white; background-image: linear-gradient(45deg, transparent 50%, #4b5563 50%), linear-gradient(135deg, #4b5563 50%, transparent 50%); background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%; background-repeat: no-repeat; background-size: 5px 5px, 5px 5px; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .55; }
-.app-shell { width: min(100%, 480px); min-height: 100vh; margin: 0 auto; padding: 24px 20px 48px; background: white; }
+.app-shell { width: min(100%, 480px); min-height: 100dvh; margin: 0 auto; padding: 24px 20px max(48px, calc(48px + env(safe-area-inset-bottom, 0px))); background: white; }
 .app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 72px; }
 .brand { display: flex; align-items: center; gap: 4px; font-weight: 800; color: #065f46; }
 .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: white; background: #059669; }
@@ -87,7 +88,7 @@ h1 { margin: 10px 0 14px; font-size: clamp(30px, 9vw, 42px); line-height: 1.2; l
 .empty-card span, .hint { color: #6b7280; font-size: 15px; line-height: 1.6; }
 .back { border: 0; padding: 8px 0; color: #6b7280; background: none; }
 label { display: flex; flex-direction: column; gap: 8px; font-weight: 700; font-size: 15px; }
-input, select, textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 12px; padding: 14px; background-color: white; color: #2d3748; }
+input, select, textarea { width: 100%; border: 1px solid #d1d5db; border-radius: 12px; padding: 14px; background-color: white; color: #2d3748; font-size: 16px; scroll-margin-block: 88px 260px; }
 textarea { resize: vertical; line-height: 1.5; }
 input:focus, select:focus, textarea:focus { outline: 2px solid #059669; outline-offset: -2px; border-color: #059669; }
 button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
@@ -427,6 +428,7 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .round-start-summary strong { color: #047857; font-size: 16px; }
 .round-start-summary span { margin-top: 4px; }
 .scorecard, .hole-detail { margin-top: -8px; }
+.hole-detail { padding-bottom: 104px; }
 .scorecard .cherrie-num, .hole-detail .cherrie-num, .hole-score:not(.empty), .shot-heading input, .putting-heading input, .putting-more input { font-family: var(--font-cherrie); letter-spacing: .04em; font-synthesis: weight; }
 .scorecard-header { margin-bottom: 8px; }
 .round-meta { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; min-height: 50px; margin: 0 0 12px; padding: 11px 13px; border: 1px solid #d1fae5; border-radius: 12px; color: #4b5563; background: #ecfdf5; font: inherit; font-size: 15px; text-align: left; white-space: nowrap; }
@@ -501,7 +503,7 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .hole-completion-check p span { font-family: var(--font-ui); font-size: 12px; font-weight: 700; letter-spacing: 0; text-align: right; }
 .hole-completion-check small { display: block; margin-top: 5px; color: #6b7280; font-size: 11px; line-height: 1.45; }
 .hole-completion-check small.blocking { color: #a34b12; }
-.hole-save-actions { position: sticky; z-index: 12; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr); gap: 8px; margin: 16px -2px 0; padding: 8px; border: 1px solid #e5e7eb; border-radius: 18px; background: rgba(255, 255, 255, .96); backdrop-filter: blur(10px); }
+.hole-save-actions { position: fixed; z-index: 12; right: max(20px, calc((100vw - 440px) / 2)); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); left: max(20px, calc((100vw - 440px) / 2)); display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr); gap: 8px; margin: 0; padding: 8px; border: 1px solid #e5e7eb; border-radius: 18px; background: rgba(255, 255, 255, .96); backdrop-filter: blur(10px); }
 .hole-save-actions .save-hole { min-height: 52px; margin-top: 0; border-radius: 14px; }
 .save-hole.secondary-save { border: 1px solid #a7f3d0; color: #047857; background: #ecfdf5; font-weight: 800; }
 .completed-hole-summary { gap: 0; padding: 5px 14px; }
@@ -610,19 +612,20 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .resume-notice { position: fixed; z-index: 18; bottom: max(18px, env(safe-area-inset-bottom)); left: 50%; width: max-content; max-width: calc(100% - 32px); margin: 0; padding: 9px 13px; border: 1px solid #a7f3d0; border-radius: 999px; color: #047857; background: #ecfdf5; font-size: 12px; font-weight: 700; text-align: center; transform: translateX(-50%); }
 .legal { margin-top: 24px; color: #9ca3af; font-size: 13px; line-height: 1.6; }
 .spinner { width: 36px; height: 36px; margin: 0 auto 14px; border: 3px solid #d1fae5; border-top-color: #059669; border-radius: 50%; animation: spin .8s linear infinite; }
-.onboarding-shell { display: flex; flex-direction: column; }
+.onboarding-shell { display: flex; flex-direction: column; min-height: 100dvh; padding-bottom: max(118px, calc(118px + env(safe-area-inset-bottom, 0px))); }
 .onboarding-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 48px; }
 .onboarding-progress span { height: 4px; border-radius: 999px; background: #e5e7eb; }
 .onboarding-progress .active { background: #059669; }
 .club-onboarding-progress { margin-bottom: 30px; }
-.onboarding-club-bag { display: flex; flex-direction: column; min-height: calc(100vh - 72px); }
+.onboarding-club-bag { display: flex; flex-direction: column; min-height: calc(100dvh - 72px); padding-bottom: 104px; }
 .onboarding-back { width: 100%; margin-bottom: 8px; padding: 8px 4px; font-weight: 800; text-align: center; }
 .onboarding-club-intro { margin-bottom: 20px; }
 .onboarding-club-intro h1 { margin-top: 8px; margin-bottom: 12px; }
 .onboarding-club-intro .description { margin-bottom: 0; }
 .onboarding-club-bag .club-composition-heading { margin-top: 2px; }
-.onboarding-club-bag .club-next-button { margin-top: 20px; }
-.onboarding-content { display: flex; flex: 1; flex-direction: column; justify-content: center; }
+.onboarding-club-bag .club-next-button { position: fixed; z-index: 12; right: max(20px, calc((100vw - 440px) / 2)); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); left: max(20px, calc((100vw - 440px) / 2)); margin-top: 0; }
+.onboarding-content { display: flex; flex: 1; flex-direction: column; justify-content: center; padding-bottom: 104px; }
+.onboarding-content > .primary:last-child { position: fixed; z-index: 12; right: max(20px, calc((100vw - 440px) / 2)); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); left: max(20px, calc((100vw - 440px) / 2)); }
 .welcome-mark { display: grid; place-items: center; width: 72px; height: 72px; margin-bottom: 24px; border-radius: 24px; color: white; background: #059669; font-size: 32px; font-weight: 800; transform: rotate(-3deg); }
 .onboarding-play-criteria .description { margin-bottom: 14px; }
 .tee-options { display: grid; gap: 10px; margin: 0; }
@@ -695,8 +698,30 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 @media (max-height: 700px) { .hole { min-height: 52px; padding: 5px 9px; } .hole-meta { top: 4px; left: 8px; } .hole-score { right: 9px; } .nine-section + .nine-section { margin-top: 7px; } .score-summary { margin-top: 20px; } }
 @media (max-width: 480px) { .date-time-fields { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 8px; } }
 @media (max-width: 480px) {
-  .onboarding-club-bag { min-height: 100vh; }
-  .onboarding-club-intro h1 { font-size: clamp(30px, 9vw, 38px); }
+  .onboarding-shell { padding-top: 18px; padding-bottom: max(104px, calc(104px + env(safe-area-inset-bottom, 0px))); }
+  .onboarding-progress { margin-bottom: 34px; }
+  .onboarding-content { flex: 0 0 auto; justify-content: flex-start; padding-top: min(8vh, 56px); padding-bottom: 96px; }
+  .welcome-mark { width: 64px; height: 64px; margin-bottom: 20px; border-radius: 22px; font-size: 29px; }
+  .onboarding-content h1 { font-size: clamp(29px, 8.4vw, 36px); line-height: 1.24; }
+  .onboarding-content .description { margin-bottom: 24px; font-size: 15px; line-height: 1.65; }
+  .onboarding-play-criteria { padding-top: 4px; }
+  .onboarding-play-criteria h1 { font-size: clamp(28px, 8vw, 34px); }
+  .onboarding-play-criteria .description { margin-bottom: 12px; }
+  .tee-options { gap: 8px; }
+  .tee-option { min-height: 54px; padding: 11px 15px; }
+  .onboarding-distance-unit { grid-template-columns: 1fr; gap: 9px; margin: 18px 0 14px; }
+  .onboarding-distance-unit-label { font-size: 18px; line-height: 1.35; }
+  .onboarding-distance-unit-label br { display: none; }
+  .onboarding-distance-unit button { height: 50px; font-size: 16px; }
+  .onboarding-club-bag { min-height: 100dvh; padding-bottom: 96px; }
+  .club-onboarding-progress { margin-bottom: 20px; }
+  .onboarding-club-intro { margin-bottom: 14px; }
+  .onboarding-club-intro h1 { margin-bottom: 10px; font-size: clamp(28px, 8vw, 34px); }
+  .onboarding-club-intro .description { font-size: 15px; line-height: 1.6; }
+  .club-selection-row { grid-template-columns: 86px minmax(0, 1fr); }
+  .club-selection-row > strong { padding: 10px 8px; font-size: 12px; }
+  .club-selection-row > div { gap: 5px; padding: 8px; }
+  .club-selection-row button { min-width: 36px; height: 36px; font-size: 13px; }
   .hole-detail .compact-page-header { margin-bottom: 8px; }
   .shot-heading, .putting-heading { grid-template-columns: 18% 40% 42%; }
   .shot-heading .distance-field, .putting-distance-field { grid-template-columns: 44px minmax(0, 78px) auto; }
