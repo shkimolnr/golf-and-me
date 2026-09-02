@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test",
-    "test:db-round-deletions": "node scripts/verifyRoundDeletionTombstones.mjs"
+    "test:db-round-deletions": "node scripts/verifyRoundDeletionTombstones.mjs",
+    "verify:ledger": "node scripts/verifyProjectLedger.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
