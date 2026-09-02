@@ -6,6 +6,7 @@ const ISSUE_PATTERN = /^ISSUE-(\d{3})$/
 const ROUTE_PATTERN = /^ROUTE-(\d{3})$/
 const TASK_PATTERN = /^TASK-(\d{3})$/
 const TASK_REFERENCE_PATTERN = /TASK-\d{3}/g
+const DECISION_REFERENCE_PATTERN = /DEC-\d{3}/g
 const ALLOWED_ROUTING_TYPES = new Set([
   '기존 태스크',
   '신규 태스크',
@@ -43,7 +44,7 @@ function checkSequential(ids, prefix, errors) {
   })
 }
 
-export function verifyLedgerTexts({ backlog, inbox }) {
+export function verifyLedgerTexts({ backlog, inbox, decisions = '' }) {
   const errors = []
   const backlogRows = tableRows(backlog)
   const inboxRows = tableRows(inbox)
@@ -63,6 +64,7 @@ export function verifyLedgerTexts({ backlog, inbox }) {
 
   const issueSet = new Set(issueIds)
   const taskSet = new Set(taskIds)
+  const decisionSet = new Set(decisions.match(DECISION_REFERENCE_PATTERN) ?? [])
   const routedIssues = new Set()
 
   for (const cells of routeRows) {
@@ -75,12 +77,17 @@ export function verifyLedgerTexts({ backlog, inbox }) {
     }
 
     const taskReferences = target.match(TASK_REFERENCE_PATTERN) ?? []
+    const decisionReferences = target.match(DECISION_REFERENCE_PATTERN) ?? []
     for (const taskId of taskReferences) {
       if (!taskSet.has(taskId)) errors.push(`${routeId}가 없는 태스크를 참조합니다: ${taskId}`)
     }
 
-    if (routingType !== '완료 확인' && taskReferences.length === 0) {
-      errors.push(`${routeId}에 연결 태스크가 없습니다`)
+    for (const decisionId of decisionReferences) {
+      if (!decisionSet.has(decisionId)) errors.push(`${routeId}가 없는 결정을 참조합니다: ${decisionId}`)
+    }
+
+    if (routingType !== '완료 확인' && taskReferences.length === 0 && decisionReferences.length === 0) {
+      errors.push(`${routeId}에 연결 태스크나 결정이 없습니다`)
     }
   }
 
@@ -101,7 +108,8 @@ export function verifyLedgerTexts({ backlog, inbox }) {
 export function verifyProjectLedger(rootDir = process.cwd()) {
   const backlog = fs.readFileSync(path.join(rootDir, 'BACKLOG.md'), 'utf8')
   const inbox = fs.readFileSync(path.join(rootDir, 'ISSUE_INBOX.md'), 'utf8')
-  return verifyLedgerTexts({ backlog, inbox })
+  const decisions = fs.readFileSync(path.join(rootDir, 'DECISIONS.md'), 'utf8')
+  return verifyLedgerTexts({ backlog, inbox, decisions })
 }
 
 const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : ''
