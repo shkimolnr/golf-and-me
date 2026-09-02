@@ -1,10 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  COMPLETED_ROUNDS_PAGE_SIZE,
   createRemoteRoundVersionMap,
   deleteRemoteRound,
   deserializeRemoteRoundSummary,
   isRoundTombstonedError,
+  loadRemoteCompletedRoundsPage,
+  loadRemoteHomeRoundState,
   loadRemoteRoundDetail,
   loadRemoteRounds,
   loadRemoteRoundSyncState,
@@ -159,6 +162,68 @@ test('첫 원격 조회는 작성 중 원본과 완료 요약을 분리해 가�
   assert.equal(selections[1].includes('payload'), false)
   assert.equal(rounds[0].id, 'draft')
   assert.equal(rounds[1].remoteSummaryOnly, true)
+})
+
+test('최적화된 첫 화면 조회는 최근 25건·전체 누적 통계·버전 벡터를 한 RPC로 받는다', async () => {
+  const calls = []
+  const client = {
+    async rpc(name, parameters) {
+      calls.push({ name, parameters })
+      return {
+        data: {
+          completedRounds: [{
+            id: 'complete', status: 'completed', course_name: '테스트',
+            updated_at: '2026-09-03T01:00:00.000Z', entered_holes: 18,
+            total_score: 84, putt_attempts: 18,
+          }],
+          completedTotal: 120,
+          cumulativeStats: {
+            roundCount: 120, scoredRoundCount: 119, averageScore: '88.5', bestScore: 72,
+            totalPutts: 4000, puttAttempts: 2100, averagePutts: '1.9047619',
+            firHits: 900, firAttempts: 1600, girHits: 800, girAttempts: 2100,
+          },
+          versions: [{ id: 'complete', updatedAt: '2026-09-03T01:00:00.000Z' }],
+        },
+        error: null,
+      }
+    },
+  }
+
+  const state = await loadRemoteHomeRoundState(client)
+  assert.deepEqual(calls, [{
+    name: 'get_home_round_state',
+    parameters: { p_limit: COMPLETED_ROUNDS_PAGE_SIZE, p_offset: 0 },
+  }])
+  assert.equal(state.completedRounds[0].remoteSummaryOnly, true)
+  assert.equal(state.completedTotal, 120)
+  assert.equal(state.cumulativeStats.averageScore, 88.5)
+  assert.deepEqual(state.versions, [{ id: 'complete', updatedAt: '2026-09-03T01:00:00.000Z' }])
+
+  const page = await loadRemoteCompletedRoundsPage(client, { limit: 10, offset: 25 })
+  assert.deepEqual(calls.at(-1), {
+    name: 'get_home_round_state',
+    parameters: { p_limit: 10, p_offset: 25 },
+  })
+  assert.equal(page.total, 120)
+})
+
+test('첫 화면 RPC가 아직 없는 DB에서는 기존 전체 조회로 안전하게 되돌아간다', async () => {
+  const selections = []
+  const results = [
+    { data: [{ payload: { id: 'draft', status: 'in_progress' } }], error: null },
+    { data: [{ round_id: 'deleted', deleted_at: '2026-09-03T01:00:00.000Z' }], error: null },
+    { data: [{ payload: { id: 'draft', status: 'in_progress' } }], error: null },
+    { data: [{ id: 'complete', status: 'completed', entered_holes: 18, total_score: 80 }], error: null },
+  ]
+  const client = {
+    async rpc() { return { data: null, error: { code: 'PGRST202', message: 'function missing' } } },
+    from() { return queryResult(results.shift(), selections) },
+  }
+
+  const state = await loadRemoteRoundSyncState(client, 'user-1')
+  assert.equal(state.optimized, false)
+  assert.deepEqual(state.rounds.map(round => round.id), ['draft', 'complete'])
+  assert.equal(state.completedTotal, 1)
 })
 
 test('동기화 조회는 활성 라운드와 서버 tombstone을 분리해 반환한다', async () => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { isSupabaseConfigured, supabase } from './lib/supabase.js'
-import { createRemoteRoundVersionMap, deleteRemoteRound, isRoundTombstonedError, loadRemoteProfile, loadRemoteRoundDetail, loadRemoteRoundSyncState, loadRemoteRoundTombstone, markRoundsAsRemoteSaved, mergeRoundCollectionsWithDeletions, resolveOnboardingProfile, saveRemoteProfile, saveRemoteRounds, selectRoundsNeedingRemoteSave, sortRoundsForList } from './lib/roundRepository.js'
+import { COMPLETED_ROUNDS_PAGE_SIZE, createRemoteRoundVersionMap, deleteRemoteRound, isRoundTombstonedError, loadRemoteCompletedRoundsPage, loadRemoteProfile, loadRemoteRoundDetail, loadRemoteRoundSyncState, loadRemoteRoundTombstone, markRoundsAsRemoteSaved, mergeRoundCollectionsWithDeletions, resolveOnboardingProfile, saveRemoteProfile, saveRemoteRounds, selectRoundsNeedingRemoteSave, sortRoundsForList } from './lib/roundRepository.js'
 import { clearDeletedRoundLocalArtifacts, excludePendingRoundDeletions, loadObservedRoundTombstones, loadPendingRoundDeletions, mergeObservedRoundTombstones, roundDeletionIds, saveObservedRoundTombstones, savePendingRoundDeletions } from './lib/pendingRoundDeletions.js'
 import { isRoundStructureLocked, needsRoundStructureChoice } from './lib/roundPolicy.js'
 import { calculateHoleTotals, isRecordedShot, terminalLieForShot, validateHoleCompletion } from './lib/scoring.js'
@@ -161,6 +161,10 @@ export default function App() {
   const [screen, setScreen] = useState('home')
   const [round, setRound] = useState(() => newRoundForm())
   const [rounds, setRounds] = useState([])
+  const [remoteCumulativeStats, setRemoteCumulativeStats] = useState(null)
+  const [completedRoundTotal, setCompletedRoundTotal] = useState(null)
+  const [completedRoundVisibleLimit, setCompletedRoundVisibleLimit] = useState(COMPLETED_ROUNDS_PAGE_SIZE)
+  const [completedRoundsLoading, setCompletedRoundsLoading] = useState(false)
   const [activeRound, setActiveRound] = useState(null)
   const [editingActiveRound, setEditingActiveRound] = useState(false)
   const [courseHistory, setCourseHistory] = useState([])
@@ -419,6 +423,10 @@ export default function App() {
       remoteRoundVersionsRef.current = new Map()
       remoteClubBagSignatureRef.current = null
       setRounds([])
+      setRemoteCumulativeStats(null)
+      setCompletedRoundTotal(null)
+      setCompletedRoundVisibleLimit(COMPLETED_ROUNDS_PAGE_SIZE)
+      setCompletedRoundsLoading(false)
       setActiveRound(null)
       setCourseHistory([])
       setNavigationReady(false)
@@ -436,6 +444,10 @@ export default function App() {
     remoteRoundVersionsRef.current = new Map()
     remoteClubBagSignatureRef.current = null
     setRounds([])
+    setRemoteCumulativeStats(null)
+    setCompletedRoundTotal(null)
+    setCompletedRoundVisibleLimit(COMPLETED_ROUNDS_PAGE_SIZE)
+    setCompletedRoundsLoading(false)
     setActiveRound(null)
     setCourseHistory([])
     setNavigationReady(false)
@@ -611,7 +623,11 @@ export default function App() {
           saveObservedRoundTombstones(window.localStorage, userId, mergedTombstones)
           clearDeletedRoundLocalArtifacts(window.localStorage, userId, deletedRoundIds)
           setObservedRoundTombstones(mergedTombstones)
-          remoteRoundVersionsRef.current = createRemoteRoundVersionMap(roundsResult.value.rounds)
+          remoteRoundVersionsRef.current = createRemoteRoundVersionMap(
+            roundsResult.value.versions || roundsResult.value.rounds,
+          )
+          setRemoteCumulativeStats(roundsResult.value.cumulativeStats)
+          setCompletedRoundTotal(roundsResult.value.completedTotal)
           setRounds(currentRounds => {
             const mergedRounds = mergeRoundCollectionsWithDeletions(
               currentRounds,
@@ -1427,8 +1443,10 @@ export default function App() {
   const backCourseSuggestions = [...new Set(matchingCourseHistory.map(item => item.backCourseName))]
   const enteredHoles = activeRound?.holes.filter(hole => Number.isFinite(hole.score)) || []
   const inProgressRounds = sortRoundsForList(rounds.filter(item => item.status !== 'completed'), 'in_progress')
-  const completedRounds = sortRoundsForList(rounds.filter(item => item.status === 'completed'), 'completed')
-  const cumulativeStats = calculateCumulativeStats(completedRounds)
+  const completedRoundList = sortRoundsForList(rounds.filter(item => item.status === 'completed'), 'completed')
+  const completedRoundCount = Math.max(completedRoundTotal ?? 0, completedRoundList.length)
+  const completedRounds = completedRoundList.slice(0, completedRoundVisibleLimit)
+  const cumulativeStats = remoteCumulativeStats || calculateCumulativeStats(completedRoundList)
   const enteredTotal = enteredHoles.reduce((sum, hole) => sum + hole.score, 0)
   const holesWithPar = enteredHoles.filter(hole => Number.isFinite(hole.par))
   const enteredPar = holesWithPar.reduce((sum, hole) => sum + hole.par, 0)
@@ -1436,6 +1454,48 @@ export default function App() {
   const roundStats = calculateRoundStats(activeRound)
   const distanceCoverage = getRoundDistanceCoverage(activeRound)
   const completionState = roundCompletionState(activeRound)
+
+  async function loadMoreCompletedRounds() {
+    const nextLimit = Math.min(
+      completedRoundCount,
+      completedRoundVisibleLimit + COMPLETED_ROUNDS_PAGE_SIZE,
+    )
+    if (nextLimit <= completedRoundVisibleLimit) return
+    if (completedRoundList.length >= nextLimit || isPreviewMode || !supabase || !session) {
+      setCompletedRoundVisibleLimit(nextLimit)
+      return
+    }
+
+    setCompletedRoundsLoading(true)
+    try {
+      const page = await loadRemoteCompletedRoundsPage(supabase, {
+        limit: COMPLETED_ROUNDS_PAGE_SIZE,
+        offset: completedRoundVisibleLimit,
+      })
+      if (!page) {
+        setCompletedRoundVisibleLimit(nextLimit)
+        return
+      }
+      const deletedRoundIds = roundDeletionIds(pendingDeletedRoundIds, observedRoundTombstones)
+      setRounds(currentRounds => {
+        const mergedRounds = mergeRoundCollectionsWithDeletions(
+          currentRounds,
+          page.rounds,
+          deletedRoundIds,
+        )
+        window.localStorage.setItem(`golf-and-me:rounds:${session.user.id}`, JSON.stringify(mergedRounds))
+        return mergedRounds
+      })
+      setRemoteCumulativeStats(page.cumulativeStats)
+      setCompletedRoundTotal(page.total)
+      setCompletedRoundVisibleLimit(nextLimit)
+    } catch (error) {
+      reportDiagnosticFailure('rounds_load', error)
+      setSyncError('이전 완료 기록을 더 불러오지 못했어요. 현재 표시된 기록은 계속 사용할 수 있어요.')
+    } finally {
+      setCompletedRoundsLoading(false)
+    }
+  }
 
   function meaningfulDraftForHole(hole) {
     if (!hole || Number.isFinite(hole.score) || !session || !activeRound) return null
@@ -2091,12 +2151,15 @@ export default function App() {
               </div>)}
             </section>}
             {completedRounds.length > 0 && <section className="round-list completed-rounds" aria-labelledby="completed-rounds-title">
-              <div className="round-list-heading"><h2 id="completed-rounds-title">완료한 기록</h2><span>{completedRounds.length}건</span></div>
+              <div className="round-list-heading"><h2 id="completed-rounds-title">완료한 기록</h2><span>{completedRoundCount}건</span></div>
               {completedRounds.map(item => <div className="round-list-card" key={item.id}><button className="round-card-main" type="button" onClick={() => openRound(item)}>
                 <span className="status-pill completed">완료</span><strong>{item.courseName}</strong>
                 <span>{compactCoursePair(item.frontCourseName, item.backCourseName)} · {item.tee}티 · {compactRoundDate(item.playedAt)}</span>
                 <b>{roundProgressLabel(item)} <i aria-hidden="true">→</i></b>
               </button></div>)}
+              {completedRounds.length < completedRoundCount && <button className="secondary-button round-list-more" type="button" onClick={loadMoreCompletedRounds} disabled={completedRoundsLoading}>
+                {completedRoundsLoading ? '불러오는 중…' : '이전 완료 기록 더 보기'}
+              </button>}
             </section>}
           </div> : (
             <div className="empty-card">

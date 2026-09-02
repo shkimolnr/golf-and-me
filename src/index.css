@@ -141,6 +141,7 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .round-list-heading h2 { margin: 0; font-size: 16px; }
 .round-list-heading > span { color: #6b7280; font-size: 14px; }
 .round-list-card { position: relative; width: 100%; border: 1px solid #dfe7e3; border-radius: 15px; color: #2d3748; background: #f7fafc; }
+.round-list-more { width: 100%; margin-top: 4px; }
 .round-card-main { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 5px 9px; width: 100%; padding: 14px 48px 14px 14px; border: 0; border-radius: inherit; color: inherit; background: transparent; text-align: left; }
 .round-card-main .status-pill { grid-row: 1 / span 2; align-self: start; }
 .round-card-main strong { overflow: hidden; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
