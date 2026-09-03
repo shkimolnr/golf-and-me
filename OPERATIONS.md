@@ -1,6 +1,6 @@
 # Golf & Me Alpha 운영 기준
 
-최종 정리: 2026-08-30
+최종 정리: 2026-09-03
 
 ## 1. 환경과 주소
 
@@ -20,6 +20,13 @@
 5. 인증 주소를 바꾸면 Supabase Auth의 Site URL·Redirect URL과 Google OAuth 설정을 함께 확인합니다.
 
 문제가 생기면 Vercel의 직전 정상 배포로 롤백합니다. OpenAI Sites의 이전 Alpha 배포는 외부 접근을 종료했고 Supabase Redirect 허용 목록에서도 제거했으므로 운영·롤백 경로로 사용하지 않습니다. DB 마이그레이션은 대응하는 `supabase/rollback/` 파일을 먼저 검토하고, 사용자 데이터가 있는 운영 DB에는 자동 롤백하지 않습니다.
+
+### TASK-051 파생 데이터 무결성 적용 기록
+
+- Preview와 Production에 `202609010002_derived_data_integrity.sql`을 적용해 동일 소유자 복합 FK 3개, 유효한 unique index 3개, 파생 테이블 직접 DML 차단과 payload 동기화 함수·trigger를 확인했습니다.
+- Production의 기존 3라운드·54홀은 `202609030001_round_child_integrity_backfill.sql`로 재생성했습니다. 원본 `rounds.payload`·`updated_at`, 전체 라운드 4·홀 72·샷 68·tombstone 0을 보존했고 두 번째 실행 대상은 0입니다.
+- 2026-09-03 읽기 전용 재감사에서 Preview는 라운드 0·tombstone 3, Production은 라운드 4·홀 72·샷 68·tombstone 0이었고, 두 환경 모두 002 사후검증 `PASS`, 데이터 불일치·고아 데이터·권한 위반 0이었습니다.
+- migration 002 SHA-256은 `65e27a53f2eade4da9e69f127b46c1f70e6a94bb9ad26e538bb01656427d80d6`, backfill SHA-256은 `edbdb1b5bfa4ac15cff6afad869062267d68332df4d8952bc71b4fde9a55f2ed`입니다. 적용 완료된 운영 DB에는 두 migration을 다시 실행하지 않습니다.
 
 ### Beta 테스트 계정 신청 연결
 
