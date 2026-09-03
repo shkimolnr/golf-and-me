@@ -11,7 +11,7 @@
 
 ## 현재 실행 기준
 
-`TASK-051`과 `TASK-052`는 완료됐습니다. 현재는 DB만 진행하며 다음 핵심 작업은 `TASK-053`입니다. UI·GA4·제품 검토 작업은 재개 지시 전까지 중지합니다. 새 이슈의 접수와 연결 근거는 `ISSUE_INBOX.md`, 운영 규칙은 `PROJECT_LEDGER.md`를 따릅니다.
+`TASK-051`·`TASK-052`·`TASK-053` DB 핵심 순서는 완료됐습니다. UI·GA4·제품 검토 작업은 재개 지시 전까지 중지합니다. 새 이슈의 접수와 연결 근거는 `ISSUE_INBOX.md`, 운영 규칙은 `PROJECT_LEDGER.md`를 따릅니다.
 
 ## Alpha 빠른 실행 순서
 
@@ -103,7 +103,7 @@
 | TASK-050 | P1 | 모바일 온보딩 UI 안정화 | 대기 | 실제 iPhone Safari에서 1~3단계 정렬·폰트·스크롤·하단 버튼 safe-area를 점검하고, 키보드 열림·닫힘 뒤 확대나 위치 깨짐 없이 온보딩 기능과 완료 조건을 유지 |
 | TASK-051 | P0 | 파생 데이터 무결성 migration 002 | 완료 | Preview·Production에 migration 002와 재실행 가능한 child cache backfill을 적용. Production 3라운드·54홀의 파생값을 payload 기준으로 복구하고 원본 `payload`·`updated_at` 및 라운드·홀·샷 수를 보존. 두 환경의 사후검증 `PASS`, 불일치·고아 데이터·권한 위반 0과 로컬 PostgreSQL 17.6 회귀검증 확인 |
 | TASK-052 | P0 | 라운드 요약 동기화 migration 003 | 완료 | migration을 `202609030002`로 재발행하고 JS↔SQL parity·전체 DB 회귀시험을 통과. Preview·Production에 사용자 승인 후 적용했으며 두 환경 모두 사후 gate READY·blocker 0·summary mismatch 0. Production 기존 라운드 4·홀 72·샷 68을 보존하고 backfill 대상 0 확인 |
-| TASK-053 | P1 | 첫 화면 조회·누적 통계 장기 확장성 마무리 | 진행 중 | 로컬에서 최근 완료 25건 커서 페이지·서버 누적 통계·전체 compact version vector를 구현하고 0·25·100·250개, 10페이지 중복/누락, RLS, PostgreSQL 17.6·18.3 검증 통과. Preview READ ONLY preflight와 DB-first 적용·실기기 네트워크 검증이 남음 |
+| TASK-053 | P1 | 첫 화면 조회·누적 통계 장기 확장성 마무리 | 완료 | 최근 완료 25건 커서 페이지·서버 누적 통계·전체 compact version vector를 구현. 0·25·100·250개와 10페이지 중복/누락·RLS 격리시험을 통과하고 Preview·Production DB 및 앱에 순차 적용. Production 기존 4라운드 보존, 로그인 홈 통계·완료 목록 정상, 콘솔 오류 0 확인 |
 | TASK-054 | P1 | 필드 기록 입력 모델 정책 확정 | 대기 | 퍼팅 수·발걸음·거리의 선택/완료 조건, 가까운 퍼팅 정밀도, 샷 결과와 다음 공 위치의 의미를 현장 입력 속도·기존 통계·데이터 호환 관점에서 비교하고 사용자 승인 뒤 구현 범위 확정 |
 | TASK-055 | P1 | 기준 야디지와 필드 거리 데이터 모델 | 대기 | 골프장 기준 거리와 당일 현장 홀거리, 설정 비거리와 실제 샷 거리의 관계·출처·단위·통계 표본 정책을 결정. 기존 원본 보존과 입력 부담을 검토하고 UI·DB 변경은 별도 승인 후 진행 |
 | TASK-056 | P1 | 필드테스트 모바일 상호작용 개선 | 진행 중 | 삭제 완료 피드백, sticky 하단 액션, 뒤로가기·키보드 스크롤 복원, `라운드 정보` 카피, 홀 입력 현황 배치, 클럽 초기화를 최신 main 기반 UI 트랙에서 수정하고 실제 iPhone Safari로 검증 |
@@ -111,7 +111,7 @@
 
 ### 2026-09-02 이후 권장 착수 순서
 
-`TASK-051 DB 002`와 `TASK-052 DB 003`은 완료됐으며 다음은 `TASK-053 첫 화면 확장성`입니다. UI·GA4·제품 검토 작업은 사용자 재개 지시 전까지 중지합니다.
+`TASK-051 DB 002`·`TASK-052 DB 003`·`TASK-053 첫 화면 확장성`은 완료됐습니다. UI·GA4·제품 검토 작업은 사용자 재개 지시 전까지 중지합니다.
 
 ### TASK-038 GA4 Preview·Production 활성화 및 로그인 속도 점검 체크리스트
 

@@ -50,7 +50,7 @@
 
 | 트랙 | 현재 범위 | 내부 순서/경계 |
 |---|---|---|
-| A · DB 기반 | `TASK-051`·`TASK-052` 완료 → `TASK-053` | 남은 작업도 DB 적용 전 읽기 전용 게이트와 별도 승인 필수 |
+| A · DB 기반 | `TASK-051`·`TASK-052`·`TASK-053` 완료 | 후속 DB 작업도 적용 전 읽기 전용 게이트와 별도 승인 필수 |
 | B · UI/현장 사용성 | `TASK-050`, `TASK-056`, `TASK-057` | 최신 `main`에서 짧게 작업. DB·인증·분석 로직 변경 금지 |
 | C · 분석/진단 | `TASK-038`, `TASK-047`, `TASK-048` | DB 핵심 작업 동안 GA4 확장 보류. 운영 진단은 독립 유지 |
 | D · 정책/연구 | `TASK-032`, `TASK-034`, `TASK-039`, `TASK-054`, `TASK-055` | 구현 전 사용자 결정이 필요한 항목을 먼저 분리 |
@@ -61,9 +61,9 @@
 
 1. `TASK-051` 파생 데이터 무결성 migration 002 — Preview·Production·backfill 완료
 2. `TASK-052` 라운드 요약 동기화 migration 003 — Preview·Production 적용 및 사후검증 완료
-3. `TASK-053` 첫 화면 조회·누적 통계 장기 확장성 마무리 — 로컬 구현·부하 검증 완료, Preview 적용 전 gate 준비 중
+3. `TASK-053` 첫 화면 조회·누적 통계 장기 확장성 마무리 — Preview·Production DB와 앱 배포·검증 완료
 
-`TASK-049` 다중 기기 삭제 동기화는 Preview PC↔모바일과 Production 배포·검증까지 완료된 기준선입니다. `TASK-051`은 두 DB 환경의 사후검증 `PASS`와 Production cache 보정을 재확인했고, `TASK-052`는 두 환경에 서버 강제 요약 동기화를 적용해 mismatch 0을 확인했습니다. 사용자 지시에 따라 현재 활성 트랙은 DB뿐이며 다음 작업은 `TASK-053`입니다.
+`TASK-049` 다중 기기 삭제 동기화는 Preview PC↔모바일과 Production 배포·검증까지 완료된 기준선입니다. `TASK-051`은 두 DB 환경의 사후검증 `PASS`와 Production cache 보정을 재확인했고, `TASK-052`는 두 환경에 서버 강제 요약 동기화를 적용해 mismatch 0을 확인했습니다. `TASK-053`은 최근 완료 25건·서버 누적 통계·compact version vector로 첫 화면을 경량화하고 Preview와 Production에 적용했습니다. 사용자가 지정한 DB 핵심 순서 `TASK-051 → TASK-052 → TASK-053`은 완료됐습니다.
 
 ## 7. 장부 정산 시점
 

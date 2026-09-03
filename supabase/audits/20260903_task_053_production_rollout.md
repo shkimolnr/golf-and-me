@@ -36,5 +36,18 @@ transaction으로 이 권한을 회수했고 canonical migration에도 `service_
 ## 판정
 
 TASK-053 Production DB migration은 최종 보안 조건까지 `PASS`입니다. 기존 4개 라운드는 그대로
-유지됐습니다. 앱 코드는 아직 Production에 배포하지 않았으며, 다음 단계는 검증된 TASK-053
-client와 migration 기록을 main에 통합해 Production 앱을 배포하는 것입니다.
+유지됐습니다.
+
+## Production 앱 배포
+
+- GitHub `main` 배포 HEAD: `05f08d1`
+- push: `8832656..05f08d1` fast-forward
+- Vercel Production JS asset: `index-Brpdsm1Z.js` → `index-D3nge7EQ.js`
+- 로그인된 Production 홈에서 완료 기록 1건과 누적 통계 정상 표시
+- 원격 조회 실패·재시도 안내 없음
+- console error/warn: 0
+- 배포 직전 검증: `npm test` 214/214, build 성공, ledger 18/18·unmapped 0
+
+TASK-053은 Preview·Production DB와 앱 배포·smoke 검증까지 `완료`입니다. 실제 Production 계정은
+완료 기록이 1건이므로 `더 보기` UI는 나타나지 않았고, 25건 이상 페이지네이션은 PostgreSQL
+17.6의 250건·10페이지 격리시험으로 검증했습니다.
