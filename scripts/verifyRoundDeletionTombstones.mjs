@@ -22,7 +22,7 @@ const baseMigrationCandidates = [
 const migrationExists = fileName => existsSync(join(migrationDirectory, fileName))
 const baseMigrations = baseMigrationCandidates.filter(migrationExists)
 const migration002 = '202609010002_derived_data_integrity.sql'
-const migration003 = '202609010003_round_summary_sync.sql'
+const migration003 = '202609030002_round_summary_sync.sql'
 const migration004 = '202609010004_runtime_table_least_privilege.sql'
 const migration005 = '202609010005_round_deletion_tombstones.sql'
 const advancedMigrationMatrixAvailable = [migration002, migration003, migration004]

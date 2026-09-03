@@ -8,7 +8,13 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test",
-    "test:db-round-deletions": "node scripts/verifyRoundDeletionTombstones.mjs"
+    "test:db-round-deletions": "node scripts/verifyRoundDeletionTombstones.mjs",
+    "test:db-integrity": "node scripts/verifyDerivedIntegrityMigration.mjs",
+    "test:db-integrity-preflight": "node scripts/verifyDerivedIntegrityPreflight.mjs",
+    "test:db-privileges": "node scripts/verifyRuntimeTablePrivileges.mjs",
+    "test:db-integration": "node scripts/verifyRoundSummarySqlParity.mjs",
+    "test:db-summary-preflight": "node scripts/verifyRoundSummaryPreflight.mjs",
+    "verify:ledger": "node scripts/verifyProjectLedger.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

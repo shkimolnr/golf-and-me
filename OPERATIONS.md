@@ -1,6 +1,6 @@
 # Golf & Me Alpha 운영 기준
 
-최종 정리: 2026-08-30
+최종 정리: 2026-09-03
 
 ## 1. 환경과 주소
 
@@ -21,6 +21,22 @@
 
 문제가 생기면 Vercel의 직전 정상 배포로 롤백합니다. OpenAI Sites의 이전 Alpha 배포는 외부 접근을 종료했고 Supabase Redirect 허용 목록에서도 제거했으므로 운영·롤백 경로로 사용하지 않습니다. DB 마이그레이션은 대응하는 `supabase/rollback/` 파일을 먼저 검토하고, 사용자 데이터가 있는 운영 DB에는 자동 롤백하지 않습니다.
 
+### TASK-051 파생 데이터 무결성 적용 기록
+
+- Preview와 Production에 `202609010002_derived_data_integrity.sql`을 적용해 동일 소유자 복합 FK 3개, 유효한 unique index 3개, 파생 테이블 직접 DML 차단과 payload 동기화 함수·trigger를 확인했습니다.
+- Production의 기존 3라운드·54홀은 `202609030001_round_child_integrity_backfill.sql`로 재생성했습니다. 원본 `rounds.payload`·`updated_at`, 전체 라운드 4·홀 72·샷 68·tombstone 0을 보존했고 두 번째 실행 대상은 0입니다.
+- 2026-09-03 읽기 전용 재감사에서 Preview는 라운드 0·tombstone 3, Production은 라운드 4·홀 72·샷 68·tombstone 0이었고, 두 환경 모두 002 사후검증 `PASS`, 데이터 불일치·고아 데이터·권한 위반 0이었습니다.
+- migration 002 SHA-256은 `65e27a53f2eade4da9e69f127b46c1f70e6a94bb9ad26e538bb01656427d80d6`, backfill SHA-256은 `edbdb1b5bfa4ac15cff6afad869062267d68332df4d8952bc71b4fde9a55f2ed`입니다. 적용 완료된 운영 DB에는 두 migration을 다시 실행하지 않습니다.
+
+### TASK-052 라운드 요약 동기화 적용 기록
+
+- migration 003은 TASK-051 backfill 다음 순서를 보장하도록 `202609030002_round_summary_sync.sql`로 재발행했습니다.
+- 2026-09-03 Preview에서 적용 전 READ ONLY gate `READY`·blocker 0·backfill 대상 0을 확인하고 사용자 승인 후 단일 transaction으로 적용했습니다.
+- 적용 후 함수 2개와 BEFORE trigger 1개가 승인 hash와 일치하고, payload 검증 위반·summary cache mismatch·002 선행 객체 회귀가 모두 0임을 확인했습니다.
+- 같은 날 Production READ ONLY preflight도 `READY`, blocker 0, 기존 4개 라운드의 backfill 대상 0으로 확인한 뒤 사용자 승인에 따라 단일 transaction으로 적용했습니다.
+- Production 사후 gate는 `READY`, 대상 함수·trigger는 승인 hash와 정확히 일치했고 summary mismatch·backfill 대상·payload 위반은 모두 0이었습니다. 라운드 4·홀 72·샷 68·tombstone 0도 그대로 보존됐습니다.
+- migration 003 SHA-256은 `f2ec50283c62513869a38491c3eb2e17bdd1253305e1c908df67c143d98ce35e`입니다. 적용 완료된 Preview·Production DB에는 다시 실행하지 않습니다.
+
 ### Beta 테스트 계정 신청 연결
 
 1. 신청을 받을 비공개 Slack 채널에 Incoming Webhook을 생성합니다.
@@ -28,9 +44,9 @@
 3. Vercel Production 환경변수 `VITE_TEST_ACCESS_REQUEST_ENABLED=true`를 등록합니다.
 4. 재배포한 뒤 로그인 화면에서 전용 테스트 이메일로 한 번 신청하고 Slack 수신 내용을 확인합니다.
 5. Slack 메시지는 모바일에서 이메일만 바로 복사할 수 있도록 신청 이메일 한 줄만 표시합니다. 접수 시각은 Slack 메시지 시각으로 확인하며 IP·브라우저 정보·Golf & Me 기록은 전송하지 않습니다.
-6. GCP OAuth 동의 화면의 정식 운영 승인이 완료되어 테스트 사용자 등록이 더는 필요하지 않게 되는 즉시, 같은 배포에서 `VITE_TEST_ACCESS_REQUEST_ENABLED=false`로 전환하고 로그인 화면의 신청 UI와 `/api/test-access-request`를 제거합니다. 이어서 Vercel의 Slack Webhook 환경변수도 삭제하고, 기존 접수 메시지는 개인정보 보관 원칙에 따라 정리합니다.
+6. Golf & Me의 신청 절차는 실제 가입 승인이나 접근 통제로 작동하지 않습니다. 핵심 동기화·DB·진단 작업을 마친 뒤 `VITE_TEST_ACCESS_REQUEST_ENABLED=false` 전환, 신청 UI·API 제거, Slack Webhook 환경변수와 기존 접수 메시지 정리를 후순위로 수행합니다.
 
-2026-08-31 Production에 `Golf and Me Beta Requests` 앱과 비공개 `beta-requests` 채널을 연결했습니다. 테스트 신청은 API `202` 응답과 Slack 메시지 수신을 모두 확인했으며 Webhook URL은 Vercel의 Secret 환경변수에만 보관합니다. 이 기능은 GCP 정식 운영 승인 전까지만 사용하는 한시 기능입니다.
+2026-08-31 Production에 `Golf and Me Beta Requests` 앱과 비공개 `beta-requests` 채널을 연결했습니다. 테스트 신청은 API `202` 응답과 Slack 메시지 수신을 모두 확인했으며 Webhook URL은 Vercel의 Secret 환경변수에만 보관합니다. 2026-09-02 현장 가입에서 미등록 계정도 정상 가입되는 것을 확인했으므로 이 기능은 접근 통제가 아닌 한시적 신청 알림으로만 간주하며 제거 작업은 후순위입니다.
 
 ### Beta 의견 보내기 연결
 
