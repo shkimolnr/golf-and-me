@@ -194,12 +194,12 @@ export function deserializeRemoteRoundSummary(row) {
 
 export async function loadRemoteHomeRoundState(
   client,
-  { limit = COMPLETED_ROUNDS_PAGE_SIZE, offset = 0 } = {},
+  { limit = COMPLETED_ROUNDS_PAGE_SIZE, cursor = null } = {},
 ) {
   if (typeof client?.rpc !== 'function') return null
   const { data, error } = await client.rpc('get_home_round_state', {
     p_limit: limit,
-    p_offset: offset,
+    p_cursor: cursor,
   })
   if (missingHomeRoundStateFunction(error)) return null
   if (error) throw error
@@ -209,6 +209,13 @@ export async function loadRemoteHomeRoundState(
       ? data.completedRounds.map(deserializeRemoteRoundSummary)
       : [],
     completedTotal: Number(data.completedTotal) || 0,
+    nextCursor: data.nextCursor && typeof data.nextCursor === 'object'
+      ? {
+          playedAt: data.nextCursor.playedAt || null,
+          updatedAt: data.nextCursor.updatedAt || null,
+          id: data.nextCursor.id ? String(data.nextCursor.id) : null,
+        }
+      : null,
     cumulativeStats: normalizeCumulativeStats(data.cumulativeStats),
     versions: Array.isArray(data.versions)
       ? data.versions
@@ -235,6 +242,7 @@ export async function loadRemoteCompletedRoundsPage(client, options = {}) {
     rounds: state.completedRounds,
     total: state.completedTotal,
     cumulativeStats: state.cumulativeStats,
+    nextCursor: state.nextCursor,
   } : null
 }
 
@@ -289,6 +297,7 @@ export async function loadRemoteRoundSyncState(client, userId) {
       versions: rounds,
       cumulativeStats: null,
       completedTotal: rounds.filter(round => round.status === 'completed').length,
+      nextCursor: null,
       optimized: false,
     }
   }
@@ -305,6 +314,7 @@ export async function loadRemoteRoundSyncState(client, userId) {
       versions: rounds,
       cumulativeStats: null,
       completedTotal: rounds.filter(round => round.status === 'completed').length,
+      nextCursor: null,
       optimized: false,
     }
   }
@@ -314,6 +324,7 @@ export async function loadRemoteRoundSyncState(client, userId) {
     versions: homeState.versions,
     cumulativeStats: homeState.cumulativeStats,
     completedTotal: homeState.completedTotal,
+    nextCursor: homeState.nextCursor,
     optimized: true,
   }
 }

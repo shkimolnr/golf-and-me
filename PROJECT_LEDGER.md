@@ -61,7 +61,7 @@
 
 1. `TASK-051` 파생 데이터 무결성 migration 002 — Preview·Production·backfill 완료
 2. `TASK-052` 라운드 요약 동기화 migration 003 — Preview·Production 적용 및 사후검증 완료
-3. `TASK-053` 첫 화면 조회·누적 통계 장기 확장성 마무리 — 다음 작업
+3. `TASK-053` 첫 화면 조회·누적 통계 장기 확장성 마무리 — 로컬 구현·부하 검증 완료, Preview 적용 전 gate 준비 중
 
 `TASK-049` 다중 기기 삭제 동기화는 Preview PC↔모바일과 Production 배포·검증까지 완료된 기준선입니다. `TASK-051`은 두 DB 환경의 사후검증 `PASS`와 Production cache 보정을 재확인했고, `TASK-052`는 두 환경에 서버 강제 요약 동기화를 적용해 mismatch 0을 확인했습니다. 사용자 지시에 따라 현재 활성 트랙은 DB뿐이며 다음 작업은 `TASK-053`입니다.
 

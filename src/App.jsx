@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { isSupabaseConfigured, supabase } from './lib/supabase.js'
-import { COMPLETED_ROUNDS_PAGE_SIZE, createRemoteRoundVersionMap, deleteRemoteRound, isRoundTombstonedError, loadRemoteCompletedRoundsPage, loadRemoteProfile, loadRemoteRoundDetail, loadRemoteRoundSyncState, loadRemoteRoundTombstone, markRoundsAsRemoteSaved, mergeRoundCollectionsWithDeletions, resolveOnboardingProfile, saveRemoteProfile, saveRemoteRounds, selectRoundsNeedingRemoteSave, sortRoundsForList } from './lib/roundRepository.js'
+import { COMPLETED_ROUNDS_PAGE_SIZE, createRemoteRoundVersionMap, deleteRemoteRound, isRoundTombstonedError, loadRemoteCompletedRoundsPage, loadRemoteHomeRoundState, loadRemoteProfile, loadRemoteRoundDetail, loadRemoteRoundSyncState, loadRemoteRoundTombstone, markRoundsAsRemoteSaved, mergeRoundCollectionsWithDeletions, resolveOnboardingProfile, saveRemoteProfile, saveRemoteRounds, selectRoundsNeedingRemoteSave, sortRoundsForList } from './lib/roundRepository.js'
 import { clearDeletedRoundLocalArtifacts, excludePendingRoundDeletions, loadObservedRoundTombstones, loadPendingRoundDeletions, mergeObservedRoundTombstones, roundDeletionIds, saveObservedRoundTombstones, savePendingRoundDeletions } from './lib/pendingRoundDeletions.js'
 import { isRoundStructureLocked, needsRoundStructureChoice } from './lib/roundPolicy.js'
 import { calculateHoleTotals, isRecordedShot, terminalLieForShot, validateHoleCompletion } from './lib/scoring.js'
@@ -168,6 +168,7 @@ export default function App() {
   const [rounds, setRounds] = useState([])
   const [remoteCumulativeStats, setRemoteCumulativeStats] = useState(null)
   const [completedRoundTotal, setCompletedRoundTotal] = useState(null)
+  const [completedRoundsCursor, setCompletedRoundsCursor] = useState(null)
   const [completedRoundVisibleLimit, setCompletedRoundVisibleLimit] = useState(COMPLETED_ROUNDS_PAGE_SIZE)
   const [completedRoundsLoading, setCompletedRoundsLoading] = useState(false)
   const [activeRound, setActiveRound] = useState(null)
@@ -488,6 +489,7 @@ export default function App() {
       setRounds([])
       setRemoteCumulativeStats(null)
       setCompletedRoundTotal(null)
+      setCompletedRoundsCursor(null)
       setCompletedRoundVisibleLimit(COMPLETED_ROUNDS_PAGE_SIZE)
       setCompletedRoundsLoading(false)
       setActiveRound(null)
@@ -509,6 +511,7 @@ export default function App() {
     setRounds([])
     setRemoteCumulativeStats(null)
     setCompletedRoundTotal(null)
+    setCompletedRoundsCursor(null)
     setCompletedRoundVisibleLimit(COMPLETED_ROUNDS_PAGE_SIZE)
     setCompletedRoundsLoading(false)
     setActiveRound(null)
@@ -691,6 +694,7 @@ export default function App() {
           )
           setRemoteCumulativeStats(roundsResult.value.cumulativeStats)
           setCompletedRoundTotal(roundsResult.value.completedTotal)
+          setCompletedRoundsCursor(roundsResult.value.nextCursor)
           setRounds(currentRounds => {
             const mergedRounds = mergeRoundCollectionsWithDeletions(
               currentRounds,
@@ -859,6 +863,20 @@ export default function App() {
         if (!clubBagSaveResult.error) {
           if (clubBagNeedsSave) remoteClubBagSignatureRef.current = currentClubBagSignature
           reportDiagnosticRecovery('club_bag_save')
+        }
+        const homeAggregateChanged = successfulDeletions.length > 0
+          || (!roundsSaveResult.error && roundsToSave.some(item => item.status === 'completed'))
+        if (homeAggregateChanged) {
+          try {
+            const refreshedHomeState = await loadRemoteHomeRoundState(supabase)
+            if (refreshedHomeState) {
+              remoteRoundVersionsRef.current = createRemoteRoundVersionMap(refreshedHomeState.versions)
+              setRemoteCumulativeStats(refreshedHomeState.cumulativeStats)
+              setCompletedRoundTotal(refreshedHomeState.completedTotal)
+            }
+          } catch (error) {
+            reportDiagnosticFailure('rounds_load', error)
+          }
         }
         if (isRoundTombstonedError(roundsSaveResult.error)) setRemoteRoundsHydratedUserId(null)
         if (roundsSaveResult.error) throw roundsSaveResult.error
@@ -1511,7 +1529,10 @@ export default function App() {
   const completedRoundList = sortRoundsForList(rounds.filter(item => item.status === 'completed'), 'completed')
   const completedRoundCount = Math.max(completedRoundTotal ?? 0, completedRoundList.length)
   const completedRounds = completedRoundList.slice(0, completedRoundVisibleLimit)
-  const cumulativeStats = remoteCumulativeStats || calculateCumulativeStats(completedRoundList)
+  const localCumulativeStats = calculateCumulativeStats(completedRoundList)
+  const cumulativeStats = completedRoundList.length >= completedRoundCount
+    ? localCumulativeStats
+    : remoteCumulativeStats || localCumulativeStats
   const enteredTotal = enteredHoles.reduce((sum, hole) => sum + hole.score, 0)
   const holesWithPar = enteredHoles.filter(hole => Number.isFinite(hole.par))
   const enteredPar = holesWithPar.reduce((sum, hole) => sum + hole.par, 0)
@@ -1526,7 +1547,7 @@ export default function App() {
       completedRoundVisibleLimit + COMPLETED_ROUNDS_PAGE_SIZE,
     )
     if (nextLimit <= completedRoundVisibleLimit) return
-    if (completedRoundList.length >= nextLimit || isPreviewMode || !supabase || !session) {
+    if (isPreviewMode || !supabase || !session || !completedRoundsCursor) {
       setCompletedRoundVisibleLimit(nextLimit)
       return
     }
@@ -1535,7 +1556,7 @@ export default function App() {
     try {
       const page = await loadRemoteCompletedRoundsPage(supabase, {
         limit: COMPLETED_ROUNDS_PAGE_SIZE,
-        offset: completedRoundVisibleLimit,
+        cursor: completedRoundsCursor,
       })
       if (!page) {
         setCompletedRoundVisibleLimit(nextLimit)
@@ -1553,6 +1574,7 @@ export default function App() {
       })
       setRemoteCumulativeStats(page.cumulativeStats)
       setCompletedRoundTotal(page.total)
+      setCompletedRoundsCursor(page.nextCursor)
       setCompletedRoundVisibleLimit(nextLimit)
     } catch (error) {
       reportDiagnosticFailure('rounds_load', error)

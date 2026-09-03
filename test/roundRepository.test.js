@@ -177,6 +177,7 @@ test('최적화된 첫 화면 조회는 최근 25건·전체 누적 통계·버�
             total_score: 84, putt_attempts: 18,
           }],
           completedTotal: 120,
+          nextCursor: { playedAt: '2026-09-03T07:00', updatedAt: '2026-09-03T01:00:00.000Z', id: 'complete' },
           cumulativeStats: {
             roundCount: 120, scoredRoundCount: 119, averageScore: '88.5', bestScore: 72,
             totalPutts: 4000, puttAttempts: 2100, averagePutts: '1.9047619',
@@ -192,19 +193,22 @@ test('최적화된 첫 화면 조회는 최근 25건·전체 누적 통계·버�
   const state = await loadRemoteHomeRoundState(client)
   assert.deepEqual(calls, [{
     name: 'get_home_round_state',
-    parameters: { p_limit: COMPLETED_ROUNDS_PAGE_SIZE, p_offset: 0 },
+    parameters: { p_limit: COMPLETED_ROUNDS_PAGE_SIZE, p_cursor: null },
   }])
   assert.equal(state.completedRounds[0].remoteSummaryOnly, true)
   assert.equal(state.completedTotal, 120)
   assert.equal(state.cumulativeStats.averageScore, 88.5)
   assert.deepEqual(state.versions, [{ id: 'complete', updatedAt: '2026-09-03T01:00:00.000Z' }])
+  assert.deepEqual(state.nextCursor, { playedAt: '2026-09-03T07:00', updatedAt: '2026-09-03T01:00:00.000Z', id: 'complete' })
 
-  const page = await loadRemoteCompletedRoundsPage(client, { limit: 10, offset: 25 })
+  const cursor = { playedAt: '2026-09-03T07:00', updatedAt: '2026-09-03T01:00:00.000Z', id: 'complete' }
+  const page = await loadRemoteCompletedRoundsPage(client, { limit: 10, cursor })
   assert.deepEqual(calls.at(-1), {
     name: 'get_home_round_state',
-    parameters: { p_limit: 10, p_offset: 25 },
+    parameters: { p_limit: 10, p_cursor: cursor },
   })
   assert.equal(page.total, 120)
+  assert.equal(page.nextCursor.id, 'complete')
 })
 
 test('첫 화면 RPC가 아직 없는 DB에서는 기존 전체 조회로 안전하게 되돌아간다', async () => {

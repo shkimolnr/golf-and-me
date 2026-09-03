@@ -6,17 +6,17 @@ select jsonb_build_object(
   'volatilityStable', bool_and(functions.provolatile = 's'),
   'authenticatedExecute', bool_and(has_function_privilege(
     'authenticated',
-    'public.get_home_round_state(integer, integer)',
+    'public.get_home_round_state(integer, jsonb)',
     'EXECUTE'
   )),
   'anonExecute', bool_or(has_function_privilege(
     'anon',
-    'public.get_home_round_state(integer, integer)',
+    'public.get_home_round_state(integer, jsonb)',
     'EXECUTE'
   ))
 )
 from pg_catalog.pg_proc as functions
-where functions.oid = 'public.get_home_round_state(integer, integer)'::regprocedure;
+where functions.oid = 'public.get_home_round_state(integer, jsonb)'::regprocedure;
 
 select jsonb_build_object(
   'completedTotal', count(*) filter (where status = 'completed'),

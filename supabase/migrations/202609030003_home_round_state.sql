@@ -1,11 +1,13 @@
 begin;
 
--- Return the first completed-round page, the all-time home aggregate, and the
--- small version vector used by the offline merge in one authenticated call.
--- Payloads never leave this function, and RLS remains the final access guard.
+-- Keep the first home response bounded: completed payloads never leave this
+-- function, while a compact version vector still protects offline merge/save.
+create index if not exists rounds_user_status_played_updated_id_idx
+  on public.rounds(user_id, status, played_at_local desc, updated_at desc, id asc);
+
 create or replace function public.get_home_round_state(
   p_limit integer default 25,
-  p_offset integer default 0
+  p_cursor jsonb default null
 )
 returns jsonb
 language sql
@@ -16,8 +18,14 @@ as $$
   with parameters as (
     select
       greatest(1, least(coalesce(p_limit, 25), 50)) as page_limit,
-      greatest(0, coalesce(p_offset, 0)) as page_offset
-  ), owned_rounds as (
+      p_cursor is not null
+        and jsonb_typeof(p_cursor) = 'object'
+        and p_cursor ? 'updatedAt'
+        and p_cursor ? 'id' as has_cursor,
+      nullif(p_cursor->>'playedAt', '') as cursor_played_at,
+      nullif(p_cursor->>'updatedAt', '')::timestamptz as cursor_updated_at,
+      nullif(p_cursor->>'id', '') as cursor_id
+  ), owned_rounds as materialized (
     select
       id, course_id, course_name, front_course_name, back_course_name, tee,
       distance_unit, played_at_local, status, completed_at, updated_at,
@@ -27,22 +35,63 @@ as $$
     from public.rounds
     where user_id = auth.uid()
   ), completed_rounds as (
-    select *
+    select owned_rounds.*
     from owned_rounds
     where status = 'completed'
-  ), recent_page as (
+  ), eligible_page as (
     select completed_rounds.*
     from completed_rounds
     cross join parameters
-    order by played_at_local desc nulls last, updated_at desc, id
+    where not parameters.has_cursor
+      or (
+        parameters.cursor_played_at is not null
+        and (
+          completed_rounds.played_at_local < parameters.cursor_played_at
+          or completed_rounds.played_at_local is null
+          or (
+            completed_rounds.played_at_local = parameters.cursor_played_at
+            and (
+              completed_rounds.updated_at < parameters.cursor_updated_at
+              or (
+                completed_rounds.updated_at = parameters.cursor_updated_at
+                and completed_rounds.id > parameters.cursor_id
+              )
+            )
+          )
+        )
+      )
+      or (
+        parameters.cursor_played_at is null
+        and completed_rounds.played_at_local is null
+        and (
+          completed_rounds.updated_at < parameters.cursor_updated_at
+          or (
+            completed_rounds.updated_at = parameters.cursor_updated_at
+            and completed_rounds.id > parameters.cursor_id
+          )
+        )
+      )
+  ), recent_page as materialized (
+    select eligible_page.*
+    from eligible_page
+    cross join parameters
+    order by played_at_local desc nulls last, updated_at desc, id asc
     limit (select page_limit from parameters)
-    offset (select page_offset from parameters)
   ), recent_page_json as (
     select coalesce(
-      jsonb_agg(to_jsonb(recent_page) order by played_at_local desc nulls last, updated_at desc, id),
+      jsonb_agg(to_jsonb(recent_page) order by played_at_local desc nulls last, updated_at desc, id asc),
       '[]'::jsonb
     ) as rows
     from recent_page
+  ), next_cursor as (
+    select jsonb_build_object(
+      'playedAt', recent_page.played_at_local,
+      'updatedAt', recent_page.updated_at,
+      'id', recent_page.id
+    ) as value
+    from recent_page
+    order by recent_page.played_at_local asc nulls first, recent_page.updated_at asc, recent_page.id desc
+    limit 1
   ), cumulative as (
     select
       count(*)::integer as round_count,
@@ -69,6 +118,7 @@ as $$
   select jsonb_build_object(
     'completedRounds', recent_page_json.rows,
     'completedTotal', cumulative.round_count,
+    'nextCursor', (select value from next_cursor),
     'cumulativeStats', jsonb_build_object(
       'roundCount', cumulative.round_count,
       'scoredRoundCount', cumulative.scored_round_count,
@@ -91,7 +141,7 @@ as $$
   cross join version_vector;
 $$;
 
-revoke all on function public.get_home_round_state(integer, integer) from public, anon;
-grant execute on function public.get_home_round_state(integer, integer) to authenticated, service_role;
+revoke all on function public.get_home_round_state(integer, jsonb) from public, anon;
+grant execute on function public.get_home_round_state(integer, jsonb) to authenticated;
 
 commit;
