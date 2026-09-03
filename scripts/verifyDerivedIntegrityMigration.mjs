@@ -136,8 +136,12 @@ function assertReadyPreflight(result) {
   assert.deepEqual(result.advisoryCounts, { equivalentObjectsWithOtherNames: 0 })
 }
 
+function postApplyResult(database) {
+  return JSON.parse(runSql(database, readFileSync(postApplyPath, 'utf8')).trim())
+}
+
 function assertPostApplyPass(database) {
-  const result = JSON.parse(runSql(database, readFileSync(postApplyPath, 'utf8')).trim())
+  const result = postApplyResult(database)
   assert.equal(result.gateStatus, 'PASS', JSON.stringify(result, null, 2))
   assert.deepEqual(result.blockerCounts, {
     constraints: 0,
@@ -150,6 +154,106 @@ function assertPostApplyPass(database) {
     trigger: 0,
   })
   return result
+}
+
+function verifyFieldParityNormalization(database, suffix) {
+  const { userA } = insertSyntheticUsers(database, suffix)
+  const roundId = `parity-${suffix}`
+  runSql(database, `
+    insert into public.rounds (
+      id, user_id, course_name, front_course_name, back_course_name,
+      tee, status, payload, updated_at
+    ) values (
+      '${roundId}', '${userA}', 'synthetic', 'front', 'back',
+      '화이트', 'in_progress',
+      jsonb_build_object('id', '${roundId}', 'holes', jsonb_build_array(
+        jsonb_build_object(
+          'holeNumber', 1, 'sourceOfficialHole', 7, 'distance', 365.5,
+          'score', 5, 'swingCount', 3, 'putts', 2,
+          'shots', jsonb_build_array(jsonb_build_object(
+            'sequence', 1, 'club', 'D', 'clubId', 'numeric',
+            'clubSnapshot', jsonb_build_object('label', 'D'), 'remainingDistance', 140.5
+          ))
+        ),
+        jsonb_build_object(
+          'holeNumber', 2, 'sourceOfficialHole', '8', 'distance', '400.5',
+          'score', '4', 'swingCount', '3', 'putts', '1',
+          'shots', jsonb_build_array(jsonb_build_object(
+            'sequence', '1', 'club', '7I', 'clubId', 'numeric-string',
+            'clubSnapshot', jsonb_build_object('label', '7I'), 'remainingDistance', '90.25'
+          ))
+        ),
+        jsonb_build_object(
+          'holeNumber', 3, 'sourceOfficialHole', null, 'distance', null,
+          'score', null, 'swingCount', null, 'putts', null,
+          'shots', jsonb_build_array(jsonb_build_object(
+            'sequence', 1, 'club', null, 'clubId', null,
+            'clubSnapshot', null, 'remainingDistance', null
+          ))
+        ),
+        jsonb_build_object(
+          'holeNumber', 4, 'sourceOfficialHole', '', 'distance', '',
+          'score', '', 'swingCount', '', 'putts', '',
+          'shots', jsonb_build_array(jsonb_build_object(
+            'sequence', 1, 'club', '', 'clubId', '',
+            'clubSnapshot', null, 'remainingDistance', ''
+          ))
+        )
+      )),
+      '2026-09-03T00:00:00Z'
+    );
+  `)
+
+  let result = assertPostApplyPass(database)
+  assert.equal(result.dataIntegrityCounts.round_hole_field_mismatch, 0)
+  assert.equal(result.dataIntegrityCounts.round_shot_field_mismatch, 0)
+
+  runSql(database, `
+    update public.round_holes
+    set payload = jsonb_set(payload, '{distance}', to_jsonb('401'::text))
+    where round_id = '${roundId}' and hole_number = 2;
+  `)
+  result = postApplyResult(database)
+  assert.equal(result.gateStatus, 'BLOCKED')
+  assert.equal(result.dataIntegrityCounts.round_hole_field_mismatch, 1)
+
+  runSql(database, `
+    update public.round_holes
+    set payload = jsonb_set(payload, '{distance}', to_jsonb('not-a-number'::text))
+    where round_id = '${roundId}' and hole_number = 2;
+  `)
+  result = postApplyResult(database)
+  assert.equal(result.gateStatus, 'BLOCKED')
+  assert.equal(result.dataIntegrityCounts.round_hole_field_mismatch, 1)
+
+  runSql(database, `
+    update public.round_holes
+    set payload = jsonb_set(payload, '{distance}', to_jsonb('400.5'::text))
+    where round_id = '${roundId}' and hole_number = 2;
+    update public.round_shots
+    set payload = jsonb_set(payload, '{remainingDistance}', to_jsonb('91'::text))
+    where round_id = '${roundId}' and hole_number = 2 and shot_sequence = 1;
+  `)
+  result = postApplyResult(database)
+  assert.equal(result.gateStatus, 'BLOCKED')
+  assert.equal(result.dataIntegrityCounts.round_hole_field_mismatch, 0)
+  assert.equal(result.dataIntegrityCounts.round_shot_field_mismatch, 1)
+
+  runSql(database, `
+    update public.round_shots
+    set payload = jsonb_set(payload, '{remainingDistance}', to_jsonb('not-a-number'::text))
+    where round_id = '${roundId}' and hole_number = 2 and shot_sequence = 1;
+  `)
+  result = postApplyResult(database)
+  assert.equal(result.gateStatus, 'BLOCKED')
+  assert.equal(result.dataIntegrityCounts.round_shot_field_mismatch, 1)
+
+  runSql(database, `
+    update public.round_shots
+    set payload = jsonb_set(payload, '{remainingDistance}', to_jsonb('90.25'::text))
+    where round_id = '${roundId}' and hole_number = 2 and shot_sequence = 1;
+  `)
+  assertPostApplyPass(database)
 }
 
 function assertSqlFails(database, sql, expectedPattern) {
@@ -320,6 +424,7 @@ try {
   runSql('production_order', migrationSql(migration002))
   assertIntegrityObjects('production_order')
   verifyDerivedBehavior('production_order', '52')
+  verifyFieldParityNormalization('production_order', '53')
   assertPostApplyPass('production_order')
   runSql('production_order', migrationSql(migration002))
   assertIntegrityObjects('production_order')
@@ -329,6 +434,7 @@ try {
   process.stdout.write('✓ Production-equivalent READ ONLY preflight is READY (blockers=0, advisory=0)\n')
   process.stdout.write('✓ owner-mismatch FK writes and authenticated child DML are blocked\n')
   process.stdout.write('✓ payload trigger restores official hole, distance, swing, and shot snapshots\n')
+  process.stdout.write('✓ field parity normalizes number/string/null/empty and flags real/invalid mismatches\n')
   process.stdout.write('✓ rollback limitations and 002 reapply behavior are verified\n')
 } catch (error) {
   const detail = error?.stderr?.toString().trim() || error?.message || String(error)

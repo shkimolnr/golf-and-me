@@ -69,20 +69,76 @@ data_integrity_checks(check_name, violation_count) as (
   union all
   select 'round_hole_field_mismatch', count(*)::bigint
   from public.round_holes as holes
-  where to_jsonb(holes.official_hole_number) is distinct from holes.payload->'sourceOfficialHole'
-     or to_jsonb(holes.distance) is distinct from holes.payload->'distance'
-     or to_jsonb(holes.swing_count) is distinct from holes.payload->'swingCount'
-     or to_jsonb(holes.score) is distinct from holes.payload->'score'
-     or to_jsonb(holes.putts) is distinct from holes.payload->'putts'
+  where exists (
+    select 1
+    from (values
+      (holes.official_hole_number::numeric, holes.payload->'sourceOfficialHole'),
+      (holes.distance, holes.payload->'distance'),
+      (holes.swing_count::numeric, holes.payload->'swingCount'),
+      (holes.score::numeric, holes.payload->'score'),
+      (holes.putts::numeric, holes.payload->'putts')
+    ) as fields(actual_value, raw_value)
+    cross join lateral (
+      select
+        case
+          when fields.raw_value is null
+            or jsonb_typeof(fields.raw_value) = 'null'
+            or (jsonb_typeof(fields.raw_value) = 'string'
+              and fields.raw_value #>> '{}' = '') then null::numeric
+          when jsonb_typeof(fields.raw_value) in ('number', 'string')
+            and fields.raw_value #>> '{}'
+              ~ '^[[:space:]]*[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[[:space:]]*$'
+            then (fields.raw_value #>> '{}')::numeric
+          else null::numeric
+        end as expected_value,
+        not (
+          fields.raw_value is null
+          or jsonb_typeof(fields.raw_value) = 'null'
+          or (jsonb_typeof(fields.raw_value) = 'string'
+            and fields.raw_value #>> '{}' = '')
+          or (jsonb_typeof(fields.raw_value) in ('number', 'string')
+            and fields.raw_value #>> '{}'
+              ~ '^[[:space:]]*[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[[:space:]]*$')
+        ) as invalid_value
+    ) as normalized
+    where normalized.invalid_value
+       or fields.actual_value is distinct from normalized.expected_value
+  )
   union all
   select 'round_shot_field_mismatch', count(*)::bigint
   from public.round_shots as shots
-  where to_jsonb(shots.club) is distinct from shots.payload->'club'
-     or to_jsonb(shots.club_client_id) is distinct from shots.payload->'clubId'
+  where shots.club is distinct from nullif(shots.payload->>'club', '')
+     or shots.club_client_id is distinct from nullif(shots.payload->>'clubId', '')
      or shots.club_snapshot is distinct from case
        when jsonb_typeof(shots.payload->'clubSnapshot') = 'object'
          then shots.payload->'clubSnapshot' else null end
-     or to_jsonb(shots.remaining_distance) is distinct from shots.payload->'remainingDistance'
+     or (
+       select normalized.invalid_value
+         or shots.remaining_distance is distinct from normalized.expected_value
+       from (
+         select
+           case
+             when shots.payload->'remainingDistance' is null
+               or jsonb_typeof(shots.payload->'remainingDistance') = 'null'
+               or (jsonb_typeof(shots.payload->'remainingDistance') = 'string'
+                 and shots.payload->'remainingDistance' #>> '{}' = '') then null::numeric
+             when jsonb_typeof(shots.payload->'remainingDistance') in ('number', 'string')
+               and shots.payload->'remainingDistance' #>> '{}'
+                 ~ '^[[:space:]]*[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[[:space:]]*$'
+               then (shots.payload->'remainingDistance' #>> '{}')::numeric
+             else null::numeric
+           end as expected_value,
+           not (
+             shots.payload->'remainingDistance' is null
+             or jsonb_typeof(shots.payload->'remainingDistance') = 'null'
+             or (jsonb_typeof(shots.payload->'remainingDistance') = 'string'
+               and shots.payload->'remainingDistance' #>> '{}' = '')
+             or (jsonb_typeof(shots.payload->'remainingDistance') in ('number', 'string')
+               and shots.payload->'remainingDistance' #>> '{}'
+                 ~ '^[[:space:]]*[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?[[:space:]]*$')
+           ) as invalid_value
+       ) as normalized
+     )
 ),
 index_checks as (
   select

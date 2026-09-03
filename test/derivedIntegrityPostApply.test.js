@@ -31,4 +31,7 @@ test('002 post-check는 무결성·권한·함수·trigger·005 회귀를 한 �
     'round_hole_field_mismatch',
     'round_shot_field_mismatch',
   ]) assert.match(verification, new RegExp(evidence))
+  assert.match(verification, /jsonb_typeof\(fields\.raw_value\) in \('number', 'string'\)/)
+  assert.match(verification, /normalized\.invalid_value/)
+  assert.match(verification, /fields\.actual_value is distinct from normalized\.expected_value/)
 })
