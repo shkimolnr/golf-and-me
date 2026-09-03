@@ -87,6 +87,37 @@ READ ONLY로 실행했습니다.
 UUID 형식 값과 이메일이 없음을 확인했습니다. 이 실행에서 migration, DDL, DML, 권한 변경은
 수행하지 않았습니다.
 
+### Preview 002 적용 결과
+
+사용자와 컨트롤타워의 별도 승인에 따라 2026-09-03T08:57:02+09:00부터
+2026-09-03T08:59:20+09:00까지 같은 `Golf&Me Preview`에 002를 단일 transaction으로
+적용하고 즉시 READ ONLY post-check를 실행했습니다.
+
+- migration SHA-256: `65e27a53f2eade4da9e69f127b46c1f70e6a94bb9ad26e538bb01656427d80d6`
+- post-check SHA-256: `f72dfd1c07e1dde9e00fd26697819a28d79b6aed20bb1c35650a9a1828bc8e74`
+- 적용 전 결과 SHA-256: `4c90f6b5c156d2cb0f1cf7475cb991888fcdef99aa5f64f722b4d8eb18145da3`
+- 적용 후 결과 SHA-256: `3b60f9213117f387784791087ebbe9d5875fc364142dcd573efd85b1390d3450`
+- post-check: `PASS`, blocker 8종 모두 `0`
+- unique index 3개: `present_valid`
+- composite FK 3개: `present_validated`
+- authenticated child INSERT/UPDATE/DELETE 6개: 모두 차단
+- rounds CRUD와 child SELECT 필수 권한 누락: `0`
+- child sync 함수: SECURITY DEFINER, PL/pgSQL,
+  `search_path=pg_catalog, public`, definition hash `055b059c2c323c69234ba1ac2f526c95`
+- 기존 child sync trigger: 일치·활성, definition hash
+  `cd483d16a0b456f74a4c58ded518b5ad`
+- tombstone table·SECURITY DEFINER 함수 2개·trigger 2개: 유지
+- orphan·owner mismatch·payload/child count 및 field mismatch·tombstone overlap: 모두 `0`
+
+적용 전후 집계는 rounds `0`, round_holes `0`, round_shots `0`, round_tombstones `3`으로
+동일했습니다. 따라서 Preview 기존 행을 대상으로 한 재생성 표본은 없었습니다. 대신 같은 migration의
+PostgreSQL 17.6 격리시험에서 합성 round를 사용해 official hole·distance·swing count·shot
+snapshot 재생성, payload 보존, 005 cascade를 검증했습니다. migration 중복 재실행과
+rollback/reapply도 로컬에서 통과했으며 Preview에는 재실행하거나 rollback하지 않았습니다.
+
+적용 전후 원문과 metadata는 Git 밖 mode 600 파일로 보관했고 UUID 형식 값·이메일이 없음을
+확인했습니다. Production, main, 배포, TASK-052는 변경하지 않았습니다.
+
 ## rollback 한계
 
 - rollback은 002가 만든 composite FK 3개와 unique index 3개를 제거하고, child DML을
@@ -101,6 +132,6 @@ UUID 형식 값과 이메일이 없음을 확인했습니다. 이 실행에서 m
 
 ## 다음 승인 gate
 
-컨트롤타워는 위 Preview 결과와 migration DDL을 교차검토해야 합니다. 별도 사용자·컨트롤타워
-승인 전에는 migration 002를 Preview에 적용하지 않습니다.
-Production 적용, push, main 통합, 배포도 이 문서의 범위가 아닙니다.
+컨트롤타워는 위 Preview 적용 결과와 post-check를 교차검토해야 합니다. Production 적용과
+TASK-052 착수는 각각 별도 승인 전 진행하지 않습니다. push, main 통합, 배포도 이 문서의
+범위가 아닙니다.

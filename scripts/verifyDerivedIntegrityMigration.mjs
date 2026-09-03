@@ -20,6 +20,12 @@ const preflightPath = join(
   'verification',
   '202609010002_derived_data_integrity_preflight.sql',
 )
+const postApplyPath = join(
+  repositoryRoot,
+  'supabase',
+  'verification',
+  '202609010002_derived_data_integrity_post_apply.sql',
+)
 const baseMigrations = [
   '202608300001_initial_golf_schema.sql',
   '202608300002_club_bag_sync.sql',
@@ -128,6 +134,22 @@ function assertReadyPreflight(result) {
     roundsSyncTrigger: 0,
   })
   assert.deepEqual(result.advisoryCounts, { equivalentObjectsWithOtherNames: 0 })
+}
+
+function assertPostApplyPass(database) {
+  const result = JSON.parse(runSql(database, readFileSync(postApplyPath, 'utf8')).trim())
+  assert.equal(result.gateStatus, 'PASS', JSON.stringify(result, null, 2))
+  assert.deepEqual(result.blockerCounts, {
+    constraints: 0,
+    dataViolations: 0,
+    forbiddenChildDml: 0,
+    function: 0,
+    indexes: 0,
+    requiredPrivileges: 0,
+    tombstones: 0,
+    trigger: 0,
+  })
+  return result
 }
 
 function assertSqlFails(database, sql, expectedPattern) {
@@ -290,6 +312,7 @@ try {
   createDatabase('fresh_order', [migration002, migration004, migration005])
   assertIntegrityObjects('fresh_order')
   verifyDerivedBehavior('fresh_order', '51')
+  assertPostApplyPass('fresh_order')
   verifyRollbackAndReapply('fresh_order')
 
   createDatabase('production_order', [migration004, migration005])
@@ -297,6 +320,7 @@ try {
   runSql('production_order', migrationSql(migration002))
   assertIntegrityObjects('production_order')
   verifyDerivedBehavior('production_order', '52')
+  assertPostApplyPass('production_order')
   runSql('production_order', migrationSql(migration002))
   assertIntegrityObjects('production_order')
 

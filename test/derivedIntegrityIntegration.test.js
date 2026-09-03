@@ -24,6 +24,7 @@ test('002 격리시험은 FK·권한·payload 재생성·rollback을 실행한�
     'clubSnapshot',
     'permission denied',
     'verifyRollbackAndReapply',
+    'assertPostApplyPass',
   ]) assert.match(script, new RegExp(evidence))
   assert.equal(
     JSON.parse(packageJson).scripts['test:db-integrity'],
