@@ -14,6 +14,7 @@
     "test:db-privileges": "node scripts/verifyRuntimeTablePrivileges.mjs",
     "test:db-integration": "node scripts/verifyRoundSummarySqlParity.mjs",
     "test:db-summary-preflight": "node scripts/verifyRoundSummaryPreflight.mjs",
+    "test:db-home-state": "node scripts/verifyHomeRoundState.mjs",
     "verify:ledger": "node scripts/verifyProjectLedger.mjs"
   },
   "dependencies": {
