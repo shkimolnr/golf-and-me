@@ -408,17 +408,89 @@ cross join lateral jsonb_array_elements(coalesce(hole.value->'shots', '[]'::json
 do $$
 begin
   if exists (
-    select 1
-    from public.rounds as rounds
-    cross join lateral jsonb_array_elements(coalesce(rounds.payload->'holes', '[]'::jsonb))
-      with ordinality as hole(value, ordinality)
-    join public.round_holes as actual
-      on actual.round_id = rounds.id
-     and actual.hole_number = coalesce(nullif(hole.value->>'holeNumber', '')::smallint,
-       hole.ordinality::smallint)
-    where actual.official_hole_number
-        is distinct from nullif(hole.value->>'sourceOfficialHole', '')::smallint
-       or actual.distance is distinct from nullif(hole.value->>'distance', '')::numeric
+    with expected_holes as (
+      select
+        rounds.id as round_id,
+        rounds.user_id,
+        coalesce(nullif(hole.value->>'holeNumber', '')::smallint,
+          hole.ordinality::smallint) as hole_number,
+        nullif(hole.value->>'sourceOfficialHole', '')::smallint as official_hole_number,
+        nullif(hole.value->>'par', '')::smallint as par,
+        nullif(hole.value->>'distance', '')::numeric as distance,
+        nullif(hole.value->>'score', '')::smallint as score,
+        nullif(hole.value->>'swingCount', '')::smallint as swing_count,
+        nullif(hole.value->>'putts', '')::smallint as putts,
+        hole.value as payload,
+        rounds.updated_at
+      from public.rounds as rounds
+      join pg_temp.round_child_backfill_targets as targets on targets.round_id = rounds.id
+      cross join lateral jsonb_array_elements(coalesce(rounds.payload->'holes', '[]'::jsonb))
+        with ordinality as hole(value, ordinality)
+    ), expected_shots as (
+      select
+        rounds.id as round_id,
+        coalesce(nullif(hole.value->>'holeNumber', '')::smallint,
+          hole.ordinality::smallint) as hole_number,
+        rounds.user_id,
+        coalesce(nullif(shot.value->>'sequence', '')::smallint,
+          shot.ordinality::smallint) as shot_sequence,
+        nullif(shot.value->>'club', '') as club,
+        nullif(shot.value->>'clubId', '') as club_client_id,
+        case when jsonb_typeof(shot.value->'clubSnapshot') = 'object'
+          then shot.value->'clubSnapshot' else null end as club_snapshot,
+        nullif(shot.value->>'remainingDistance', '')::numeric as remaining_distance,
+        nullif(shot.value->>'troubleDirection', '') as trouble_direction,
+        nullif(shot.value->>'troubleType', '') as trouble_type,
+        nullif(shot.value->>'obRelief', '') as ob_relief,
+        shot.value as payload,
+        rounds.updated_at
+      from public.rounds as rounds
+      join pg_temp.round_child_backfill_targets as targets on targets.round_id = rounds.id
+      cross join lateral jsonb_array_elements(coalesce(rounds.payload->'holes', '[]'::jsonb))
+        with ordinality as hole(value, ordinality)
+      cross join lateral jsonb_array_elements(coalesce(hole.value->'shots', '[]'::jsonb))
+        with ordinality as shot(value, ordinality)
+    ), actual_holes as (
+      select holes.*
+      from public.round_holes as holes
+      join pg_temp.round_child_backfill_targets as targets on targets.round_id = holes.round_id
+    ), actual_shots as (
+      select shots.*
+      from public.round_shots as shots
+      join pg_temp.round_child_backfill_targets as targets on targets.round_id = shots.round_id
+    ), violations as (
+      select 1
+      from expected_holes as expected
+      full join actual_holes as actual
+        on actual.round_id = expected.round_id and actual.hole_number = expected.hole_number
+      where expected.round_id is null or actual.round_id is null
+        or row(
+          actual.user_id, actual.official_hole_number, actual.par, actual.distance,
+          actual.score, actual.swing_count, actual.putts, actual.payload, actual.updated_at
+        ) is distinct from row(
+          expected.user_id, expected.official_hole_number, expected.par, expected.distance,
+          expected.score, expected.swing_count, expected.putts, expected.payload,
+          expected.updated_at
+        )
+      union all
+      select 1
+      from expected_shots as expected
+      full join actual_shots as actual
+        on actual.round_id = expected.round_id
+       and actual.hole_number = expected.hole_number
+       and actual.shot_sequence = expected.shot_sequence
+      where expected.round_id is null or actual.round_id is null
+        or row(
+          actual.user_id, actual.club, actual.club_client_id, actual.club_snapshot,
+          actual.remaining_distance, actual.trouble_direction, actual.trouble_type,
+          actual.ob_relief, actual.payload, actual.updated_at
+        ) is distinct from row(
+          expected.user_id, expected.club, expected.club_client_id, expected.club_snapshot,
+          expected.remaining_distance, expected.trouble_direction, expected.trouble_type,
+          expected.ob_relief, expected.payload, expected.updated_at
+        )
+    )
+    select 1 from violations
   ) then
     raise exception using
       errcode = '23514',

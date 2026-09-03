@@ -75,6 +75,13 @@ child의 자체 payload 복사본은 target 판정의 권위 원본으로 사용
 target을 고정한 직후 해당 `rounds` 행을 ID 순서로 잠가 동시 저장과 child 재생성이 교차하지 않게
 하고, commit 뒤에는 일반 저장 경로가 다시 그대로 동작합니다.
 
+commit 직전에는 target round의 전체 재생성 결과를 다시 비교합니다. hole은 key/count/user,
+official hole/par/distance/score/swing/putts, 원본 hole JSON, `rounds.updated_at`을 확인하고, shot은
+key/count/user, club/client ID/snapshot, remaining distance, trouble direction/type, OB relief, 원본
+shot JSON, `rounds.updated_at`을 확인합니다. null·빈 문자열·snapshot object 규칙은 002 sync 함수와
+같습니다. 하나라도 다르면 `round_child_backfill_postcondition_failed`로 transaction 전체를
+rollback하므로 data no-op rollback의 한계가 commit 전에 노출됩니다.
+
 ## 재실행과 rollback
 
 첫 실행 후 target count는 0이어야 합니다. 두 번째 실행은 임시 target이 비어 child 변경도

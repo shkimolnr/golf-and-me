@@ -575,6 +575,70 @@ function verifyBackfill(database) {
   assert.equal(integrityBoundaryFingerprint(database), boundaryBefore)
 }
 
+function verifyPostconditionAtomicRollback(database) {
+  const userId = '31000000-0000-0000-0000-000000000051'
+  const roundId = 'postcondition-rollback'
+  runSql(database, `insert into auth.users (id) values ('${userId}');`)
+  insertSyntheticRound(
+    database,
+    roundId,
+    userId,
+    buildEighteenHolePayload(roundId, 70),
+    '2026-09-03T02:30:00Z',
+  )
+  runSql(database, migrationSql(migration002))
+  assertBackfillReady(database, 1, 18)
+
+  runSql(database, `
+    create function public.corrupt_backfill_hole_insert()
+    returns trigger language plpgsql
+    as $$ begin new.score := coalesce(new.score, 0) + 1; return new; end; $$;
+    create trigger test_corrupt_backfill_hole_insert
+      before insert on public.round_holes
+      for each row execute function public.corrupt_backfill_hole_insert();
+  `)
+  const sourceStateBefore = scalar(database, `
+    select md5(coalesce(jsonb_agg(to_jsonb(rounds) order by id)::text, 'null'))
+    from public.rounds as rounds;
+  `)
+  const holeStateBefore = scalar(database, `
+    select md5(coalesce(jsonb_agg(to_jsonb(holes) order by round_id, hole_number)::text, 'null'))
+    from public.round_holes as holes;
+  `)
+  const shotStateBefore = scalar(database, `
+    select md5(coalesce(jsonb_agg(to_jsonb(shots)
+      order by round_id, hole_number, shot_sequence)::text, 'null'))
+    from public.round_shots as shots;
+  `)
+
+  assertSqlFails(
+    database,
+    migrationSql(backfillMigration),
+    /round_child_backfill_postcondition_failed/,
+  )
+  assert.equal(scalar(database, `
+    select md5(coalesce(jsonb_agg(to_jsonb(rounds) order by id)::text, 'null'))
+    from public.rounds as rounds;
+  `), sourceStateBefore)
+  assert.equal(scalar(database, `
+    select md5(coalesce(jsonb_agg(to_jsonb(holes) order by round_id, hole_number)::text, 'null'))
+    from public.round_holes as holes;
+  `), holeStateBefore)
+  assert.equal(scalar(database, `
+    select md5(coalesce(jsonb_agg(to_jsonb(shots)
+      order by round_id, hole_number, shot_sequence)::text, 'null'))
+    from public.round_shots as shots;
+  `), shotStateBefore)
+  assertBackfillReady(database, 1, 18)
+
+  runSql(database, `
+    drop trigger test_corrupt_backfill_hole_insert on public.round_holes;
+    drop function public.corrupt_backfill_hole_insert();
+  `)
+  runSql(database, migrationSql(backfillMigration))
+  assertBackfillReady(database, 0, 0)
+}
+
 function verifyInvalidBackfillBlocker(database) {
   const userId = '40000000-0000-0000-0000-000000000051'
   const roundId = 'invalid-source'
@@ -891,6 +955,9 @@ try {
   createDatabase('backfill_existing', [migration004, migration005])
   verifyBackfill('backfill_existing')
 
+  createDatabase('backfill_postcondition', [migration004, migration005])
+  verifyPostconditionAtomicRollback('backfill_postcondition')
+
   createDatabase('backfill_invalid', [migration002, migration004, migration005])
   verifyInvalidBackfillBlocker('backfill_invalid')
 
@@ -924,6 +991,7 @@ try {
   process.stdout.write('✓ rollback limitations and 002 reapply behavior are verified\n')
   process.stdout.write('✓ 54 stale holes are selectively backfilled without changing round sources\n')
   process.stdout.write('✓ backfill second run changes 0 targets and rollback does not re-corrupt cache\n')
+  process.stdout.write('✓ full child postcondition corruption rolls the transaction back atomically\n')
   process.stdout.write('✓ invalid source payload blocks atomically before child changes\n')
   process.stdout.write('✓ duplicate hole keys block as ambiguous before child changes\n')
   process.stdout.write('✓ payload/child key mismatch blocks before child changes\n')

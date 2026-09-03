@@ -45,6 +45,21 @@ test('backfill은 002 함수·004 권한·005 trigger 정의를 바꾸지 않는
   assert.doesNotMatch(migration, /drop\s+trigger/i)
 })
 
+test('commit 전 postcondition은 target hole과 shot의 전체 002 mapping을 검사한다', () => {
+  assert.match(migration, /with expected_holes as/i)
+  assert.match(migration, /expected_shots as/i)
+  for (const field of [
+    'official_hole_number', 'swing_count', 'club_client_id', 'club_snapshot',
+    'remaining_distance', 'trouble_direction', 'trouble_type', 'ob_relief',
+    'payload', 'updated_at',
+  ]) {
+    assert.match(migration, new RegExp(field, 'i'))
+  }
+  assert.match(migration, /full join actual_holes/i)
+  assert.match(migration, /full join actual_shots/i)
+  assert.match(migration, /round_child_backfill_postcondition_failed/i)
+})
+
 test('rollback은 정합해진 파생 cache를 역변환하지 않는다', () => {
   const executable = executableSql(rollback)
   assert.doesNotMatch(executable, /\b(insert|update|delete|create|alter|drop|grant|revoke|truncate)\b/i)
@@ -75,6 +90,8 @@ test('PG 격리시험은 54행·부분 대상·invalid blocker·idempotency를 �
   assert.match(integration, /integrityBoundaryFingerprint/)
   assert.match(integration, /backfill second run changes 0 targets/i)
   assert.match(integration, /verifyDistanceEvidenceBackfill/)
+  assert.match(integration, /verifyPostconditionAtomicRollback/)
+  assert.match(integration, /round_child_backfill_postcondition_failed/)
   assert.match(integration, /assert\.equal\(analyticsDistanceCount, 52\)/)
 })
 
