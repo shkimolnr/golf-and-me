@@ -17,3 +17,9 @@ test('로그인 전에 Supabase와 Google 연결을 미리 준비한다', () => 
   assert.match(html, /rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin/)
   assert.match(html, /rel="preconnect" href="https:\/\/accounts\.google\.com"/)
 })
+
+test('로그인 버튼 윗선은 화면 세로 중앙에 고정하고 약관 문구는 가까이 둔다', () => {
+  assert.match(css, /\.auth-login-actions\s*\{[^}]*position:\s*fixed;[^}]*top:\s*50dvh;/)
+  assert.match(css, /\.auth-login-actions \.google-button\s*\{[^}]*margin-top:\s*0;/)
+  assert.match(css, /\.auth-login-actions \.legal\s*\{[^}]*margin:\s*10px 0 0;/)
+})

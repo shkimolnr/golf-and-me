@@ -586,6 +586,13 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .auth-shell h1 { margin-top: 0; margin-bottom: 8px; }
 .auth-shell .eyebrow { margin-top: 0; margin-bottom: 18px; font-size: 17px; font-weight: 400; letter-spacing: 0; }
 .auth-shell .google-button { margin-top: 40px; }
+.auth-login-shell { position: relative; min-height: 100dvh; justify-content: flex-start; }
+.auth-login-brand { position: fixed; bottom: calc(50dvh + 40px); left: 50%; width: min(calc(100% - 40px), 440px); transform: translateX(-50%); }
+.auth-login-brand .auth-logo { margin: 0 0 12px; transform: none; }
+.auth-login-brand h1 { margin: 0; transform: none; }
+.auth-login-actions { position: fixed; top: 50dvh; left: 50%; width: min(calc(100% - 40px), 440px); transform: translateX(-50%); }
+.auth-login-actions .google-button { margin-top: 0; }
+.auth-login-actions .legal { margin: 10px 0 0; }
 .google-button { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; padding: 15px 20px; border: 1px solid #d1d5db; border-radius: 14px; color: #2d3748; background: white; font-weight: 800; }
 .google-mark { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 20px; height: 20px; }
 .google-mark svg { display: block; width: 100%; height: 100%; }
