@@ -34,6 +34,7 @@
 - 2026-09-03 Preview에서 적용 전 READ ONLY gate `READY`·blocker 0·backfill 대상 0을 확인하고 사용자 승인 후 단일 transaction으로 적용했습니다.
 - 적용 후 함수 2개와 BEFORE trigger 1개가 승인 hash와 일치하고, payload 검증 위반·summary cache mismatch·002 선행 객체 회귀가 모두 0임을 확인했습니다.
 - Production에는 아직 적용하지 않았습니다. READ ONLY preflight와 별도 사용자 승인이 선행되어야 합니다.
+- 같은 날 Production READ ONLY preflight도 `READY`, blocker 0, 기존 4개 라운드의 backfill 대상 0으로 확인했습니다. Production 적용과 사후검증은 별도 승인 전까지 실행하지 않습니다.
 
 ### Beta 테스트 계정 신청 연결
 

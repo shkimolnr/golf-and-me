@@ -60,7 +60,7 @@
 ## 6. 현재 실행 기준선
 
 1. `TASK-051` 파생 데이터 무결성 migration 002 — Preview·Production·backfill 완료
-2. `TASK-052` 라운드 요약 동기화 migration 003 — Preview 완료, Production 사전검증 대기
+2. `TASK-052` 라운드 요약 동기화 migration 003 — Preview 완료, Production preflight READY·적용 승인 대기
 3. `TASK-053` 첫 화면 조회·누적 통계 장기 확장성 마무리
 
 `TASK-049` 다중 기기 삭제 동기화는 Preview PC↔모바일과 Production 배포·검증까지 완료된 기준선입니다. `TASK-051`은 두 DB 환경의 사후검증 `PASS`와 Production 3라운드·54홀 cache 보정을 재확인했습니다. 사용자 지시에 따라 현재 활성 트랙은 DB뿐이며 다음 작업은 `TASK-052`입니다.
