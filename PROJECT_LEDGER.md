@@ -1,7 +1,7 @@
 # Golf & Me 작업 장부 운영 원칙
 
 기준일: 2026-09-03
-기술 기준선: GitHub·앱 Production `26896d5` / DB Production `TASK-051` migration 002·backfill 적용 완료
+기술 기준선: GitHub·앱 Production `9c45579` / DB Production `TASK-052` migration 003 적용 완료
 
 이 문서는 업무 내용을 다시 적는 목록이 아니라, 새 요청과 발견 사항이 누락·왜곡되지 않도록 관리하는 규칙의 원본입니다.
 
@@ -50,7 +50,7 @@
 
 | 트랙 | 현재 범위 | 내부 순서/경계 |
 |---|---|---|
-| A · DB 기반 | `TASK-051` 완료 → `TASK-052` → `TASK-053` | 남은 두 작업은 순차. DB 적용 전 읽기 전용 게이트와 별도 승인 필수 |
+| A · DB 기반 | `TASK-051`·`TASK-052` 완료 → `TASK-053` | 남은 작업도 DB 적용 전 읽기 전용 게이트와 별도 승인 필수 |
 | B · UI/현장 사용성 | `TASK-050`, `TASK-056`, `TASK-057` | 최신 `main`에서 짧게 작업. DB·인증·분석 로직 변경 금지 |
 | C · 분석/진단 | `TASK-038`, `TASK-047`, `TASK-048` | DB 핵심 작업 동안 GA4 확장 보류. 운영 진단은 독립 유지 |
 | D · 정책/연구 | `TASK-032`, `TASK-034`, `TASK-039`, `TASK-054`, `TASK-055` | 구현 전 사용자 결정이 필요한 항목을 먼저 분리 |
@@ -60,10 +60,10 @@
 ## 6. 현재 실행 기준선
 
 1. `TASK-051` 파생 데이터 무결성 migration 002 — Preview·Production·backfill 완료
-2. `TASK-052` 라운드 요약 동기화 migration 003 — Preview 완료, Production preflight READY·적용 승인 대기
-3. `TASK-053` 첫 화면 조회·누적 통계 장기 확장성 마무리
+2. `TASK-052` 라운드 요약 동기화 migration 003 — Preview·Production 적용 및 사후검증 완료
+3. `TASK-053` 첫 화면 조회·누적 통계 장기 확장성 마무리 — 다음 작업
 
-`TASK-049` 다중 기기 삭제 동기화는 Preview PC↔모바일과 Production 배포·검증까지 완료된 기준선입니다. `TASK-051`은 두 DB 환경의 사후검증 `PASS`와 Production 3라운드·54홀 cache 보정을 재확인했습니다. 사용자 지시에 따라 현재 활성 트랙은 DB뿐이며 다음 작업은 `TASK-052`입니다.
+`TASK-049` 다중 기기 삭제 동기화는 Preview PC↔모바일과 Production 배포·검증까지 완료된 기준선입니다. `TASK-051`은 두 DB 환경의 사후검증 `PASS`와 Production cache 보정을 재확인했고, `TASK-052`는 두 환경에 서버 강제 요약 동기화를 적용해 mismatch 0을 확인했습니다. 사용자 지시에 따라 현재 활성 트랙은 DB뿐이며 다음 작업은 `TASK-053`입니다.
 
 ## 7. 장부 정산 시점
 
