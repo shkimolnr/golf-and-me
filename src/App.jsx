@@ -18,7 +18,6 @@ import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.j
 import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from './data/news.js'
 import { getAnalyticsConsent, measureLoginStage, recordLoginFailure, setAnalyticsConsent, startLoginMeasurement, trackEvent, trackScreen } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
-import { requestTestAccess } from './lib/testAccessRequest.js'
 import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
 import { scheduleRemoteHydrationRetry, shouldScheduleRemoteHydrationRetry } from './lib/remoteHydrationRetry.js'
 import { recordDiagnosticFailure, resolveDiagnosticFailures } from './lib/diagnostics.js'
@@ -26,7 +25,6 @@ import { clearDiagnosticQueue, enqueueDiagnosticFailure, enqueueDiagnosticRecove
 import golfBallLogo from './assets/golf-ball-logo.png'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
-const isTestAccessRequestEnabled = import.meta.env.VITE_TEST_ACCESS_REQUEST_ENABLED === 'true'
 const analyticsScreenNames = Object.freeze({
   'new-round': 'new_round',
   'hole-detail': 'hole_detail',
@@ -139,9 +137,6 @@ export default function App() {
   const [session, setSession] = useState(isPreviewMode ? previewSession : null)
   const [authLoading, setAuthLoading] = useState(isPreviewMode ? false : isSupabaseConfigured)
   const [authError, setAuthError] = useState('')
-  const [testAccessEmail, setTestAccessEmail] = useState('')
-  const [testAccessStatus, setTestAccessStatus] = useState('idle')
-  const [testAccessError, setTestAccessError] = useState('')
   const [lastSeenNewsId, setLastSeenNewsId] = useState(null)
   const [feedbackMessage, setFeedbackMessage] = useState('')
   const [feedbackStatus, setFeedbackStatus] = useState('idle')
@@ -1933,19 +1928,6 @@ export default function App() {
     trackEvent('round_result_view', { completed_holes: 18 })
   }
 
-  async function submitTestAccessRequest(event) {
-    event.preventDefault()
-    setTestAccessStatus('submitting')
-    setTestAccessError('')
-    try {
-      await requestTestAccess(testAccessEmail)
-      setTestAccessStatus('sent')
-    } catch (error) {
-      setTestAccessStatus('idle')
-      setTestAccessError(error.message)
-    }
-  }
-
   if (authLoading) {
     return <main className="app-shell auth-shell" aria-live="polite"><div className="spinner" aria-hidden="true" /><p role="status">로그인 상태를 확인하고 있어요.</p></main>
   }
@@ -1967,24 +1949,6 @@ export default function App() {
           Google로 계속하기
         </button>
         <p className="legal">계속하면 서비스 이용약관 및 개인정보 처리방침에 동의하게 됩니다.</p>
-        {isTestAccessRequestEnabled && (
-          <section className="test-access">
-            {testAccessStatus !== 'sent' && (
-              <>
-                <p className="test-access-label">⚠️ 처음 오신 분만!</p>
-              <form className="test-access-form" onSubmit={submitTestAccessRequest}>
-                <label className="test-access-email"><span>Google 계정 이메일</span>
-                  <input type="email" inputMode="email" autoComplete="email" required maxLength="254" placeholder="example@gmail.com" value={testAccessEmail} onChange={event => setTestAccessEmail(event.target.value)} />
-                </label>
-                <input hidden type="text" name="website" tabIndex="-1" autoComplete="off" aria-hidden="true" />
-                <button type="submit" disabled={testAccessStatus === 'submitting' || !testAccessEmail.trim()}>{testAccessStatus === 'submitting' ? '요청 중…' : '승인 요청'}</button>
-              </form>
-              {testAccessError && <p className="test-access-error error-message" role="alert">{testAccessError}</p>}
-              </>
-            )}
-            {testAccessStatus === 'sent' && <p className="test-access-success" role="status">승인 요청을 보냈어요.</p>}
-          </section>
-        )}
         {!isSupabaseConfigured && <p className="setup-notice" role="status">Google 로그인을 사용하려면 <code>.env</code>에 Supabase 연결 정보를 설정해주세요.</p>}
         {authError && <p className="error-message" role="alert">{authError}</p>}
       </main>

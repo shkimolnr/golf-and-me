@@ -68,20 +68,6 @@ h1 { margin: 10px 0 14px; font-size: clamp(30px, 9vw, 42px); line-height: 1.2; l
 .description { color: #6b7280; line-height: 1.6; margin-bottom: 32px; }
 .home .description { font-size: 16px; font-weight: 700; }
 .eyebrow, h1, .description { margin-left: 18px; margin-right: 18px; }
-.test-access { display: grid; gap: 6px; width: min(calc(100% - 24px), 400px); margin: 76px auto 0; text-align: center; }
-.test-access-label { margin: 0; color: #b45353; font-family: var(--font-cherrie); font-size: 13px; font-weight: 700; letter-spacing: .04em; text-align: center; white-space: nowrap; }
-.test-access-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 7px; padding: 8px 10px; border-radius: 10px; background: #f3f4f6; text-align: center; }
-.test-access-email { min-width: 0; }
-.test-access-email span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.test-access-form input { height: 32px; padding: 4px 8px; border-width: 1px; border-radius: 8px; background-color: #fff; font-size: 16px; font-weight: 400; line-height: 1.2; text-align: center; appearance: none; }
-.test-access-form input::placeholder { color: #c7cdd5; opacity: 1; }
-.test-access-form button { display: grid; place-items: center; height: 32px; padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 8px; color: #4b5563; background: #fff; font-size: 11px; font-weight: 700; line-height: 1.2; white-space: nowrap; appearance: none; }
-.test-access-form button:not(:disabled) { border-color: #059669; color: white; background: #059669; }
-.test-access-form input:-webkit-autofill,
-.test-access-form input:-webkit-autofill:hover,
-.test-access-form input:-webkit-autofill:focus { -webkit-box-shadow: 0 0 0 1000px #fff inset; box-shadow: 0 0 0 1000px #fff inset; -webkit-text-fill-color: #111827; caret-color: #111827; }
-.test-access-error.error-message { margin: 2px 4px 0; padding: 0; border-radius: 0; color: #b91c1c; background: transparent; font-size: 12px; line-height: 1.45; text-align: center; }
-.test-access-success { margin: 0; color: #047857; font-size: 12px; font-weight: 700; text-align: center; }
 .primary { width: 100%; border: 0; border-radius: 14px; padding: 17px 20px; color: white; background: #059669; font-weight: 800; }
 .empty-card, .form-card { display: flex; flex-direction: column; gap: 18px; margin-top: 24px; padding: 22px; border: 1px solid #e5e7eb; border-radius: 18px; background: #f7fafc; }
 .empty-card span, .hint { color: #6b7280; font-size: 15px; line-height: 1.6; }
