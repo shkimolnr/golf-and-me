@@ -24,7 +24,7 @@
 | `2826e3a` | 과거 Preview 003 BLOCKED 기록 | **폐기** | 002 미적용 당시의 예상 BLOCKED 결과로 현재 TASK-051 실행 증거가 아닙니다. |
 | `c30f331` | migration 004 최소권한 | **재현 기준 채택** | 004는 이미 Preview·Production 적용 완료입니다. 누락된 migration/rollback/check와 로컬 privilege test를 복원했으며 새 적용 대상으로 취급하지 않습니다. |
 | `bad7a64` | migration 001 runtime DML grant | **재현 기준 채택** | 001은 이미 Preview·Production 적용 완료입니다. 002의 rollback과 로컬 replay에 필요한 정확한 기준이므로 복원했습니다. |
-| `382fe1e` | TASK-053 pagination/RPC/UI | **보류** | 051→052→053 순서를 위반하고 `src/App.jsx`가 GA4/UI 트랙과 충돌합니다. 053 착수 시 RPC/repository 경계를 먼저 재검토합니다. |
+| `382fe1e` | TASK-053 pagination/RPC/UI | **보류** | 051→052→053 순서를 위반하고 `src/App.jsx`가 GA4/UI 트랙과 충돌합니다. 후보의 `202609030001_home_round_state.sql`은 권위 backfill `202609030001_round_child_integrity_backfill.sql`과 version이 충돌하므로 절대 그대로 채택하지 않고, TASK-053 승인 시 당시 마지막 version 뒤로 재발행합니다. |
 
 `46c6534`와 기존 DB 전담 `59ea121`, `bad7a64`와 `5ade34f`, `39296ec`와
 `abf1584`, `79f9f50`와 `c4343ce`는 stable patch-id가 각각 일치했습니다. 나머지는
@@ -49,6 +49,9 @@
 두 순서에서 동일 소유자 composite FK 3개, authenticated child DML 차단, payload의
 `sourceOfficialHole`·`distance`·`swingCount`와 shot snapshot 재생성, tombstone cascade
 호환성을 검증합니다. 또한 002 rollback 후 재적용과 002 중복 재실행을 확인합니다.
+backfill 격리시험은 같은 이름이지만 정의가 다른 FK/index/sync 함수/005 trigger를 모두
+`BLOCKED`로 판정하고, TASK-052 summary 함수·trigger가 먼저 존재하는 환경도 fail-closed로
+차단합니다.
 
 ## READ ONLY preflight 출력 기준
 

@@ -2,11 +2,13 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 
-const [migration, rollback, preflight, integration] = await Promise.all([
+const [migration, rollback, preflight, integration, design, assessment] = await Promise.all([
   readFile(new URL('../supabase/migrations/202609030001_round_child_integrity_backfill.sql', import.meta.url), 'utf8'),
   readFile(new URL('../supabase/rollbacks/202609030001_round_child_integrity_backfill_rollback.sql', import.meta.url), 'utf8'),
   readFile(new URL('../supabase/verification/202609030001_round_child_integrity_backfill_preflight.sql', import.meta.url), 'utf8'),
   readFile(new URL('../scripts/verifyDerivedIntegrityMigration.mjs', import.meta.url), 'utf8'),
+  readFile(new URL('../supabase/audits/20260903_task_051_child_backfill_design.md', import.meta.url), 'utf8'),
+  readFile(new URL('../supabase/audits/20260903_task_051_candidate_assessment.md', import.meta.url), 'utf8'),
 ])
 
 function executableSql(sql) {
@@ -30,6 +32,11 @@ test('backfill은 payload·소유권·count·tombstone prerequisite를 변경 �
   assert.match(migration, /round_child_backfill_integrity_blocker/)
   assert.match(migration, /public\.round_tombstones/i)
   assert.match(migration, /round_hole_count_mismatch|jsonb_array_length/i)
+  assert.match(migration, /pg_get_constraintdef/i)
+  assert.match(migration, /pg_get_indexdef/i)
+  assert.match(migration, /055b059c2c323c69234ba1ac2f526c95/i)
+  assert.match(migration, /eb89388ca6e924490945b3b3cfea423f/i)
+  assert.match(migration, /rounds_sync_summary/i)
 })
 
 test('backfill은 002 함수·004 권한·005 trigger 정의를 바꾸지 않는다', () => {
@@ -53,6 +60,7 @@ test('backfill preflight는 READ ONLY 집계와 대상 영향량만 반환한다
   assert.match(preflight, /officialHoleNumberHoles/)
   assert.match(preflight, /distanceHoles/)
   assert.match(preflight, /invalidPayloadCounts/)
+  assert.match(preflight, /catalogChecks/)
 })
 
 test('PG 격리시험은 54행·부분 대상·invalid blocker·idempotency를 재현한다', () => {
@@ -62,8 +70,18 @@ test('PG 격리시험은 54행·부분 대상·invalid blocker·idempotency를 �
   assert.match(integration, /verifyInvalidBackfillBlocker/)
   assert.match(integration, /verifyAmbiguousBackfillBlocker/)
   assert.match(integration, /verifyStructuralBackfillBlocker/)
+  assert.match(integration, /verifyExactPrerequisiteBlockers/)
+  assert.match(integration, /verifySummaryPrecedenceBlocker/)
   assert.match(integration, /integrityBoundaryFingerprint/)
   assert.match(integration, /backfill second run changes 0 targets/i)
   assert.match(integration, /verifyDistanceEvidenceBackfill/)
   assert.match(integration, /assert\.equal\(analyticsDistanceCount, 52\)/)
+})
+
+test('TASK-052와 TASK-053 후보 migration version 충돌을 재발행 규칙으로 고정한다', () => {
+  assert.match(design, /202609030002_round_summary_sync\.sql/)
+  assert.match(design, /202609030001_home_round_state\.sql/)
+  assert.match(design, /version이\s*충돌/)
+  assert.match(assessment, /202609030001_home_round_state\.sql/)
+  assert.match(assessment, /202609030001_round_child_integrity_backfill\.sql/)
 })

@@ -37,6 +37,10 @@ round_shots 68건의 부모·소유권·개수 정합성은 모두 0건 위반�
 않은 TASK-052의 003 후보는 기존 파일명을 그대로 재사용하지 않고, TASK-052 착수 시
 `202609030002_round_summary_sync.sql` 이후의 새 version으로 발행해야 합니다.
 
+비권위 TASK-053 후보 `382fe1e`의 `202609030001_home_round_state.sql`도 이 backfill과 version이
+충돌합니다. TASK-053에서 채택하더라도 원본 후보 version을 재사용하지 않고, TASK-052까지 확정된
+뒤 당시 마지막 version보다 큰 번호로 재발행해야 합니다.
+
 적용 순서:
 
 - Preview: 기존 `001 → 004 → 005 → 002` → `202609030001 backfill`
@@ -50,9 +54,14 @@ backfill은 `rounds`를 UPDATE하지 않습니다. 따라서 `rounds.payload`와
 그대로 유지됩니다. 다음 조건을 transaction 안에서 먼저 확인합니다.
 
 - 002 composite FK 3개와 unique index 3개가 적용됨
+- FK는 schema/source·target table/column 순서/ON DELETE CASCADE/validated definition hash가
+  승인 fingerprint와 정확히 일치하고, index는 schema/table/column 순서/unique·valid,
+  partial·expression·include 없음과 definition hash가 정확히 일치
 - 002 child sync 함수가 SECURITY DEFINER, PL/pgSQL,
-  `search_path=pg_catalog, public`
-- 005 tombstone table 존재
+  `search_path=pg_catalog, public`이며 승인된 002 definition hash와 일치
+- 005 tombstone table과 함수 2개·rounds trigger 2개의 definition hash가 승인 fingerprint와 일치
+- TASK-052 summary 함수·trigger가 아직 없음. 이미 존재하면 summary column 갱신과
+  child 재생성의 선후 정합성을 임의 추정하지 않고 blocker로 중단
 - holes/shots container와 숫자·smallint 입력이 명확하고 table CHECK 범위 안임
 - hole/shot key가 중복되지 않음
 - parent orphan·owner mismatch·child count mismatch·tombstone overlap이 모두 0

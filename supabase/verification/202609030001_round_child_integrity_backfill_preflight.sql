@@ -4,31 +4,141 @@
 begin transaction read only;
 
 with
-prerequisite_checks as (
+expected_constraints(name, source_table, target_table, definition_hash) as (
+  values
+    ('round_holes_round_user_fkey', 'public.round_holes', 'public.rounds',
+      'e3b623f516c684668621ccd632836397'),
+    ('round_shots_round_hole_user_fkey', 'public.round_shots', 'public.round_holes',
+      '1bf16d147e147d6f71d140b23437af1d'),
+    ('club_distance_history_club_user_fkey', 'public.club_distance_history',
+      'public.user_clubs', '170720a3019599ad3bc4deb65af12b71')
+),
+constraint_checks as (
+  select expected.name,
+    count(constraints.oid)::integer as named_count,
+    count(constraints.oid) filter (where
+      constraints.conrelid = pg_catalog.to_regclass(expected.source_table)
+      and constraints.confrelid = pg_catalog.to_regclass(expected.target_table)
+      and constraints.contype = 'f' and constraints.confdeltype = 'c'
+      and constraints.convalidated
+      and md5(pg_catalog.pg_get_constraintdef(constraints.oid, false))
+        = expected.definition_hash)::integer as exact_count,
+    expected.definition_hash as expected_definition_hash,
+    min(md5(pg_catalog.pg_get_constraintdef(constraints.oid, false)))
+      as actual_definition_hash
+  from expected_constraints as expected
+  left join pg_catalog.pg_namespace as schemas on schemas.nspname = 'public'
+  left join pg_catalog.pg_constraint as constraints
+    on constraints.connamespace = schemas.oid and constraints.conname = expected.name
+  group by expected.name, expected.source_table, expected.target_table,
+    expected.definition_hash
+),
+expected_indexes(name, source_table, definition_hash) as (
+  values
+    ('rounds_id_user_uidx', 'public.rounds', '0f19e9b0fd53196aa331e7b5adbd7465'),
+    ('round_holes_round_hole_user_uidx', 'public.round_holes',
+      'b1ebee28c4c609f5fd381a6b1b84f14f'),
+    ('user_clubs_id_user_uidx', 'public.user_clubs',
+      'df2e9cd4a2f585f8d6760caa7896d819')
+),
+index_checks as (
+  select expected.name,
+    count(indexes.oid)::integer as named_count,
+    count(indexes.oid) filter (where
+      definitions.indrelid = pg_catalog.to_regclass(expected.source_table)
+      and definitions.indisunique and definitions.indisvalid and definitions.indisready
+      and definitions.indpred is null and definitions.indexprs is null
+      and definitions.indnatts = definitions.indnkeyatts
+      and md5(pg_catalog.pg_get_indexdef(indexes.oid)) = expected.definition_hash)::integer
+      as exact_count,
+    expected.definition_hash as expected_definition_hash,
+    min(md5(pg_catalog.pg_get_indexdef(indexes.oid))) as actual_definition_hash
+  from expected_indexes as expected
+  left join pg_catalog.pg_namespace as schemas on schemas.nspname = 'public'
+  left join pg_catalog.pg_class as indexes
+    on indexes.relnamespace = schemas.oid and indexes.relname = expected.name
+  left join pg_catalog.pg_index as definitions on definitions.indexrelid = indexes.oid
+  group by expected.name, expected.source_table, expected.definition_hash
+),
+sync_function_checks as (
+  select count(functions.oid)::integer as named_count,
+    count(functions.oid) filter (where
+      pg_catalog.pg_get_function_identity_arguments(functions.oid) = ''
+      and functions.prosecdef and languages.lanname = 'plpgsql'
+      and functions.proconfig = array['search_path=pg_catalog, public']::text[]
+      and md5(pg_catalog.pg_get_functiondef(functions.oid))
+        = '055b059c2c323c69234ba1ac2f526c95')::integer as exact_count,
+    '055b059c2c323c69234ba1ac2f526c95'::text as expected_definition_hash,
+    min(md5(pg_catalog.pg_get_functiondef(functions.oid))) as actual_definition_hash
+  from pg_catalog.pg_namespace as schemas
+  left join pg_catalog.pg_proc as functions
+    on functions.pronamespace = schemas.oid
+   and functions.proname = 'sync_round_children_from_payload'
+  left join pg_catalog.pg_language as languages on languages.oid = functions.prolang
+  where schemas.nspname = 'public'
+),
+expected_tombstone_functions(name, definition_hash) as (
+  values
+    ('record_round_tombstone_before_delete', 'eb89388ca6e924490945b3b3cfea423f'),
+    ('reject_tombstoned_round_write', '0c86baea5e633a1d5d5982bb212cbb20')
+),
+tombstone_function_checks as (
+  select expected.name, count(functions.oid)::integer as named_count,
+    count(functions.oid) filter (where
+      pg_catalog.pg_get_function_identity_arguments(functions.oid) = ''
+      and md5(pg_catalog.pg_get_functiondef(functions.oid))
+        = expected.definition_hash)::integer as exact_count,
+    expected.definition_hash as expected_definition_hash,
+    min(md5(pg_catalog.pg_get_functiondef(functions.oid))) as actual_definition_hash
+  from expected_tombstone_functions as expected
+  left join pg_catalog.pg_namespace as schemas on schemas.nspname = 'public'
+  left join pg_catalog.pg_proc as functions
+    on functions.pronamespace = schemas.oid and functions.proname = expected.name
+  group by expected.name, expected.definition_hash
+),
+expected_tombstone_triggers(name, definition_hash) as (
+  values
+    ('rounds_00_record_tombstone_before_delete', '8f146f8e85b30643fd57dfb0ad23fbf1'),
+    ('rounds_00_reject_tombstoned_write', '1b8785b648e166ce876e4a978adf3a19')
+),
+tombstone_trigger_checks as (
+  select expected.name, count(triggers.oid)::integer as named_count,
+    count(triggers.oid) filter (where triggers.tgenabled = 'O'
+      and md5(pg_catalog.pg_get_triggerdef(triggers.oid, false))
+        = expected.definition_hash)::integer as exact_count,
+    expected.definition_hash as expected_definition_hash,
+    min(md5(pg_catalog.pg_get_triggerdef(triggers.oid, false))) as actual_definition_hash
+  from expected_tombstone_triggers as expected
+  left join pg_catalog.pg_trigger as triggers
+    on triggers.tgrelid = pg_catalog.to_regclass('public.rounds')
+   and triggers.tgname = expected.name and not triggers.tgisinternal
+  group by expected.name, expected.definition_hash
+),
+summary_precedence_check as (
   select
-    (select count(*) from pg_catalog.pg_constraint
-      where conname in (
-        'round_holes_round_user_fkey',
-        'round_shots_round_hole_user_fkey',
-        'club_distance_history_club_user_fkey'
-      ) and convalidated)::integer as validated_constraint_count,
-    (select count(*) from pg_catalog.pg_indexes
-      where schemaname = 'public' and indexname in (
-        'rounds_id_user_uidx',
-        'round_holes_round_hole_user_uidx',
-        'user_clubs_id_user_uidx'
-      ))::integer as target_index_count,
     (select count(*) from pg_catalog.pg_proc as functions
       join pg_catalog.pg_namespace as schemas on schemas.oid = functions.pronamespace
-      join pg_catalog.pg_language as languages on languages.oid = functions.prolang
       where schemas.nspname = 'public'
-        and functions.proname = 'sync_round_children_from_payload'
-        and pg_catalog.pg_get_function_identity_arguments(functions.oid) = ''
-        and functions.prosecdef
-        and languages.lanname = 'plpgsql'
-        and coalesce(functions.proconfig, array[]::text[])
-          = array['search_path=pg_catalog, public']::text[])::integer
-      as sync_function_count,
+        and functions.proname in (
+          'calculate_round_stats_from_payload', 'sync_round_summary_from_payload'
+        ))::integer as known_function_count,
+    (select count(*) from pg_catalog.pg_trigger
+      where tgrelid = pg_catalog.to_regclass('public.rounds')
+        and tgname = 'rounds_sync_summary' and not tgisinternal)::integer
+      as known_trigger_count
+),
+prerequisite_checks as (
+  select
+    (select count(*) from constraint_checks
+      where named_count = 1 and exact_count = 1)::integer as exact_constraint_count,
+    (select count(*) from index_checks
+      where named_count = 1 and exact_count = 1)::integer as exact_index_count,
+    (select exact_count from sync_function_checks
+      where named_count = 1)::integer as exact_sync_function_count,
+    (select count(*) from tombstone_function_checks
+      where named_count = 1 and exact_count = 1)::integer as exact_tombstone_function_count,
+    (select count(*) from tombstone_trigger_checks
+      where named_count = 1 and exact_count = 1)::integer as exact_tombstone_trigger_count,
     (select count(*) from (values
       ('round_holes', 'INSERT'), ('round_holes', 'UPDATE'), ('round_holes', 'DELETE'),
       ('round_shots', 'INSERT'), ('round_shots', 'UPDATE'), ('round_shots', 'DELETE')
@@ -36,7 +146,12 @@ prerequisite_checks as (
     where pg_catalog.has_table_privilege('authenticated',
       pg_catalog.format('public.%I', table_name), privilege_name))::integer
       as forbidden_child_dml_count,
-    (pg_catalog.to_regclass('public.round_tombstones') is not null) as tombstone_table_exists
+    exists (select 1 from pg_catalog.pg_class as tables
+      join pg_catalog.pg_namespace as schemas on schemas.oid = tables.relnamespace
+      where schemas.nspname = 'public' and tables.relname = 'round_tombstones'
+        and tables.relkind = 'r') as tombstone_table_exact,
+    (select known_function_count + known_trigger_count from summary_precedence_check)::integer
+      as summary_precedence_object_count
 ),
 holes as (
   select rounds.id as round_id, hole.value, hole.ordinality
@@ -228,9 +343,11 @@ target_holes as (
 ),
 gate as (
   select
-    (select case when validated_constraint_count = 3 and target_index_count = 3
-      and sync_function_count = 1 and forbidden_child_dml_count = 0
-      and tombstone_table_exists then 0 else 1 end from prerequisite_checks)::integer
+    (select case when exact_constraint_count = 3 and exact_index_count = 3
+      and exact_sync_function_count = 1 and forbidden_child_dml_count = 0
+      and tombstone_table_exact and exact_tombstone_function_count = 2
+      and exact_tombstone_trigger_count = 2 and summary_precedence_object_count = 0
+      then 0 else 1 end from prerequisite_checks)::integer
       as prerequisite_blocker_count,
     (select coalesce(sum(violation_count), 0) from payload_blocker_checks)::bigint
       as invalid_payload_blocker_count,
@@ -266,6 +383,19 @@ select jsonb_build_object(
     'distanceHoles', distance_hole_count
   ),
   'prerequisites', (select to_jsonb(prerequisite_checks) from prerequisite_checks),
+  'catalogChecks', jsonb_build_object(
+    'constraints', (select jsonb_agg(to_jsonb(constraint_checks) order by name)
+      from constraint_checks),
+    'indexes', (select jsonb_agg(to_jsonb(index_checks) order by name)
+      from index_checks),
+    'syncFunction', (select to_jsonb(sync_function_checks) from sync_function_checks),
+    'tombstoneFunctions', (select jsonb_agg(to_jsonb(tombstone_function_checks) order by name)
+      from tombstone_function_checks),
+    'tombstoneTriggers', (select jsonb_agg(to_jsonb(tombstone_trigger_checks) order by name)
+      from tombstone_trigger_checks),
+    'summaryPrecedence', (select to_jsonb(summary_precedence_check)
+      from summary_precedence_check)
+  ),
   'invalidPayloadCounts', (select jsonb_object_agg(check_name, violation_count)
     from payload_blocker_checks),
   'integrityCounts', (select jsonb_object_agg(check_name, violation_count)

@@ -674,6 +674,117 @@ function verifyStructuralBackfillBlocker(database) {
   assert.equal(count(database, `public.round_holes where round_id = '${roundId}'`), 1)
 }
 
+function assertBackfillPrerequisiteBlocked(database, assertion) {
+  const preflight = backfillPreflightResult(database)
+  assert.equal(preflight.gateStatus, 'BLOCKED')
+  assert.equal(preflight.blockerCounts.prerequisites, 1)
+  assertion(preflight)
+  assertSqlFails(
+    database,
+    migrationSql(backfillMigration),
+    /round_child_backfill_prerequisite_blocker/,
+  )
+}
+
+function verifyExactPrerequisiteBlockers(database) {
+  runSql(database, `
+    alter table public.round_holes drop constraint round_holes_round_user_fkey;
+    alter table public.round_holes add constraint round_holes_round_user_fkey
+      foreign key (round_id, user_id) references public.rounds (id, user_id)
+      on delete restrict;
+  `)
+  assertBackfillPrerequisiteBlocked(database, result => {
+    const check = result.catalogChecks.constraints.find(
+      item => item.name === 'round_holes_round_user_fkey',
+    )
+    assert.equal(check.named_count, 1)
+    assert.equal(check.exact_count, 0)
+  })
+  runSql(database, 'alter table public.round_holes drop constraint round_holes_round_user_fkey;')
+  runSql(database, migrationSql(migration002))
+
+  runSql(database, `
+    alter table public.club_distance_history
+      drop constraint club_distance_history_club_user_fkey;
+    drop index public.user_clubs_id_user_uidx;
+    create index user_clubs_id_user_uidx on public.user_clubs (user_id, id);
+    create unique index backfill_test_user_clubs_id_user_uidx
+      on public.user_clubs (id, user_id);
+    alter table public.club_distance_history
+      add constraint club_distance_history_club_user_fkey
+      foreign key (club_id, user_id) references public.user_clubs (id, user_id)
+      on delete cascade;
+  `)
+  assertBackfillPrerequisiteBlocked(database, result => {
+    const check = result.catalogChecks.indexes.find(
+      item => item.name === 'user_clubs_id_user_uidx',
+    )
+    assert.equal(check.named_count, 1)
+    assert.equal(check.exact_count, 0)
+  })
+  runSql(database, `
+    alter table public.club_distance_history
+      drop constraint club_distance_history_club_user_fkey;
+    drop index public.user_clubs_id_user_uidx;
+    drop index public.backfill_test_user_clubs_id_user_uidx;
+  `)
+  runSql(database, migrationSql(migration002))
+
+  runSql(database, `
+    create or replace function public.sync_round_children_from_payload()
+    returns trigger language plpgsql security definer
+    set search_path = pg_catalog, public
+    as $$ begin return new; end; $$;
+  `)
+  assertBackfillPrerequisiteBlocked(database, result => {
+    assert.equal(result.catalogChecks.syncFunction.named_count, 1)
+    assert.equal(result.catalogChecks.syncFunction.exact_count, 0)
+  })
+  runSql(database, migrationSql(migration002))
+
+  runSql(database, `
+    drop trigger rounds_00_record_tombstone_before_delete on public.rounds;
+    create trigger rounds_00_record_tombstone_before_delete
+      after delete on public.rounds
+      for each row execute function public.record_round_tombstone_before_delete();
+  `)
+  assertBackfillPrerequisiteBlocked(database, result => {
+    const check = result.catalogChecks.tombstoneTriggers.find(
+      item => item.name === 'rounds_00_record_tombstone_before_delete',
+    )
+    assert.equal(check.named_count, 1)
+    assert.equal(check.exact_count, 0)
+  })
+  runSql(database, `
+    drop trigger rounds_00_record_tombstone_before_delete on public.rounds;
+    create trigger rounds_00_record_tombstone_before_delete
+      before delete on public.rounds
+      for each row execute function public.record_round_tombstone_before_delete();
+  `)
+  assertBackfillReady(database, 0, 0)
+}
+
+function verifySummaryPrecedenceBlocker(database) {
+  runSql(database, `
+    create function public.sync_round_summary_from_payload()
+    returns trigger language plpgsql security invoker
+    set search_path = pg_catalog, public
+    as $$ begin return new; end; $$;
+    create trigger rounds_sync_summary
+      before insert or update of payload on public.rounds
+      for each row execute function public.sync_round_summary_from_payload();
+  `)
+  assertBackfillPrerequisiteBlocked(database, result => {
+    assert.equal(result.catalogChecks.summaryPrecedence.known_function_count, 1)
+    assert.equal(result.catalogChecks.summaryPrecedence.known_trigger_count, 1)
+  })
+  runSql(database, `
+    drop trigger rounds_sync_summary on public.rounds;
+    drop function public.sync_round_summary_from_payload();
+  `)
+  assertBackfillReady(database, 0, 0)
+}
+
 function buildDistanceEvidencePayload(roundId, distanceCount) {
   return {
     id: roundId,
@@ -789,6 +900,10 @@ try {
   createDatabase('backfill_structural', [migration002, migration004, migration005])
   verifyStructuralBackfillBlocker('backfill_structural')
 
+  createDatabase('backfill_prerequisites', [migration002, migration004, migration005])
+  verifyExactPrerequisiteBlockers('backfill_prerequisites')
+  verifySummaryPrecedenceBlocker('backfill_prerequisites')
+
   createDatabase('distance_evidence', [migration004, migration005])
   verifyDistanceEvidenceBackfill('distance_evidence')
 
@@ -813,6 +928,8 @@ try {
   process.stdout.write('✓ duplicate hole keys block as ambiguous before child changes\n')
   process.stdout.write('✓ payload/child key mismatch blocks before child changes\n')
   process.stdout.write('✓ 002 function, 004 ACL, and 005 trigger definitions remain byte-stable\n')
+  process.stdout.write('✓ wrong same-name FK/index/function and tombstone trigger are blocked\n')
+  process.stdout.write('✓ TASK-052 summary trigger/function precedence is fail-closed\n')
   process.stdout.write('✓ 16/18 field distances and 36 aggregate distances recover without filling nulls\n')
   process.stdout.write('✓ derived-table distance analytics no longer omit valid payload distances\n')
 } catch (error) {
