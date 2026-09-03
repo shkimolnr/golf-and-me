@@ -118,6 +118,43 @@ rollback/reapply도 로컬에서 통과했으며 Preview에는 재실행하거�
 적용 전후 원문과 metadata는 Git 밖 mode 600 파일로 보관했고 UUID 형식 값·이메일이 없음을
 확인했습니다. Production, main, 배포, TASK-052는 변경하지 않았습니다.
 
+### Production 대상 판정과 READ ONLY preflight
+
+컨트롤타워 승인에 따라 2026-09-03T09:07:30+09:00에 Production 대상 식별과 002
+preflight만 읽기 전용으로 수행했습니다.
+
+대상 판정 근거는 다음 세 가지가 모두 일치했습니다.
+
+- Vercel Production 배포 bundle의 Supabase ref: 끝 4자리 `ocwt`, SHA-256
+  `fe851e3e0b8987ca0a05f50eb66b29ee31bb678d758c78f699ad6f9cc8554b5e`
+- Supabase `Golf&Me Project` 카드의 ref: 위 값과 일치
+- `Golf&Me Preview` ref: 끝 4자리 `cywe`, SHA-256
+  `1b9603361a33eadb4200ddfbc31bbfb952922b70ad1439a12fffdbcdbb0ed986`
+  로 Production과 다름
+
+`Golf&Me Project`의 기존 운영 객체도 8392ca1 운영 증거와 일치했습니다.
+
+- diagnostics table 존재, 관련 함수 2개 존재
+- 001의 authenticated 필수 권한 누락 `0`, anon CRUD `0`
+- 004의 runtime 위험 권한 `0`
+- 005 tombstone table·SECURITY DEFINER 함수 2개·trigger 2개·본인 조회 policy 1개 존재
+
+Production 002 preflight 결과:
+
+- 기준 commit: `7300799f1d11cdbfab2899ecfd805ae1db0efa92`
+- query SHA-256: `d981a8b7498c2b616d07dad9f0bf73118e11c03754c40196442bc9b984e9215c`
+- result SHA-256: `e1d7fd1deaef60f389646bc95b1b43356baa7d2ef0f0b9171c46c0f5b23f4382`
+- `gateStatus`: `READY`
+- blocker 7종: 모두 `0`
+- advisory: `0`
+- target unique index 3개와 composite FK 3개: 모두 `absent_expected`
+- 함수·trigger hash와 보안 속성: Preview preflight와 일치
+- parent orphan·owner mismatch 6종: 모두 `0`
+
+Production 결과 원문은 Preview preflight 원문과 동일해 SHA-256도 일치했습니다. 원문과
+metadata는 Git 밖 mode 600 파일로 보관했고 UUID 형식 값·이메일이 없음을 확인했습니다.
+Production에는 migration, DDL, DML, 권한 변경, rollback을 수행하지 않았습니다.
+
 ## rollback 한계
 
 - rollback은 002가 만든 composite FK 3개와 unique index 3개를 제거하고, child DML을
@@ -132,6 +169,6 @@ rollback/reapply도 로컬에서 통과했으며 Preview에는 재실행하거�
 
 ## 다음 승인 gate
 
-컨트롤타워는 위 Preview 적용 결과와 post-check를 교차검토해야 합니다. Production 적용과
-TASK-052 착수는 각각 별도 승인 전 진행하지 않습니다. push, main 통합, 배포도 이 문서의
-범위가 아닙니다.
+컨트롤타워는 Preview 적용 결과와 Production READ ONLY preflight를 교차검토해야 합니다.
+Production 002 실제 적용과 TASK-052 착수는 각각 별도 승인 전 진행하지 않습니다. push,
+main 통합, 배포도 이 문서의 범위가 아닙니다.
