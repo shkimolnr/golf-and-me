@@ -1,4 +1,4 @@
--- Preview schema/data preflight for migration 202609010003.
+-- Preview schema/data preflight for migration 202609030002.
 -- Returns one catalog-only JSON value plus aggregate data counts.
 -- It never returns application row values and never changes the database.
 
@@ -654,7 +654,7 @@ gate_counts as (
 )
 select jsonb_build_object(
   'formatVersion', 1,
-  'targetMigration', '202609010003_round_summary_sync.sql',
+  'targetMigration', '202609030002_round_summary_sync.sql',
   'serverVersionNum', current_setting('server_version_num'),
   'gateStatus', case when
     column_blocker_count = 0

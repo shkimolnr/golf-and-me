@@ -1,3 +1,4 @@
+-- Rollback for TASK-052 migration 202609030002.
 begin;
 
 drop trigger if exists rounds_sync_summary on public.rounds;

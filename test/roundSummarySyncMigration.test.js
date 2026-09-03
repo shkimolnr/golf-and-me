@@ -3,15 +3,15 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 
 const migration = await readFile(
-  new URL('../supabase/migrations/202609010003_round_summary_sync.sql', import.meta.url),
+  new URL('../supabase/migrations/202609030002_round_summary_sync.sql', import.meta.url),
   'utf8',
 )
 const rollback = await readFile(
-  new URL('../supabase/rollbacks/202609010003_round_summary_sync_rollback.sql', import.meta.url),
+  new URL('../supabase/rollbacks/202609030002_round_summary_sync_rollback.sql', import.meta.url),
   'utf8',
 )
 const verification = await readFile(
-  new URL('../supabase/verification/202609010003_round_summary_sync_checks.sql', import.meta.url),
+  new URL('../supabase/verification/202609030002_round_summary_sync_checks.sql', import.meta.url),
   'utf8',
 )
 

@@ -1,6 +1,6 @@
 # Migration 003 Preview 적용 전 gate
 
-대상: `202609010003_round_summary_sync.sql`
+대상: `202609030002_round_summary_sync.sql`
 
 상태: Preview 변경·003 적용 전용 준비 문서. Production 적용 근거로 사용하지 않습니다.
 
@@ -40,7 +40,7 @@ trigger는 중복 실행 위험 advisory입니다.
 
 ## 읽기 전용 판정 SQL
 
-`202609010003_round_summary_sync_preflight.sql`은 `BEGIN TRANSACTION READ ONLY` 안에서 한 개의
+`202609030002_round_summary_sync_preflight.sql`은 `BEGIN TRANSACTION READ ONLY` 안에서 한 개의
 JSON만 반환합니다. catalog metadata와 집계 건수만 포함하며 UUID, 사용자·코스·홀·샷 값,
 payload 원문, summary 원문을 반환하지 않습니다.
 

@@ -1,3 +1,4 @@
+-- TASK-052, issued after the 202609030001 child-cache backfill.
 begin;
 
 create or replace function public.calculate_round_stats_from_payload(p_payload jsonb)

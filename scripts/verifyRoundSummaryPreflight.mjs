@@ -20,7 +20,7 @@ const baselineMigrations = [
   '202609010004_runtime_table_least_privilege.sql',
 ]
 const migration002 = '202609010002_derived_data_integrity.sql'
-const migration003 = '202609010003_round_summary_sync.sql'
+const migration003 = '202609030002_round_summary_sync.sql'
 const expectedHashes = {
   syncChildren002: '055b059c2c323c69234ba1ac2f526c95',
   calculateSummary003: 'f605526003886eb6d5c6961e783ba48a',
@@ -30,7 +30,7 @@ const preflightPath = join(
   repositoryRoot,
   'supabase',
   'verification',
-  '202609010003_round_summary_sync_preflight.sql',
+  '202609030002_round_summary_sync_preflight.sql',
 )
 let containerStarted = false
 

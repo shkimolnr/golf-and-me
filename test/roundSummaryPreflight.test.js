@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 
 const [preflight, integrationScript, checklist, packageJson] = await Promise.all([
-  readFile(new URL('../supabase/verification/202609010003_round_summary_sync_preflight.sql', import.meta.url), 'utf8'),
+  readFile(new URL('../supabase/verification/202609030002_round_summary_sync_preflight.sql', import.meta.url), 'utf8'),
   readFile(new URL('../scripts/verifyRoundSummaryPreflight.mjs', import.meta.url), 'utf8'),
   readFile(new URL('../supabase/audits/20260901_migration_003_preflight.md', import.meta.url), 'utf8'),
   readFile(new URL('../package.json', import.meta.url), 'utf8'),

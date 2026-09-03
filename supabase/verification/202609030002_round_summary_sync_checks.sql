@@ -1,3 +1,4 @@
+-- Verification for TASK-052 migration 202609030002.
 -- Run before applying the migration. A non-zero result requires payload review;
 -- do not rewrite or delete the affected rows automatically.
 select count(*) as invalid_holes_container_count
