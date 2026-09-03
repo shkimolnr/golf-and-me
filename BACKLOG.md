@@ -102,7 +102,7 @@
 | TASK-049 | P0 | 다중 기기 라운드 삭제 동기화 | 완료 | 서버 tombstone·삭제 우선 병합·오프라인 삭제 큐를 DB와 클라이언트에 구현. Preview PC↔모바일 삭제·새로고침·오프라인 재시작에서 재생성되지 않음을 확인하고 Production 권한 migration 001·004, tombstone 005와 client `8392ca1` 적용·스모크 검증 완료 |
 | TASK-050 | P1 | 모바일 온보딩 UI 안정화 | 대기 | 실제 iPhone Safari에서 1~3단계 정렬·폰트·스크롤·하단 버튼 safe-area를 점검하고, 키보드 열림·닫힘 뒤 확대나 위치 깨짐 없이 온보딩 기능과 완료 조건을 유지 |
 | TASK-051 | P0 | 파생 데이터 무결성 migration 002 | 완료 | Preview·Production에 migration 002와 재실행 가능한 child cache backfill을 적용. Production 3라운드·54홀의 파생값을 payload 기준으로 복구하고 원본 `payload`·`updated_at` 및 라운드·홀·샷 수를 보존. 두 환경의 사후검증 `PASS`, 불일치·고아 데이터·권한 위반 0과 로컬 PostgreSQL 17.6 회귀검증 확인 |
-| TASK-052 | P0 | 라운드 요약 동기화 migration 003 | 대기 | `TASK-051` 완료 뒤 Preview preflight와 summary parity 검증을 통과하고, payload 기준 서버 요약 재계산·backfill을 원본 손실 없이 적용. 롤백 한계와 Production 별도 승인까지 확인 |
+| TASK-052 | P0 | 라운드 요약 동기화 migration 003 | 진행 중 | migration을 `202609030002`로 재발행하고 JS↔SQL parity·전체 DB 회귀시험과 Preview 적용·사후검증 완료. Preview blocker·cache mismatch·backfill 대상 0. Production READ ONLY preflight와 별도 승인·적용·사후검증이 남음 |
 | TASK-053 | P1 | 첫 화면 조회·누적 통계 장기 확장성 마무리 | 대기 | 완료 라운드 목록을 최근분부터 페이지 단위로 조회하고 홈 누적 통계를 작은 서버 요약 또는 검증된 캐시로 제공. 작성 중 복원·오프라인·다중 기기 병합을 유지하며 0·25·100·250개 부하와 모바일 네트워크 검증 통과 |
 | TASK-054 | P1 | 필드 기록 입력 모델 정책 확정 | 대기 | 퍼팅 수·발걸음·거리의 선택/완료 조건, 가까운 퍼팅 정밀도, 샷 결과와 다음 공 위치의 의미를 현장 입력 속도·기존 통계·데이터 호환 관점에서 비교하고 사용자 승인 뒤 구현 범위 확정 |
 | TASK-055 | P1 | 기준 야디지와 필드 거리 데이터 모델 | 대기 | 골프장 기준 거리와 당일 현장 홀거리, 설정 비거리와 실제 샷 거리의 관계·출처·단위·통계 표본 정책을 결정. 기존 원본 보존과 입력 부담을 검토하고 UI·DB 변경은 별도 승인 후 진행 |

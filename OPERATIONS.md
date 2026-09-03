@@ -28,6 +28,13 @@
 - 2026-09-03 읽기 전용 재감사에서 Preview는 라운드 0·tombstone 3, Production은 라운드 4·홀 72·샷 68·tombstone 0이었고, 두 환경 모두 002 사후검증 `PASS`, 데이터 불일치·고아 데이터·권한 위반 0이었습니다.
 - migration 002 SHA-256은 `65e27a53f2eade4da9e69f127b46c1f70e6a94bb9ad26e538bb01656427d80d6`, backfill SHA-256은 `edbdb1b5bfa4ac15cff6afad869062267d68332df4d8952bc71b4fde9a55f2ed`입니다. 적용 완료된 운영 DB에는 두 migration을 다시 실행하지 않습니다.
 
+### TASK-052 라운드 요약 동기화 적용 기록
+
+- migration 003은 TASK-051 backfill 다음 순서를 보장하도록 `202609030002_round_summary_sync.sql`로 재발행했습니다.
+- 2026-09-03 Preview에서 적용 전 READ ONLY gate `READY`·blocker 0·backfill 대상 0을 확인하고 사용자 승인 후 단일 transaction으로 적용했습니다.
+- 적용 후 함수 2개와 BEFORE trigger 1개가 승인 hash와 일치하고, payload 검증 위반·summary cache mismatch·002 선행 객체 회귀가 모두 0임을 확인했습니다.
+- Production에는 아직 적용하지 않았습니다. READ ONLY preflight와 별도 사용자 승인이 선행되어야 합니다.
+
 ### Beta 테스트 계정 신청 연결
 
 1. 신청을 받을 비공개 Slack 채널에 Incoming Webhook을 생성합니다.
