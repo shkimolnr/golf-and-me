@@ -2,10 +2,11 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 
-const [migration, rollback, preflight, integration, design, assessment] = await Promise.all([
+const [migration, rollback, preflight, state, integration, design, assessment] = await Promise.all([
   readFile(new URL('../supabase/migrations/202609030001_round_child_integrity_backfill.sql', import.meta.url), 'utf8'),
   readFile(new URL('../supabase/rollbacks/202609030001_round_child_integrity_backfill_rollback.sql', import.meta.url), 'utf8'),
   readFile(new URL('../supabase/verification/202609030001_round_child_integrity_backfill_preflight.sql', import.meta.url), 'utf8'),
+  readFile(new URL('../supabase/verification/202609030001_round_child_integrity_backfill_state.sql', import.meta.url), 'utf8'),
   readFile(new URL('../scripts/verifyDerivedIntegrityMigration.mjs', import.meta.url), 'utf8'),
   readFile(new URL('../supabase/audits/20260903_task_051_child_backfill_design.md', import.meta.url), 'utf8'),
   readFile(new URL('../supabase/audits/20260903_task_051_candidate_assessment.md', import.meta.url), 'utf8'),
@@ -78,6 +79,16 @@ test('backfill preflight는 READ ONLY 집계와 대상 영향량만 반환한다
   assert.match(preflight, /catalogChecks/)
 })
 
+test('backfill state 검증은 행 값 없이 count와 one-way fingerprint만 반환한다', () => {
+  const executable = executableSql(state)
+  assert.match(executable, /begin transaction read only/i)
+  assert.doesNotMatch(executable, /\b(insert|update|delete|create|alter|drop|grant|revoke|truncate|copy)\b/i)
+  assert.match(state, /dataFingerprints/)
+  assert.match(state, /runtime004RiskyPrivilegeCount/)
+  assert.match(state, /fieldDistanceEvidence/)
+  assert.match(state, /fullDistanceEvidence/)
+})
+
 test('PG 격리시험은 54행·부분 대상·invalid blocker·idempotency를 재현한다', () => {
   assert.match(integration, /assertBackfillReady\(database,\s*3,\s*54/)
   assert.match(integration, /current-control/)
@@ -92,6 +103,7 @@ test('PG 격리시험은 54행·부분 대상·invalid blocker·idempotency를 �
   assert.match(integration, /verifyDistanceEvidenceBackfill/)
   assert.match(integration, /verifyPostconditionAtomicRollback/)
   assert.match(integration, /round_child_backfill_postcondition_failed/)
+  assert.match(integration, /backfillStateResult/)
   assert.match(integration, /assert\.equal\(analyticsDistanceCount, 52\)/)
 })
 

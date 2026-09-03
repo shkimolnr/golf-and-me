@@ -39,6 +39,12 @@ const backfillRollbackPath = join(
   'rollbacks',
   '202609030001_round_child_integrity_backfill_rollback.sql',
 )
+const backfillStatePath = join(
+  repositoryRoot,
+  'supabase',
+  'verification',
+  '202609030001_round_child_integrity_backfill_state.sql',
+)
 const baseMigrations = [
   '202608300001_initial_golf_schema.sql',
   '202608300002_club_bag_sync.sql',
@@ -182,6 +188,10 @@ function assertReadyPreflight(result) {
 
 function backfillPreflightResult(database) {
   return JSON.parse(runSql(database, readFileSync(backfillPreflightPath, 'utf8')).trim())
+}
+
+function backfillStateResult(database) {
+  return JSON.parse(runSql(database, readFileSync(backfillStatePath, 'utf8')).trim())
 }
 
 function assertBackfillReady(database, expectedRounds, expectedHoles, expectedFields = {}) {
@@ -973,6 +983,33 @@ try {
 
   createDatabase('distance_evidence', [migration004, migration005])
   verifyDistanceEvidenceBackfill('distance_evidence')
+  const distanceState = backfillStateResult('distance_evidence')
+  assert.deepEqual(distanceState.fieldDistanceEvidence, {
+    candidate_round_count: 1,
+    child_null_distance_count: 2,
+    child_valid_distance_count: 16,
+    distance_mismatch_count: 0,
+    payload_hole_count: 18,
+    payload_missing_distance_count: 2,
+    payload_valid_distance_count: 16,
+  })
+  assert.deepEqual(distanceState.fullDistanceEvidence, {
+    candidate_round_count: 2,
+    child_valid_distance_count: 36,
+    distance_mismatch_count: 0,
+    payload_valid_distance_count: 36,
+  })
+  assert.equal(distanceState.runtime004RiskyPrivilegeCount, 0)
+  assert.deepEqual(distanceState.functionFingerprints, {
+    record_round_tombstone_before_delete: 'eb89388ca6e924490945b3b3cfea423f',
+    reject_tombstoned_round_write: '0c86baea5e633a1d5d5982bb212cbb20',
+    sync_round_children_from_payload: '055b059c2c323c69234ba1ac2f526c95',
+  })
+  assert.deepEqual(distanceState.triggerFingerprints, {
+    rounds_00_record_tombstone_before_delete: '8f146f8e85b30643fd57dfb0ad23fbf1',
+    rounds_00_reject_tombstoned_write: '1b8785b648e166ce876e4a978adf3a19',
+    rounds_sync_children: 'cd483d16a0b456f74a4c58ded518b5ad',
+  })
 
   runSql('fresh_order', migrationSql(backfillMigration))
   assertBackfillReady('fresh_order', 0, 0)
@@ -1000,6 +1037,7 @@ try {
   process.stdout.write('✓ TASK-052 summary trigger/function precedence is fail-closed\n')
   process.stdout.write('✓ 16/18 field distances and 36 aggregate distances recover without filling nulls\n')
   process.stdout.write('✓ derived-table distance analytics no longer omit valid payload distances\n')
+  process.stdout.write('✓ aggregate state query verifies source/child fingerprints and field evidence\n')
 } catch (error) {
   const detail = error?.stderr?.toString().trim() || error?.message || String(error)
   process.stderr.write(`migration 002 격리 통합검증 실패: ${detail}\n`)
