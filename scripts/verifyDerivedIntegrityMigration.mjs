@@ -26,6 +26,19 @@ const postApplyPath = join(
   'verification',
   '202609010002_derived_data_integrity_post_apply.sql',
 )
+const backfillMigration = '202609030001_round_child_integrity_backfill.sql'
+const backfillPreflightPath = join(
+  repositoryRoot,
+  'supabase',
+  'verification',
+  '202609030001_round_child_integrity_backfill_preflight.sql',
+)
+const backfillRollbackPath = join(
+  repositoryRoot,
+  'supabase',
+  'rollbacks',
+  '202609030001_round_child_integrity_backfill_rollback.sql',
+)
 const baseMigrations = [
   '202608300001_initial_golf_schema.sql',
   '202608300002_club_bag_sync.sql',
@@ -118,6 +131,37 @@ function count(database, relationExpression) {
   return Number(scalar(database, `select count(*) from ${relationExpression};`))
 }
 
+function integrityBoundaryFingerprint(database) {
+  return scalar(database, `
+    select md5(concat_ws(E'\\n',
+      pg_catalog.pg_get_functiondef(
+        'public.sync_round_children_from_payload()'::regprocedure
+      ),
+      (select string_agg(
+        role_name || ':' || table_name || ':' || privilege_name || ':'
+          || pg_catalog.has_table_privilege(
+            role_name, pg_catalog.format('public.%I', table_name), privilege_name
+          )::text,
+        '|' order by role_name, table_name, privilege_name
+      ) from (values ('anon'), ('authenticated'), ('service_role')) as roles(role_name)
+        cross join (values
+          ('profiles'), ('rounds'), ('round_holes'), ('round_shots'),
+          ('user_clubs'), ('club_distance_history'), ('app_diagnostics'),
+          ('round_tombstones')
+        ) as tables(table_name)
+        cross join (values
+          ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'),
+          ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')
+        ) as privileges(privilege_name)),
+      (select string_agg(pg_catalog.pg_get_triggerdef(triggers.oid, false), '|'
+        order by triggers.tgname)
+       from pg_catalog.pg_trigger as triggers
+       where triggers.tgrelid = 'public.rounds'::regclass
+         and not triggers.tgisinternal)
+    ));
+  `)
+}
+
 function runPreflight(database) {
   return JSON.parse(runSql(database, readFileSync(preflightPath, 'utf8')).trim())
 }
@@ -134,6 +178,26 @@ function assertReadyPreflight(result) {
     roundsSyncTrigger: 0,
   })
   assert.deepEqual(result.advisoryCounts, { equivalentObjectsWithOtherNames: 0 })
+}
+
+function backfillPreflightResult(database) {
+  return JSON.parse(runSql(database, readFileSync(backfillPreflightPath, 'utf8')).trim())
+}
+
+function assertBackfillReady(database, expectedRounds, expectedHoles, expectedFields = {}) {
+  const result = backfillPreflightResult(database)
+  assert.equal(result.gateStatus, 'READY', JSON.stringify(result, null, 2))
+  assert.deepEqual(result.blockerCounts, {
+    integrity: 0,
+    invalidPayload: 0,
+    prerequisites: 0,
+  })
+  assert.equal(result.targetCounts.rounds, expectedRounds)
+  assert.equal(result.targetCounts.holes, expectedHoles)
+  for (const [field, expected] of Object.entries(expectedFields)) {
+    assert.equal(result.targetCounts[field], expected)
+  }
+  return result
 }
 
 function postApplyResult(database) {
@@ -403,6 +467,295 @@ function verifyRollbackAndReapply(database) {
   assertIntegrityObjects(database)
 }
 
+function buildEighteenHolePayload(roundId, distanceOffset = 0) {
+  return {
+    id: roundId,
+    holes: Array.from({ length: 18 }, (_, index) => ({
+      holeNumber: String(index + 1),
+      sourceOfficialHole: index + 1,
+      par: String(index % 4 === 0 ? 5 : 4),
+      distance: String(300 + distanceOffset + index),
+      score: '5',
+      swingCount: '3',
+      putts: '2',
+      shots: [{
+        sequence: '1',
+        club: 'D',
+        clubId: `club-${index + 1}`,
+        clubSnapshot: { label: 'D' },
+        remainingDistance: String(120 + index),
+      }],
+    })),
+  }
+}
+
+function insertSyntheticRound(database, roundId, userId, payload, updatedAt) {
+  runSql(database, `
+    insert into public.rounds (
+      id, user_id, course_name, front_course_name, back_course_name,
+      tee, status, payload, updated_at
+    ) values (
+      '${roundId}', '${userId}', 'synthetic', 'front', 'back',
+      '화이트', 'in_progress', $payload$${JSON.stringify(payload)}$payload$::jsonb,
+      '${updatedAt}'::timestamptz
+    );
+  `)
+}
+
+function verifyBackfill(database) {
+  const userId = '30000000-0000-0000-0000-000000000051'
+  runSql(database, `insert into auth.users (id) values ('${userId}');`)
+  for (let index = 0; index < 3; index += 1) {
+    const roundId = `stale-${index + 1}`
+    insertSyntheticRound(
+      database,
+      roundId,
+      userId,
+      buildEighteenHolePayload(roundId, index * 10),
+      `2026-09-03T01:0${index}:00Z`,
+    )
+  }
+
+  assert.equal(count(database, `public.round_holes
+    where round_id like 'stale-%' and (official_hole_number is null or distance is null)`), 54)
+  runSql(database, migrationSql(migration002))
+
+  const currentRoundId = 'current-control'
+  insertSyntheticRound(
+    database,
+    currentRoundId,
+    userId,
+    buildEighteenHolePayload(currentRoundId, 50),
+    '2026-09-03T02:00:00Z',
+  )
+  assertBackfillReady(database, 3, 54, {
+    distanceHoles: 54,
+    distanceRounds: 3,
+    officialHoleNumberHoles: 54,
+    officialHoleNumberRounds: 3,
+  })
+
+  const sourceStateBefore = scalar(database, `
+    select md5(string_agg(id || ':' || payload::text || ':' || updated_at::text, '|' order by id))
+    from public.rounds;
+  `)
+  const controlXminBefore = scalar(database, `
+    select xmin::text from public.round_holes
+    where round_id = '${currentRoundId}' and hole_number = 1;
+  `)
+  const boundaryBefore = integrityBoundaryFingerprint(database)
+
+  runSql(database, migrationSql(backfillMigration))
+  assertBackfillReady(database, 0, 0)
+  assert.equal(count(database, `public.round_holes where round_id like 'stale-%'`), 54)
+  assert.equal(count(database, `public.round_shots where round_id like 'stale-%'`), 54)
+  assert.equal(scalar(database, `
+    select md5(string_agg(id || ':' || payload::text || ':' || updated_at::text, '|' order by id))
+    from public.rounds;
+  `), sourceStateBefore)
+  assert.equal(scalar(database, `
+    select xmin::text from public.round_holes
+    where round_id = '${currentRoundId}' and hole_number = 1;
+  `), controlXminBefore)
+  assert.equal(integrityBoundaryFingerprint(database), boundaryBefore)
+
+  const childStateAfterFirstRun = scalar(database, `
+    select md5(string_agg(round_id || ':' || hole_number::text || ':' || payload::text,
+      '|' order by round_id, hole_number)) from public.round_holes;
+  `)
+  runSql(database, migrationSql(backfillMigration))
+  assertBackfillReady(database, 0, 0)
+  assert.equal(scalar(database, `
+    select md5(string_agg(round_id || ':' || hole_number::text || ':' || payload::text,
+      '|' order by round_id, hole_number)) from public.round_holes;
+  `), childStateAfterFirstRun)
+
+  runSql(database, readFileSync(backfillRollbackPath, 'utf8'))
+  assertBackfillReady(database, 0, 0)
+  assert.equal(integrityBoundaryFingerprint(database), boundaryBefore)
+}
+
+function verifyInvalidBackfillBlocker(database) {
+  const userId = '40000000-0000-0000-0000-000000000051'
+  const roundId = 'invalid-source'
+  runSql(database, `
+    insert into auth.users (id) values ('${userId}');
+    alter table public.rounds disable trigger rounds_sync_children;
+  `)
+  insertSyntheticRound(database, roundId, userId, {
+    id: roundId,
+    holes: [{
+      holeNumber: 1,
+      sourceOfficialHole: 1,
+      distance: 'not-a-number',
+      shots: [],
+    }],
+  }, '2026-09-03T03:00:00Z')
+  runSql(database, 'alter table public.rounds enable trigger rounds_sync_children;')
+
+  const beforeCounts = scalar(database, `
+    select (select count(*) from public.rounds)::text || ','
+      || (select count(*) from public.round_holes)::text || ','
+      || (select count(*) from public.round_shots)::text;
+  `)
+  const preflight = backfillPreflightResult(database)
+  assert.equal(preflight.gateStatus, 'BLOCKED')
+  assert.equal(preflight.blockerCounts.invalidPayload, 1)
+  assertSqlFails(
+    database,
+    migrationSql(backfillMigration),
+    /round_child_backfill_invalid_payload/,
+  )
+  assert.equal(scalar(database, `
+    select (select count(*) from public.rounds)::text || ','
+      || (select count(*) from public.round_holes)::text || ','
+      || (select count(*) from public.round_shots)::text;
+  `), beforeCounts)
+}
+
+function verifyAmbiguousBackfillBlocker(database) {
+  const userId = '41000000-0000-0000-0000-000000000051'
+  const roundId = 'ambiguous-source'
+  runSql(database, `
+    insert into auth.users (id) values ('${userId}');
+    alter table public.rounds disable trigger rounds_sync_children;
+  `)
+  insertSyntheticRound(database, roundId, userId, {
+    id: roundId,
+    holes: [
+      { holeNumber: 1, sourceOfficialHole: 1, distance: '300', shots: [] },
+      { holeNumber: 1, sourceOfficialHole: 2, distance: '310', shots: [] },
+    ],
+  }, '2026-09-03T03:01:00Z')
+  runSql(database, 'alter table public.rounds enable trigger rounds_sync_children;')
+
+  const preflight = backfillPreflightResult(database)
+  assert.equal(preflight.gateStatus, 'BLOCKED')
+  assert.equal(preflight.invalidPayloadCounts.duplicate_hole_key, 1)
+  assertSqlFails(
+    database,
+    migrationSql(backfillMigration),
+    /round_child_backfill_ambiguous_payload/,
+  )
+  assert.equal(count(database, `public.round_holes where round_id = '${roundId}'`), 0)
+  assert.equal(count(database, `public.round_shots where round_id = '${roundId}'`), 0)
+}
+
+function verifyStructuralBackfillBlocker(database) {
+  const userId = '42000000-0000-0000-0000-000000000051'
+  const roundId = 'structural-source'
+  runSql(database, `
+    insert into auth.users (id) values ('${userId}');
+    alter table public.rounds disable trigger rounds_sync_children;
+  `)
+  insertSyntheticRound(database, roundId, userId, {
+    id: roundId,
+    holes: [{ holeNumber: 1, sourceOfficialHole: 1, distance: '300', shots: [] }],
+  }, '2026-09-03T03:02:00Z')
+  runSql(database, `
+    alter table public.rounds enable trigger rounds_sync_children;
+    insert into public.round_holes (
+      round_id, user_id, hole_number, official_hole_number, distance, payload, updated_at
+    ) values (
+      '${roundId}', '${userId}', 2, 1, 300,
+      '{"holeNumber":2,"sourceOfficialHole":1,"distance":"300","shots":[]}'::jsonb,
+      '2026-09-03T03:02:00Z'
+    );
+  `)
+
+  const preflight = backfillPreflightResult(database)
+  assert.equal(preflight.gateStatus, 'BLOCKED')
+  assert.equal(preflight.integrityCounts.round_hole_key_mismatch, 2)
+  assertSqlFails(
+    database,
+    migrationSql(backfillMigration),
+    /round_child_backfill_integrity_blocker/,
+  )
+  assert.equal(count(database, `public.round_holes where round_id = '${roundId}'`), 1)
+}
+
+function buildDistanceEvidencePayload(roundId, distanceCount) {
+  return {
+    id: roundId,
+    holes: Array.from({ length: 18 }, (_, index) => ({
+      holeNumber: String(index + 1),
+      sourceOfficialHole: null,
+      par: '4',
+      distance: index < distanceCount ? String(321.5 + index) : '',
+      score: '5',
+      swingCount: '3',
+      putts: '2',
+      shots: [],
+    })),
+  }
+}
+
+function verifyDistanceEvidenceBackfill(database) {
+  const userId = '50000000-0000-0000-0000-000000000051'
+  runSql(database, `insert into auth.users (id) values ('${userId}');`)
+  insertSyntheticRound(
+    database,
+    'field-round',
+    userId,
+    buildDistanceEvidencePayload('field-round', 16),
+    '2026-09-03T04:00:00Z',
+  )
+  insertSyntheticRound(
+    database,
+    'aggregate-round-1',
+    userId,
+    buildDistanceEvidencePayload('aggregate-round-1', 18),
+    '2026-09-03T04:01:00Z',
+  )
+  insertSyntheticRound(
+    database,
+    'aggregate-round-2',
+    userId,
+    buildDistanceEvidencePayload('aggregate-round-2', 18),
+    '2026-09-03T04:02:00Z',
+  )
+  assert.equal(count(database, `public.round_holes where round_id in (
+    'field-round', 'aggregate-round-1', 'aggregate-round-2'
+  ) and distance is not null`), 0)
+
+  runSql(database, migrationSql(migration002))
+  assertBackfillReady(database, 3, 52, {
+    distanceHoles: 52,
+    distanceRounds: 3,
+    officialHoleNumberHoles: 0,
+    officialHoleNumberRounds: 0,
+  })
+  const sourceStateBefore = scalar(database, `
+    select md5(string_agg(id || ':' || payload::text || ':' || updated_at::text,
+      '|' order by id))
+    from public.rounds;
+  `)
+  runSql(database, migrationSql(backfillMigration))
+  assertBackfillReady(database, 0, 0)
+
+  assert.equal(count(database, `public.round_holes
+    where round_id = 'field-round' and distance is not null`), 16)
+  assert.equal(count(database, `public.round_holes
+    where round_id = 'field-round' and distance is null`), 2)
+  assert.equal(count(database, `public.round_holes
+    where round_id in ('aggregate-round-1', 'aggregate-round-2')
+      and distance is not null`), 36)
+  assert.equal(count(database, `public.round_holes
+    where round_id in ('field-round', 'aggregate-round-1', 'aggregate-round-2')
+      and distance is distinct from nullif(payload->>'distance', '')::numeric`), 0)
+  assert.equal(scalar(database, `
+    select md5(string_agg(id || ':' || payload::text || ':' || updated_at::text,
+      '|' order by id))
+    from public.rounds;
+  `), sourceStateBefore)
+
+  const analyticsDistanceCount = Number(scalar(database, `
+    select count(distance) from public.round_holes
+    where round_id in ('field-round', 'aggregate-round-1', 'aggregate-round-2');
+  `))
+  assert.equal(analyticsDistanceCount, 52)
+}
+
 try {
   docker(['image', 'inspect', postgresImage])
   docker([
@@ -423,6 +776,24 @@ try {
   assertReadyPreflight(runPreflight('production_order'))
   runSql('production_order', migrationSql(migration002))
   assertIntegrityObjects('production_order')
+
+  createDatabase('backfill_existing', [migration004, migration005])
+  verifyBackfill('backfill_existing')
+
+  createDatabase('backfill_invalid', [migration002, migration004, migration005])
+  verifyInvalidBackfillBlocker('backfill_invalid')
+
+  createDatabase('backfill_ambiguous', [migration002, migration004, migration005])
+  verifyAmbiguousBackfillBlocker('backfill_ambiguous')
+
+  createDatabase('backfill_structural', [migration002, migration004, migration005])
+  verifyStructuralBackfillBlocker('backfill_structural')
+
+  createDatabase('distance_evidence', [migration004, migration005])
+  verifyDistanceEvidenceBackfill('distance_evidence')
+
+  runSql('fresh_order', migrationSql(backfillMigration))
+  assertBackfillReady('fresh_order', 0, 0)
   verifyDerivedBehavior('production_order', '52')
   verifyFieldParityNormalization('production_order', '53')
   assertPostApplyPass('production_order')
@@ -436,6 +807,14 @@ try {
   process.stdout.write('✓ payload trigger restores official hole, distance, swing, and shot snapshots\n')
   process.stdout.write('✓ field parity normalizes number/string/null/empty and flags real/invalid mismatches\n')
   process.stdout.write('✓ rollback limitations and 002 reapply behavior are verified\n')
+  process.stdout.write('✓ 54 stale holes are selectively backfilled without changing round sources\n')
+  process.stdout.write('✓ backfill second run changes 0 targets and rollback does not re-corrupt cache\n')
+  process.stdout.write('✓ invalid source payload blocks atomically before child changes\n')
+  process.stdout.write('✓ duplicate hole keys block as ambiguous before child changes\n')
+  process.stdout.write('✓ payload/child key mismatch blocks before child changes\n')
+  process.stdout.write('✓ 002 function, 004 ACL, and 005 trigger definitions remain byte-stable\n')
+  process.stdout.write('✓ 16/18 field distances and 36 aggregate distances recover without filling nulls\n')
+  process.stdout.write('✓ derived-table distance analytics no longer omit valid payload distances\n')
 } catch (error) {
   const detail = error?.stderr?.toString().trim() || error?.message || String(error)
   process.stderr.write(`migration 002 격리 통합검증 실패: ${detail}\n`)
