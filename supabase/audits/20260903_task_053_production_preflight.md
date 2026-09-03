@@ -6,7 +6,10 @@
 
 대상 migration: `202609030003_home_round_state.sql`
 
-Migration SHA-256: `f70264d8358fe4a5fca1a487354414ed79b4a7e4128acd980dec50ff03c3a832`
+사전검증 당시 migration SHA-256: `f70264d8358fe4a5fca1a487354414ed79b4a7e4128acd980dec50ff03c3a832`
+
+최종 canonical SHA-256: `1c19dd77d0f1a966f37832e00ef7402f014fcca96311063814d009d6b0a17425`
+(Production 적용 직후 확인된 `service_role` 명시 EXECUTE를 회수하는 보강 포함)
 
 Preflight SHA-256: `2a78b4cdc78c0fa2cb31fba8cb821bd8248dbeb22e4ff44006ee317cdb164d78`
 

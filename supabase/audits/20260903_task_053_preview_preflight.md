@@ -6,7 +6,10 @@
 
 대상 파일: `202609030003_home_round_state.sql`
 
-SHA-256: `f70264d8358fe4a5fca1a487354414ed79b4a7e4128acd980dec50ff03c3a832`
+사전검증 당시 SHA-256: `f70264d8358fe4a5fca1a487354414ed79b4a7e4128acd980dec50ff03c3a832`
+
+최종 canonical SHA-256: `1c19dd77d0f1a966f37832e00ef7402f014fcca96311063814d009d6b0a17425`
+(Production 사후검증에서 발견한 `service_role` 명시 권한도 회수하도록 보강)
 
 ## TASK-052 기준선 재확인
 

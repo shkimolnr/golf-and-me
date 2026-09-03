@@ -141,7 +141,7 @@ as $$
   cross join version_vector;
 $$;
 
-revoke all on function public.get_home_round_state(integer, jsonb) from public, anon;
+revoke all on function public.get_home_round_state(integer, jsonb) from public, anon, service_role;
 grant execute on function public.get_home_round_state(integer, jsonb) to authenticated;
 
 commit;

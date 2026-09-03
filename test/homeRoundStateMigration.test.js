@@ -21,7 +21,7 @@ test('첫 화면 함수는 최근 완료 기록·전체 누적 통계·버전 �
 test('첫 화면 함수는 호출 사용자의 행만 읽고 공개 실행을 차단한다', () => {
   assert.match(migration, /where user_id = auth\.uid\(\)/)
   assert.match(migration, /security invoker/)
-  assert.match(migration, /revoke all on function public\.get_home_round_state\(integer, jsonb\) from public, anon/)
+  assert.match(migration, /revoke all on function public\.get_home_round_state\(integer, jsonb\) from public, anon, service_role/)
   assert.match(migration, /grant execute on function public\.get_home_round_state\(integer, jsonb\) to authenticated/)
   assert.doesNotMatch(migration, /to authenticated, service_role/)
 })

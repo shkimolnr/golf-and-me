@@ -6,7 +6,10 @@
 
 대상 migration: `202609030003_home_round_state.sql`
 
-SHA-256: `f70264d8358fe4a5fca1a487354414ed79b4a7e4128acd980dec50ff03c3a832`
+실행 당시 SHA-256: `f70264d8358fe4a5fca1a487354414ed79b4a7e4128acd980dec50ff03c3a832`
+
+최종 canonical SHA-256: `1c19dd77d0f1a966f37832e00ef7402f014fcca96311063814d009d6b0a17425`
+(Preview는 실행 직후부터 `service_role=false`였고, canonical 파일도 이를 명시적으로 강제하도록 보강)
 
 ## 사전 조건
 
