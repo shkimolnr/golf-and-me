@@ -1,6 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { applyKnownCourseTemplate, findKnownCourse, getKnownCourse, segmentNamesForCourse, selectKnownCourse } from '../src/data/courseData.js'
+import {
+  applyKnownCourseTemplate,
+  findKnownCourse,
+  getKnownCourse,
+  searchKnownCourses,
+  segmentNamesForCourse,
+  selectKnownCourse,
+} from '../src/data/courseData.js'
 
 function emptyRound(overrides = {}) {
   return {
@@ -76,4 +83,31 @@ test('기존 TIGER/TIGER 저장 기록도 1–9번과 10–18번으로 호환한
   }))
   assert.equal(templated.holes[0].sourceOfficialHole, 1)
   assert.equal(templated.holes[9].sourceOfficialHole, 10)
+})
+
+test('서원힐스와 서원밸리는 별칭으로 검색되고 공식 코스 구간을 제공한다', () => {
+  assert.equal(findKnownCourse('서원힐스').id, 'seowon-hills')
+  assert.equal(findKnownCourse('서원밸리 컨트리클럽').id, 'seowon-valley')
+  assert.deepEqual(segmentNamesForCourse('seowon-hills'), ['WEST', 'SOUTH', 'EAST'])
+  assert.deepEqual(segmentNamesForCourse('seowon-valley'), ['서원코스', '밸리코스'])
+  assert.deepEqual(searchKnownCourses('서원').map(course => course.id), ['seowon-valley', 'seowon-hills'])
+})
+
+test('서원밸리 코스 선택은 PAR와 티별 공식 거리를 플레이 순서에 연결한다', () => {
+  const templated = applyKnownCourseTemplate(emptyRound({
+    courseId: 'seowon-valley',
+    courseName: '서원밸리CC',
+    frontCourseName: '서원코스',
+    backCourseName: '밸리코스',
+    tee: '레드',
+  }))
+
+  assert.deepEqual(templated.holes.slice(0, 2).map(hole => [hole.sourceOfficialHole, hole.par, hole.distance]), [
+    [1, 4, 260],
+    [2, 5, 412],
+  ])
+  assert.deepEqual(
+    [templated.holes[9].sourceOfficialHole, templated.holes[9].par, templated.holes[9].distance],
+    [1, 4, 275],
+  )
 })

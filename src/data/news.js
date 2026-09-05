@@ -1,5 +1,12 @@
 export const newsItems = [
   {
+    id: '2026-09-05-seowon-course-data',
+    date: '2026-09-05',
+    category: '골프장 정보',
+    title: '서원힐스·서원밸리 홀 정보 추가',
+    body: '서원힐스CC와 서원밸리CC의 코스별 PAR와 티별 거리를 새 라운드에 연결했어요.',
+  },
+  {
     id: '2026-08-31-beta-access',
     date: '2026-08-31',
     category: '새 기능',

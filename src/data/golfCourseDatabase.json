@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-30.1",
+  "version": "2026-09-05.1",
   "defaultUnit": "M",
   "courses": [
     {
@@ -13,7 +13,7 @@
       "sourceUrl": "https://nscc.co.kr/swp/course",
       "sourceUnit": "M",
       "firstCollectedAt": "2026-08-28",
-      "lastVerifiedAt": "2026-08-28",
+      "lastVerifiedAt": "2026-09-03",
       "note": null,
       "segments": [
         {
@@ -25,7 +25,10 @@
               "par": 4,
               "hcp": 3,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 368,
+                  "yd": 402
+                },
                 "blue": {
                   "m": 368,
                   "yd": 402
@@ -34,8 +37,14 @@
                   "m": 343,
                   "yd": 375
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 299,
+                  "yd": 327
+                },
+                "red": {
+                  "m": 299,
+                  "yd": 327
+                }
               }
             },
             {
@@ -43,7 +52,10 @@
               "par": 4,
               "hcp": 5,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 434,
+                  "yd": 475
+                },
                 "blue": {
                   "m": 434,
                   "yd": 475
@@ -52,8 +64,14 @@
                   "m": 385,
                   "yd": 421
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 274,
+                  "yd": 300
+                },
+                "red": {
+                  "m": 274,
+                  "yd": 300
+                }
               }
             },
             {
@@ -61,7 +79,10 @@
               "par": 3,
               "hcp": 11,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 171,
+                  "yd": 187
+                },
                 "blue": {
                   "m": 171,
                   "yd": 187
@@ -70,8 +91,14 @@
                   "m": 161,
                   "yd": 176
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 122,
+                  "yd": 133
+                },
+                "red": {
+                  "m": 122,
+                  "yd": 133
+                }
               }
             },
             {
@@ -79,7 +106,10 @@
               "par": 5,
               "hcp": 17,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 488,
+                  "yd": 534
+                },
                 "blue": {
                   "m": 488,
                   "yd": 534
@@ -88,8 +118,14 @@
                   "m": 473,
                   "yd": 517
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 404,
+                  "yd": 442
+                },
+                "red": {
+                  "m": 404,
+                  "yd": 442
+                }
               }
             },
             {
@@ -97,7 +133,10 @@
               "par": 4,
               "hcp": 9,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 378,
+                  "yd": 413
+                },
                 "blue": {
                   "m": 378,
                   "yd": 413
@@ -106,8 +145,14 @@
                   "m": 351,
                   "yd": 384
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 246,
+                  "yd": 269
+                },
+                "red": {
+                  "m": 246,
+                  "yd": 269
+                }
               }
             },
             {
@@ -115,7 +160,10 @@
               "par": 3,
               "hcp": 7,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 215,
+                  "yd": 235
+                },
                 "blue": {
                   "m": 215,
                   "yd": 235
@@ -124,8 +172,14 @@
                   "m": 195,
                   "yd": 213
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 133,
+                  "yd": 145
+                },
+                "red": {
+                  "m": 133,
+                  "yd": 145
+                }
               }
             },
             {
@@ -133,7 +187,10 @@
               "par": 4,
               "hcp": 1,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 377,
+                  "yd": 412
+                },
                 "blue": {
                   "m": 377,
                   "yd": 412
@@ -142,8 +199,14 @@
                   "m": 357,
                   "yd": 390
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 248,
+                  "yd": 271
+                },
+                "red": {
+                  "m": 248,
+                  "yd": 271
+                }
               }
             },
             {
@@ -151,7 +214,10 @@
               "par": 4,
               "hcp": 15,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 380,
+                  "yd": 416
+                },
                 "blue": {
                   "m": 380,
                   "yd": 416
@@ -160,8 +226,14 @@
                   "m": 363,
                   "yd": 397
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 331,
+                  "yd": 362
+                },
+                "red": {
+                  "m": 331,
+                  "yd": 362
+                }
               }
             },
             {
@@ -169,7 +241,10 @@
               "par": 5,
               "hcp": 13,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 471,
+                  "yd": 515
+                },
                 "blue": {
                   "m": 471,
                   "yd": 515
@@ -178,8 +253,14 @@
                   "m": 450,
                   "yd": 492
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 387,
+                  "yd": 423
+                },
+                "red": {
+                  "m": 387,
+                  "yd": 423
+                }
               }
             }
           ]
@@ -193,7 +274,10 @@
               "par": 4,
               "hcp": 10,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 380,
+                  "yd": 416
+                },
                 "blue": {
                   "m": 380,
                   "yd": 416
@@ -202,8 +286,14 @@
                   "m": 357,
                   "yd": 390
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 338,
+                  "yd": 370
+                },
+                "red": {
+                  "m": 338,
+                  "yd": 370
+                }
               }
             },
             {
@@ -211,17 +301,26 @@
               "par": 3,
               "hcp": 8,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 184,
+                  "yd": 201
+                },
                 "blue": {
-                  "m": 177,
-                  "yd": 194
+                  "m": 184,
+                  "yd": 201
                 },
                 "white": {
                   "m": 164,
                   "yd": 179
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 127,
+                  "yd": 139
+                },
+                "red": {
+                  "m": 127,
+                  "yd": 139
+                }
               }
             },
             {
@@ -229,7 +328,10 @@
               "par": 4,
               "hcp": 14,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 332,
+                  "yd": 363
+                },
                 "blue": {
                   "m": 332,
                   "yd": 363
@@ -238,8 +340,14 @@
                   "m": 320,
                   "yd": 350
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 283,
+                  "yd": 309
+                },
+                "red": {
+                  "m": 283,
+                  "yd": 309
+                }
               }
             },
             {
@@ -247,7 +355,10 @@
               "par": 4,
               "hcp": 6,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 357,
+                  "yd": 390
+                },
                 "blue": {
                   "m": 357,
                   "yd": 390
@@ -256,8 +367,14 @@
                   "m": 329,
                   "yd": 360
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 296,
+                  "yd": 324
+                },
+                "red": {
+                  "m": 296,
+                  "yd": 324
+                }
               }
             },
             {
@@ -265,7 +382,10 @@
               "par": 5,
               "hcp": 16,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 441,
+                  "yd": 482
+                },
                 "blue": {
                   "m": 441,
                   "yd": 482
@@ -274,8 +394,14 @@
                   "m": 415,
                   "yd": 454
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 354,
+                  "yd": 387
+                },
+                "red": {
+                  "m": 354,
+                  "yd": 387
+                }
               }
             },
             {
@@ -283,7 +409,10 @@
               "par": 4,
               "hcp": 12,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 309,
+                  "yd": 338
+                },
                 "blue": {
                   "m": 309,
                   "yd": 338
@@ -292,8 +421,14 @@
                   "m": 284,
                   "yd": 311
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 271,
+                  "yd": 296
+                },
+                "red": {
+                  "m": 271,
+                  "yd": 296
+                }
               }
             },
             {
@@ -301,17 +436,26 @@
               "par": 5,
               "hcp": 18,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 501,
+                  "yd": 548
+                },
                 "blue": {
-                  "m": 510,
-                  "yd": 558
+                  "m": 501,
+                  "yd": 548
                 },
                 "white": {
-                  "m": 456,
-                  "yd": 499
+                  "m": 476,
+                  "yd": 521
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 381,
+                  "yd": 417
+                },
+                "red": {
+                  "m": 381,
+                  "yd": 417
+                }
               }
             },
             {
@@ -319,7 +463,10 @@
               "par": 3,
               "hcp": 4,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 209,
+                  "yd": 229
+                },
                 "blue": {
                   "m": 209,
                   "yd": 229
@@ -328,8 +475,14 @@
                   "m": 186,
                   "yd": 203
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 160,
+                  "yd": 175
+                },
+                "red": {
+                  "m": 160,
+                  "yd": 175
+                }
               }
             },
             {
@@ -337,17 +490,26 @@
               "par": 4,
               "hcp": 2,
               "distances": {
-                "black": null,
+                "black": {
+                  "m": 393,
+                  "yd": 430
+                },
                 "blue": {
-                  "m": 378,
-                  "yd": 413
+                  "m": 393,
+                  "yd": 430
                 },
                 "white": {
-                  "m": 382,
-                  "yd": 418
+                  "m": 332,
+                  "yd": 363
                 },
-                "gold": null,
-                "red": null
+                "gold": {
+                  "m": 246,
+                  "yd": 269
+                },
+                "red": {
+                  "m": 246,
+                  "yd": 269
+                }
               }
             }
           ]
@@ -362,7 +524,7 @@
         "이스트밸리CC",
         "이스트밸리 컨트리클럽"
       ],
-      "sourceUrl": "https://www.eastvalley.co.kr/",
+      "sourceUrl": "https://www.eastvalley.co.kr/pagesite/course/{one|two|three}/holeNN.asp",
       "sourceUnit": "M",
       "firstCollectedAt": "2026-08-28",
       "lastVerifiedAt": "2026-08-28",
@@ -3658,6 +3820,1833 @@
                   "yd": 318
                 }
               }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "seowon-valley",
+      "name": "서원밸리CC",
+      "aliases": [
+        "서원밸리",
+        "서원밸리CC",
+        "서원밸리 컨트리클럽"
+      ],
+      "sourceUrl": "https://www.seowongolf.co.kr/valley/course/info",
+      "sourceUnit": "M",
+      "firstCollectedAt": "2026-09-03",
+      "lastVerifiedAt": "2026-09-03",
+      "note": null,
+      "segments": [
+        {
+          "id": "seowon-valley-seowon",
+          "name": "서원코스",
+          "holes": [
+            {
+              "number": 1,
+              "par": 4,
+              "hcp": 17,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 357,
+                  "yd": 390
+                },
+                "white": {
+                  "m": 331,
+                  "yd": 362
+                },
+                "gold": {
+                  "m": 281,
+                  "yd": 307
+                },
+                "red": {
+                  "m": 260,
+                  "yd": 284
+                }
+              }
+            },
+            {
+              "number": 2,
+              "par": 5,
+              "hcp": 11,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 501,
+                  "yd": 548
+                },
+                "white": {
+                  "m": 470,
+                  "yd": 514
+                },
+                "gold": {
+                  "m": 431,
+                  "yd": 471
+                },
+                "red": {
+                  "m": 412,
+                  "yd": 451
+                }
+              }
+            },
+            {
+              "number": 3,
+              "par": 4,
+              "hcp": 1,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 376,
+                  "yd": 411
+                },
+                "white": {
+                  "m": 341,
+                  "yd": 373
+                },
+                "gold": {
+                  "m": 314,
+                  "yd": 343
+                },
+                "red": {
+                  "m": 282,
+                  "yd": 308
+                }
+              }
+            },
+            {
+              "number": 4,
+              "par": 3,
+              "hcp": 9,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 188,
+                  "yd": 206
+                },
+                "white": {
+                  "m": 159,
+                  "yd": 174
+                },
+                "gold": {
+                  "m": 138,
+                  "yd": 151
+                },
+                "red": {
+                  "m": 117,
+                  "yd": 128
+                }
+              }
+            },
+            {
+              "number": 5,
+              "par": 4,
+              "hcp": 13,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 332,
+                  "yd": 363
+                },
+                "white": {
+                  "m": 303,
+                  "yd": 331
+                },
+                "gold": {
+                  "m": 279,
+                  "yd": 305
+                },
+                "red": {
+                  "m": 254,
+                  "yd": 278
+                }
+              }
+            },
+            {
+              "number": 6,
+              "par": 4,
+              "hcp": 5,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 378,
+                  "yd": 413
+                },
+                "white": {
+                  "m": 365,
+                  "yd": 399
+                },
+                "gold": {
+                  "m": 311,
+                  "yd": 340
+                },
+                "red": {
+                  "m": 272,
+                  "yd": 297
+                }
+              }
+            },
+            {
+              "number": 7,
+              "par": 5,
+              "hcp": 7,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 506,
+                  "yd": 553
+                },
+                "white": {
+                  "m": 477,
+                  "yd": 522
+                },
+                "gold": {
+                  "m": 430,
+                  "yd": 470
+                },
+                "red": {
+                  "m": 419,
+                  "yd": 458
+                }
+              }
+            },
+            {
+              "number": 8,
+              "par": 3,
+              "hcp": 15,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 169,
+                  "yd": 185
+                },
+                "white": {
+                  "m": 140,
+                  "yd": 153
+                },
+                "gold": {
+                  "m": 111,
+                  "yd": 121
+                },
+                "red": {
+                  "m": 90,
+                  "yd": 98
+                }
+              }
+            },
+            {
+              "number": 9,
+              "par": 4,
+              "hcp": 3,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 355,
+                  "yd": 388
+                },
+                "white": {
+                  "m": 326,
+                  "yd": 357
+                },
+                "gold": {
+                  "m": 307,
+                  "yd": 336
+                },
+                "red": {
+                  "m": 266,
+                  "yd": 291
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "seowon-valley-valley",
+          "name": "밸리코스",
+          "holes": [
+            {
+              "number": 1,
+              "par": 4,
+              "hcp": 14,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 346,
+                  "yd": 378
+                },
+                "white": {
+                  "m": 323,
+                  "yd": 353
+                },
+                "gold": {
+                  "m": 299,
+                  "yd": 327
+                },
+                "red": {
+                  "m": 275,
+                  "yd": 301
+                }
+              }
+            },
+            {
+              "number": 2,
+              "par": 3,
+              "hcp": 16,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 187,
+                  "yd": 205
+                },
+                "white": {
+                  "m": 164,
+                  "yd": 179
+                },
+                "gold": {
+                  "m": 137,
+                  "yd": 150
+                },
+                "red": {
+                  "m": 113,
+                  "yd": 124
+                }
+              }
+            },
+            {
+              "number": 3,
+              "par": 5,
+              "hcp": 6,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 539,
+                  "yd": 589
+                },
+                "white": {
+                  "m": 504,
+                  "yd": 551
+                },
+                "gold": {
+                  "m": 464,
+                  "yd": 507
+                },
+                "red": {
+                  "m": 428,
+                  "yd": 468
+                }
+              }
+            },
+            {
+              "number": 4,
+              "par": 4,
+              "hcp": 10,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 367,
+                  "yd": 401
+                },
+                "white": {
+                  "m": 341,
+                  "yd": 373
+                },
+                "gold": {
+                  "m": 312,
+                  "yd": 341
+                },
+                "red": {
+                  "m": 280,
+                  "yd": 306
+                }
+              }
+            },
+            {
+              "number": 5,
+              "par": 4,
+              "hcp": 2,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 391,
+                  "yd": 428
+                },
+                "white": {
+                  "m": 360,
+                  "yd": 394
+                },
+                "gold": {
+                  "m": 332,
+                  "yd": 363
+                },
+                "red": {
+                  "m": 292,
+                  "yd": 319
+                }
+              }
+            },
+            {
+              "number": 6,
+              "par": 4,
+              "hcp": 8,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 384,
+                  "yd": 420
+                },
+                "white": {
+                  "m": 350,
+                  "yd": 383
+                },
+                "gold": {
+                  "m": 318,
+                  "yd": 348
+                },
+                "red": {
+                  "m": 299,
+                  "yd": 327
+                }
+              }
+            },
+            {
+              "number": 7,
+              "par": 5,
+              "hcp": 4,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 520,
+                  "yd": 569
+                },
+                "white": {
+                  "m": 489,
+                  "yd": 535
+                },
+                "gold": {
+                  "m": 450,
+                  "yd": 492
+                },
+                "red": {
+                  "m": 415,
+                  "yd": 454
+                }
+              }
+            },
+            {
+              "number": 8,
+              "par": 3,
+              "hcp": 18,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 168,
+                  "yd": 184
+                },
+                "white": {
+                  "m": 162,
+                  "yd": 177
+                },
+                "gold": {
+                  "m": 125,
+                  "yd": 137
+                },
+                "red": {
+                  "m": 116,
+                  "yd": 127
+                }
+              }
+            },
+            {
+              "number": 9,
+              "par": 4,
+              "hcp": 12,
+              "distances": {
+                "black": null,
+                "blue": {
+                  "m": 347,
+                  "yd": 379
+                },
+                "white": {
+                  "m": 310,
+                  "yd": 339
+                },
+                "gold": {
+                  "m": 284,
+                  "yd": 311
+                },
+                "red": {
+                  "m": 255,
+                  "yd": 279
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "seowon-hills",
+      "name": "서원힐스CC",
+      "aliases": [
+        "서원힐스",
+        "서원힐스CC",
+        "서원힐스 컨트리클럽"
+      ],
+      "sourceUrl": "https://www.seowongolf.co.kr/hills/course/course-info",
+      "sourceUnit": "M",
+      "firstCollectedAt": "2026-09-03",
+      "lastVerifiedAt": "2026-09-03",
+      "note": null,
+      "segments": [
+        {
+          "id": "seowon-hills-west",
+          "name": "WEST",
+          "holes": [
+            {
+              "number": 1,
+              "par": 5,
+              "hcp": 9,
+              "distances": {
+                "black": {
+                  "m": 515,
+                  "yd": 563
+                },
+                "blue": {
+                  "m": 495,
+                  "yd": 541
+                },
+                "white": {
+                  "m": 470,
+                  "yd": 514
+                },
+                "gold": {
+                  "m": 444,
+                  "yd": 486
+                },
+                "red": {
+                  "m": 424,
+                  "yd": 464
+                }
+              }
+            },
+            {
+              "number": 2,
+              "par": 4,
+              "hcp": 7,
+              "distances": {
+                "black": {
+                  "m": 425,
+                  "yd": 465
+                },
+                "blue": {
+                  "m": 398,
+                  "yd": 435
+                },
+                "white": {
+                  "m": 369,
+                  "yd": 404
+                },
+                "gold": {
+                  "m": 340,
+                  "yd": 372
+                },
+                "red": {
+                  "m": 305,
+                  "yd": 334
+                }
+              }
+            },
+            {
+              "number": 3,
+              "par": 4,
+              "hcp": 1,
+              "distances": {
+                "black": {
+                  "m": 378,
+                  "yd": 413
+                },
+                "blue": {
+                  "m": 347,
+                  "yd": 379
+                },
+                "white": {
+                  "m": 313,
+                  "yd": 342
+                },
+                "gold": {
+                  "m": 280,
+                  "yd": 306
+                },
+                "red": {
+                  "m": 280,
+                  "yd": 306
+                }
+              }
+            },
+            {
+              "number": 4,
+              "par": 3,
+              "hcp": 17,
+              "distances": {
+                "black": {
+                  "m": 165,
+                  "yd": 180
+                },
+                "blue": {
+                  "m": 147,
+                  "yd": 161
+                },
+                "white": {
+                  "m": 122,
+                  "yd": 133
+                },
+                "gold": {
+                  "m": 103,
+                  "yd": 113
+                },
+                "red": {
+                  "m": 88,
+                  "yd": 96
+                }
+              }
+            },
+            {
+              "number": 5,
+              "par": 4,
+              "hcp": 5,
+              "distances": {
+                "black": {
+                  "m": 367,
+                  "yd": 401
+                },
+                "blue": {
+                  "m": 343,
+                  "yd": 375
+                },
+                "white": {
+                  "m": 331,
+                  "yd": 362
+                },
+                "gold": {
+                  "m": 300,
+                  "yd": 328
+                },
+                "red": {
+                  "m": 251,
+                  "yd": 274
+                }
+              }
+            },
+            {
+              "number": 6,
+              "par": 4,
+              "hcp": 15,
+              "distances": {
+                "black": {
+                  "m": 316,
+                  "yd": 346
+                },
+                "blue": {
+                  "m": 293,
+                  "yd": 320
+                },
+                "white": {
+                  "m": 258,
+                  "yd": 282
+                },
+                "gold": {
+                  "m": 232,
+                  "yd": 254
+                },
+                "red": {
+                  "m": 232,
+                  "yd": 254
+                }
+              }
+            },
+            {
+              "number": 7,
+              "par": 3,
+              "hcp": 13,
+              "distances": {
+                "black": {
+                  "m": 170,
+                  "yd": 186
+                },
+                "blue": {
+                  "m": 154,
+                  "yd": 168
+                },
+                "white": {
+                  "m": 128,
+                  "yd": 140
+                },
+                "gold": {
+                  "m": 106,
+                  "yd": 116
+                },
+                "red": {
+                  "m": 106,
+                  "yd": 116
+                }
+              }
+            },
+            {
+              "number": 8,
+              "par": 5,
+              "hcp": 3,
+              "distances": {
+                "black": {
+                  "m": 565,
+                  "yd": 618
+                },
+                "blue": {
+                  "m": 536,
+                  "yd": 586
+                },
+                "white": {
+                  "m": 495,
+                  "yd": 541
+                },
+                "gold": {
+                  "m": 466,
+                  "yd": 510
+                },
+                "red": {
+                  "m": 445,
+                  "yd": 487
+                }
+              }
+            },
+            {
+              "number": 9,
+              "par": 4,
+              "hcp": 11,
+              "distances": {
+                "black": {
+                  "m": 343,
+                  "yd": 375
+                },
+                "blue": {
+                  "m": 322,
+                  "yd": 352
+                },
+                "white": {
+                  "m": 299,
+                  "yd": 327
+                },
+                "gold": {
+                  "m": 268,
+                  "yd": 293
+                },
+                "red": {
+                  "m": 244,
+                  "yd": 267
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "seowon-hills-south",
+          "name": "SOUTH",
+          "holes": [
+            {
+              "number": 1,
+              "par": 4,
+              "hcp": 8,
+              "distances": {
+                "black": {
+                  "m": 388,
+                  "yd": 424
+                },
+                "blue": {
+                  "m": 363,
+                  "yd": 397
+                },
+                "white": {
+                  "m": 344,
+                  "yd": 376
+                },
+                "gold": {
+                  "m": 304,
+                  "yd": 332
+                },
+                "red": {
+                  "m": 271,
+                  "yd": 296
+                }
+              }
+            },
+            {
+              "number": 2,
+              "par": 5,
+              "hcp": 10,
+              "distances": {
+                "black": {
+                  "m": 518,
+                  "yd": 566
+                },
+                "blue": {
+                  "m": 487,
+                  "yd": 533
+                },
+                "white": {
+                  "m": 448,
+                  "yd": 490
+                },
+                "gold": {
+                  "m": 405,
+                  "yd": 443
+                },
+                "red": {
+                  "m": 405,
+                  "yd": 443
+                }
+              }
+            },
+            {
+              "number": 3,
+              "par": 4,
+              "hcp": 2,
+              "distances": {
+                "black": {
+                  "m": 373,
+                  "yd": 408
+                },
+                "blue": {
+                  "m": 346,
+                  "yd": 378
+                },
+                "white": {
+                  "m": 315,
+                  "yd": 344
+                },
+                "gold": {
+                  "m": 282,
+                  "yd": 308
+                },
+                "red": {
+                  "m": 249,
+                  "yd": 272
+                }
+              }
+            },
+            {
+              "number": 4,
+              "par": 4,
+              "hcp": 6,
+              "distances": {
+                "black": {
+                  "m": 341,
+                  "yd": 373
+                },
+                "blue": {
+                  "m": 317,
+                  "yd": 347
+                },
+                "white": {
+                  "m": 267,
+                  "yd": 292
+                },
+                "gold": {
+                  "m": 223,
+                  "yd": 244
+                },
+                "red": {
+                  "m": 223,
+                  "yd": 244
+                }
+              }
+            },
+            {
+              "number": 5,
+              "par": 3,
+              "hcp": 14,
+              "distances": {
+                "black": {
+                  "m": 202,
+                  "yd": 221
+                },
+                "blue": {
+                  "m": 186,
+                  "yd": 203
+                },
+                "white": {
+                  "m": 168,
+                  "yd": 184
+                },
+                "gold": {
+                  "m": 141,
+                  "yd": 154
+                },
+                "red": {
+                  "m": 113,
+                  "yd": 124
+                }
+              }
+            },
+            {
+              "number": 6,
+              "par": 5,
+              "hcp": 16,
+              "distances": {
+                "black": {
+                  "m": 477,
+                  "yd": 522
+                },
+                "blue": {
+                  "m": 461,
+                  "yd": 504
+                },
+                "white": {
+                  "m": 445,
+                  "yd": 487
+                },
+                "gold": {
+                  "m": 407,
+                  "yd": 445
+                },
+                "red": {
+                  "m": 369,
+                  "yd": 404
+                }
+              }
+            },
+            {
+              "number": 7,
+              "par": 3,
+              "hcp": 18,
+              "distances": {
+                "black": {
+                  "m": 169,
+                  "yd": 185
+                },
+                "blue": {
+                  "m": 150,
+                  "yd": 164
+                },
+                "white": {
+                  "m": 121,
+                  "yd": 132
+                },
+                "gold": {
+                  "m": 82,
+                  "yd": 90
+                },
+                "red": {
+                  "m": 82,
+                  "yd": 90
+                }
+              }
+            },
+            {
+              "number": 8,
+              "par": 4,
+              "hcp": 4,
+              "distances": {
+                "black": {
+                  "m": 385,
+                  "yd": 421
+                },
+                "blue": {
+                  "m": 357,
+                  "yd": 390
+                },
+                "white": {
+                  "m": 332,
+                  "yd": 363
+                },
+                "gold": {
+                  "m": 295,
+                  "yd": 323
+                },
+                "red": {
+                  "m": 295,
+                  "yd": 323
+                }
+              }
+            },
+            {
+              "number": 9,
+              "par": 4,
+              "hcp": 12,
+              "distances": {
+                "black": {
+                  "m": 365,
+                  "yd": 399
+                },
+                "blue": {
+                  "m": 337,
+                  "yd": 369
+                },
+                "white": {
+                  "m": 303,
+                  "yd": 331
+                },
+                "gold": {
+                  "m": 261,
+                  "yd": 285
+                },
+                "red": {
+                  "m": 261,
+                  "yd": 285
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "seowon-hills-east",
+          "name": "EAST",
+          "holes": [
+            {
+              "number": 1,
+              "par": 4,
+              "hcp": 4,
+              "distances": {
+                "black": {
+                  "m": 363,
+                  "yd": 397
+                },
+                "blue": {
+                  "m": 340,
+                  "yd": 372
+                },
+                "white": {
+                  "m": 317,
+                  "yd": 347
+                },
+                "gold": {
+                  "m": 291,
+                  "yd": 318
+                },
+                "red": {
+                  "m": 291,
+                  "yd": 318
+                }
+              }
+            },
+            {
+              "number": 2,
+              "par": 3,
+              "hcp": 6,
+              "distances": {
+                "black": {
+                  "m": 169,
+                  "yd": 185
+                },
+                "blue": {
+                  "m": 146,
+                  "yd": 160
+                },
+                "white": {
+                  "m": 121,
+                  "yd": 132
+                },
+                "gold": {
+                  "m": 121,
+                  "yd": 132
+                },
+                "red": {
+                  "m": 121,
+                  "yd": 132
+                }
+              }
+            },
+            {
+              "number": 3,
+              "par": 4,
+              "hcp": 9,
+              "distances": {
+                "black": {
+                  "m": 331,
+                  "yd": 362
+                },
+                "blue": {
+                  "m": 304,
+                  "yd": 332
+                },
+                "white": {
+                  "m": 290,
+                  "yd": 317
+                },
+                "gold": {
+                  "m": 265,
+                  "yd": 290
+                },
+                "red": {
+                  "m": 265,
+                  "yd": 290
+                }
+              }
+            },
+            {
+              "number": 4,
+              "par": 4,
+              "hcp": 7,
+              "distances": {
+                "black": {
+                  "m": 381,
+                  "yd": 417
+                },
+                "blue": {
+                  "m": 358,
+                  "yd": 392
+                },
+                "white": {
+                  "m": 331,
+                  "yd": 362
+                },
+                "gold": {
+                  "m": 295,
+                  "yd": 323
+                },
+                "red": {
+                  "m": 295,
+                  "yd": 323
+                }
+              }
+            },
+            {
+              "number": 5,
+              "par": 5,
+              "hcp": 1,
+              "distances": {
+                "black": {
+                  "m": 542,
+                  "yd": 593
+                },
+                "blue": {
+                  "m": 523,
+                  "yd": 572
+                },
+                "white": {
+                  "m": 487,
+                  "yd": 533
+                },
+                "gold": {
+                  "m": 443,
+                  "yd": 484
+                },
+                "red": {
+                  "m": 443,
+                  "yd": 484
+                }
+              }
+            },
+            {
+              "number": 6,
+              "par": 4,
+              "hcp": 5,
+              "distances": {
+                "black": {
+                  "m": 375,
+                  "yd": 410
+                },
+                "blue": {
+                  "m": 356,
+                  "yd": 389
+                },
+                "white": {
+                  "m": 324,
+                  "yd": 354
+                },
+                "gold": {
+                  "m": 283,
+                  "yd": 309
+                },
+                "red": {
+                  "m": 283,
+                  "yd": 309
+                }
+              }
+            },
+            {
+              "number": 7,
+              "par": 4,
+              "hcp": 8,
+              "distances": {
+                "black": {
+                  "m": 343,
+                  "yd": 375
+                },
+                "blue": {
+                  "m": 317,
+                  "yd": 347
+                },
+                "white": {
+                  "m": 286,
+                  "yd": 313
+                },
+                "gold": {
+                  "m": 257,
+                  "yd": 281
+                },
+                "red": {
+                  "m": 257,
+                  "yd": 281
+                }
+              }
+            },
+            {
+              "number": 8,
+              "par": 3,
+              "hcp": 2,
+              "distances": {
+                "black": {
+                  "m": 194,
+                  "yd": 212
+                },
+                "blue": {
+                  "m": 173,
+                  "yd": 189
+                },
+                "white": {
+                  "m": 144,
+                  "yd": 157
+                },
+                "gold": {
+                  "m": 112,
+                  "yd": 122
+                },
+                "red": {
+                  "m": 112,
+                  "yd": 122
+                }
+              }
+            },
+            {
+              "number": 9,
+              "par": 5,
+              "hcp": 3,
+              "distances": {
+                "black": {
+                  "m": 523,
+                  "yd": 572
+                },
+                "blue": {
+                  "m": 496,
+                  "yd": 542
+                },
+                "white": {
+                  "m": 465,
+                  "yd": 509
+                },
+                "gold": {
+                  "m": 433,
+                  "yd": 474
+                },
+                "red": {
+                  "m": 433,
+                  "yd": 474
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "haesley-nine-bridges",
+      "name": "해슬리 나인브릿지",
+      "aliases": [
+        "해슬리",
+        "해슬리CC",
+        "해슬리 나인브릿지"
+      ],
+      "sourceUrl": "https://www.haesley.com/new/introduce/course/plan.asp",
+      "sourceUnit": "M",
+      "firstCollectedAt": "2026-09-03",
+      "lastVerifiedAt": "2026-09-03",
+      "note": "토너먼트 티 거리와 여성 HCP는 원본 특수데이터를 선택 필드로 보존",
+      "segments": [
+        {
+          "id": "haesley-nine-bridges-haesley",
+          "name": "HAESLEY",
+          "holes": [
+            {
+              "number": 1,
+              "par": 4,
+              "hcp": 18,
+              "distances": {
+                "black": {
+                  "m": 330,
+                  "yd": 361
+                },
+                "blue": {
+                  "m": 305,
+                  "yd": 334
+                },
+                "white": {
+                  "m": 295,
+                  "yd": 323
+                },
+                "gold": {
+                  "m": 275,
+                  "yd": 301
+                },
+                "red": {
+                  "m": 250,
+                  "yd": 273
+                },
+                "tournament": {
+                  "m": 330,
+                  "yd": 361
+                }
+              },
+              "hcpWomen": 18
+            },
+            {
+              "number": 2,
+              "par": 3,
+              "hcp": 12,
+              "distances": {
+                "black": {
+                  "m": 186,
+                  "yd": 203
+                },
+                "blue": {
+                  "m": 165,
+                  "yd": 180
+                },
+                "white": {
+                  "m": 140,
+                  "yd": 153
+                },
+                "gold": {
+                  "m": 120,
+                  "yd": 131
+                },
+                "red": {
+                  "m": 120,
+                  "yd": 131
+                },
+                "tournament": {
+                  "m": 186,
+                  "yd": 203
+                }
+              },
+              "hcpWomen": 12
+            },
+            {
+              "number": 3,
+              "par": 5,
+              "hcp": 14,
+              "distances": {
+                "black": {
+                  "m": 496,
+                  "yd": 542
+                },
+                "blue": {
+                  "m": 485,
+                  "yd": 530
+                },
+                "white": {
+                  "m": 457,
+                  "yd": 500
+                },
+                "gold": {
+                  "m": 420,
+                  "yd": 459
+                },
+                "red": {
+                  "m": 380,
+                  "yd": 416
+                },
+                "tournament": {
+                  "m": 496,
+                  "yd": 542
+                }
+              },
+              "hcpWomen": 8
+            },
+            {
+              "number": 4,
+              "par": 4,
+              "hcp": 16,
+              "distances": {
+                "black": {
+                  "m": 344,
+                  "yd": 376
+                },
+                "blue": {
+                  "m": 335,
+                  "yd": 366
+                },
+                "white": {
+                  "m": 310,
+                  "yd": 339
+                },
+                "gold": {
+                  "m": 285,
+                  "yd": 312
+                },
+                "red": {
+                  "m": 265,
+                  "yd": 290
+                },
+                "tournament": {
+                  "m": 344,
+                  "yd": 376
+                }
+              },
+              "hcpWomen": 6
+            },
+            {
+              "number": 5,
+              "par": 5,
+              "hcp": 10,
+              "distances": {
+                "black": {
+                  "m": 512,
+                  "yd": 560
+                },
+                "blue": {
+                  "m": 495,
+                  "yd": 541
+                },
+                "white": {
+                  "m": 447,
+                  "yd": 489
+                },
+                "gold": {
+                  "m": 422,
+                  "yd": 462
+                },
+                "red": {
+                  "m": 395,
+                  "yd": 432
+                },
+                "tournament": {
+                  "m": 542,
+                  "yd": 593
+                }
+              },
+              "hcpWomen": 4
+            },
+            {
+              "number": 6,
+              "par": 3,
+              "hcp": 8,
+              "distances": {
+                "black": {
+                  "m": 205,
+                  "yd": 224
+                },
+                "blue": {
+                  "m": 185,
+                  "yd": 202
+                },
+                "white": {
+                  "m": 165,
+                  "yd": 180
+                },
+                "gold": {
+                  "m": 140,
+                  "yd": 153
+                },
+                "red": {
+                  "m": 120,
+                  "yd": 131
+                },
+                "tournament": {
+                  "m": 205,
+                  "yd": 224
+                }
+              },
+              "hcpWomen": 16
+            },
+            {
+              "number": 7,
+              "par": 4,
+              "hcp": 6,
+              "distances": {
+                "black": {
+                  "m": 405,
+                  "yd": 443
+                },
+                "blue": {
+                  "m": 388,
+                  "yd": 424
+                },
+                "white": {
+                  "m": 365,
+                  "yd": 399
+                },
+                "gold": {
+                  "m": 340,
+                  "yd": 372
+                },
+                "red": {
+                  "m": 210,
+                  "yd": 230
+                },
+                "tournament": {
+                  "m": 416,
+                  "yd": 455
+                }
+              },
+              "hcpWomen": 14
+            },
+            {
+              "number": 8,
+              "par": 4,
+              "hcp": 2,
+              "distances": {
+                "black": {
+                  "m": 451,
+                  "yd": 493
+                },
+                "blue": {
+                  "m": 440,
+                  "yd": 481
+                },
+                "white": {
+                  "m": 425,
+                  "yd": 465
+                },
+                "gold": {
+                  "m": 370,
+                  "yd": 405
+                },
+                "red": {
+                  "m": 300,
+                  "yd": 328
+                },
+                "tournament": {
+                  "m": 451,
+                  "yd": 493
+                }
+              },
+              "hcpWomen": 10
+            },
+            {
+              "number": 9,
+              "par": 4,
+              "hcp": 4,
+              "distances": {
+                "black": {
+                  "m": 380,
+                  "yd": 416
+                },
+                "blue": {
+                  "m": 365,
+                  "yd": 399
+                },
+                "white": {
+                  "m": 340,
+                  "yd": 372
+                },
+                "gold": {
+                  "m": 310,
+                  "yd": 339
+                },
+                "red": {
+                  "m": 280,
+                  "yd": 306
+                },
+                "tournament": {
+                  "m": 398,
+                  "yd": 435
+                }
+              },
+              "hcpWomen": 2
+            }
+          ]
+        },
+        {
+          "id": "haesley-nine-bridges-pga",
+          "name": "PGA",
+          "holes": [
+            {
+              "number": 1,
+              "par": 4,
+              "hcp": 11,
+              "distances": {
+                "black": {
+                  "m": 320,
+                  "yd": 350
+                },
+                "blue": {
+                  "m": 285,
+                  "yd": 312
+                },
+                "white": {
+                  "m": 265,
+                  "yd": 290
+                },
+                "gold": {
+                  "m": 245,
+                  "yd": 268
+                },
+                "red": {
+                  "m": 220,
+                  "yd": 241
+                },
+                "tournament": {
+                  "m": 360,
+                  "yd": 394
+                }
+              },
+              "hcpWomen": 11
+            },
+            {
+              "number": 2,
+              "par": 5,
+              "hcp": 15,
+              "distances": {
+                "black": {
+                  "m": 503,
+                  "yd": 550
+                },
+                "blue": {
+                  "m": 482,
+                  "yd": 527
+                },
+                "white": {
+                  "m": 462,
+                  "yd": 505
+                },
+                "gold": {
+                  "m": 425,
+                  "yd": 465
+                },
+                "red": {
+                  "m": 381,
+                  "yd": 417
+                },
+                "tournament": {
+                  "m": 514,
+                  "yd": 562
+                }
+              },
+              "hcpWomen": 3
+            },
+            {
+              "number": 3,
+              "par": 4,
+              "hcp": 7,
+              "distances": {
+                "black": {
+                  "m": 420,
+                  "yd": 459
+                },
+                "blue": {
+                  "m": 400,
+                  "yd": 437
+                },
+                "white": {
+                  "m": 360,
+                  "yd": 394
+                },
+                "gold": {
+                  "m": 335,
+                  "yd": 366
+                },
+                "red": {
+                  "m": 310,
+                  "yd": 339
+                },
+                "tournament": {
+                  "m": 445,
+                  "yd": 487
+                }
+              },
+              "hcpWomen": 13
+            },
+            {
+              "number": 4,
+              "par": 4,
+              "hcp": 17,
+              "distances": {
+                "black": {
+                  "m": 325,
+                  "yd": 355
+                },
+                "blue": {
+                  "m": 325,
+                  "yd": 355
+                },
+                "white": {
+                  "m": 310,
+                  "yd": 339
+                },
+                "gold": {
+                  "m": 285,
+                  "yd": 312
+                },
+                "red": {
+                  "m": 230,
+                  "yd": 252
+                },
+                "tournament": {
+                  "m": 325,
+                  "yd": 355
+                }
+              },
+              "hcpWomen": 15
+            },
+            {
+              "number": 5,
+              "par": 3,
+              "hcp": 13,
+              "distances": {
+                "black": {
+                  "m": 163,
+                  "yd": 178
+                },
+                "blue": {
+                  "m": 150,
+                  "yd": 164
+                },
+                "white": {
+                  "m": 125,
+                  "yd": 137
+                },
+                "gold": {
+                  "m": 120,
+                  "yd": 131
+                },
+                "red": {
+                  "m": 105,
+                  "yd": 115
+                },
+                "tournament": {
+                  "m": 163,
+                  "yd": 178
+                }
+              },
+              "hcpWomen": 17
+            },
+            {
+              "number": 6,
+              "par": 4,
+              "hcp": 9,
+              "distances": {
+                "black": {
+                  "m": 355,
+                  "yd": 388
+                },
+                "blue": {
+                  "m": 335,
+                  "yd": 366
+                },
+                "white": {
+                  "m": 317,
+                  "yd": 347
+                },
+                "gold": {
+                  "m": 292,
+                  "yd": 319
+                },
+                "red": {
+                  "m": 265,
+                  "yd": 290
+                },
+                "tournament": {
+                  "m": 355,
+                  "yd": 388
+                }
+              },
+              "hcpWomen": 7
+            },
+            {
+              "number": 7,
+              "par": 5,
+              "hcp": 5,
+              "distances": {
+                "black": {
+                  "m": 515,
+                  "yd": 563
+                },
+                "blue": {
+                  "m": 515,
+                  "yd": 563
+                },
+                "white": {
+                  "m": 474,
+                  "yd": 518
+                },
+                "gold": {
+                  "m": 450,
+                  "yd": 492
+                },
+                "red": {
+                  "m": 420,
+                  "yd": 459
+                },
+                "tournament": {
+                  "m": 545,
+                  "yd": 596
+                }
+              },
+              "hcpWomen": 1
+            },
+            {
+              "number": 8,
+              "par": 3,
+              "hcp": 3,
+              "distances": {
+                "black": {
+                  "m": 230,
+                  "yd": 252
+                },
+                "blue": {
+                  "m": 210,
+                  "yd": 230
+                },
+                "white": {
+                  "m": 180,
+                  "yd": 197
+                },
+                "gold": {
+                  "m": 155,
+                  "yd": 170
+                },
+                "red": {
+                  "m": 155,
+                  "yd": 170
+                },
+                "tournament": {
+                  "m": 230,
+                  "yd": 252
+                }
+              },
+              "hcpWomen": 9
+            },
+            {
+              "number": 9,
+              "par": 4,
+              "hcp": 1,
+              "distances": {
+                "black": {
+                  "m": 430,
+                  "yd": 470
+                },
+                "blue": {
+                  "m": 410,
+                  "yd": 448
+                },
+                "white": {
+                  "m": 390,
+                  "yd": 427
+                },
+                "gold": {
+                  "m": 355,
+                  "yd": 388
+                },
+                "red": {
+                  "m": 325,
+                  "yd": 355
+                },
+                "tournament": {
+                  "m": 451,
+                  "yd": 493
+                }
+              },
+              "hcpWomen": 5
             }
           ]
         }
