@@ -13,6 +13,7 @@ const expectedCourseIds = [
   'seowon-valley',
   'seowon-hills',
   'haesley-nine-bridges',
+  'laviebel',
 ]
 
 function normalize(value) {
@@ -20,9 +21,13 @@ function normalize(value) {
 }
 
 test('골프장 스냅샷은 기존 골프장을 보존하고 ID와 별칭 충돌이 없다', () => {
-  assert.equal(database.version, '2026-09-05.1')
+  assert.equal(database.version, '2026-09-09.1')
   assert.equal(database.defaultUnit, 'M')
   assert.deepEqual(database.courses.map(course => course.id), expectedCourseIds)
+  assert.equal(database.courses.length, 10)
+  assert.equal(database.courses.reduce((count, course) => count + course.segments.length, 0), 24)
+  assert.equal(database.courses.reduce((count, course) => count + course.segments.reduce((sum, segment) => sum + segment.holes.length, 0), 0), 279)
+  assert.equal(database.courses.reduce((count, course) => count + course.aliases.length, 0), 31)
 
   const ids = new Set()
   const segmentIds = new Set()
@@ -81,4 +86,34 @@ test('해슬리 특수데이터는 V1 표준 티와 분리해 손실 없이 보�
   assert.ok(holes.every(hole => Number.isInteger(hole.hcpWomen)))
   assert.ok(holes.every(hole => hole.distances.tournament))
   assert.ok(holes.every(hole => hole.distances.tournament.yd === Math.round(hole.distances.tournament.m * 1.0936133)))
+})
+
+test('레이크사이드와 라비에벨 OUT/IN은 18홀 코스로 정규화된다', () => {
+  const lakeside = database.courses.find(course => course.id === 'lakeside')
+  assert.deepEqual(lakeside.segments.map(segment => [segment.name, segment.holes.length]), [
+    ['동코스', 18],
+    ['남코스', 18],
+    ['서코스', 18],
+  ])
+
+  const laviebel = database.courses.find(course => course.id === 'laviebel')
+  assert.deepEqual(laviebel.segments.map(segment => [segment.name, segment.holes.length]), [
+    ['올드코스', 18],
+    ['듄스코스', 18],
+  ])
+
+  for (const course of [lakeside, laviebel]) {
+    for (const segment of course.segments) {
+      assert.deepEqual(segment.holes.map(hole => hole.number), Array.from({ length: 18 }, (_, index) => index + 1))
+    }
+  }
+})
+
+test('라비에벨 특수 티 거리를 V1 표준 티와 분리해 보존한다', () => {
+  const laviebel = database.courses.find(course => course.id === 'laviebel')
+  const oldCourse = laviebel.segments.find(segment => segment.name === '올드코스')
+  const dunesCourse = laviebel.segments.find(segment => segment.name === '듄스코스')
+  assert.deepEqual(oldCourse.holes.find(hole => hole.number === 2).distances.additionalForward, { m: 273, yd: 299 })
+  assert.deepEqual(oldCourse.holes.find(hole => hole.number === 15).distances.additionalForward, { m: 343, yd: 375 })
+  assert.deepEqual(dunesCourse.holes.find(hole => hole.number === 6).distances.special, { m: 381, yd: 417 })
 })

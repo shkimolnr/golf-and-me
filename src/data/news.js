@@ -1,5 +1,12 @@
 export const newsItems = [
   {
+    id: '2026-09-09-lakeside-laviebel-course-data',
+    date: '2026-09-09',
+    category: '골프장 정보',
+    title: '레이크사이드·라비에벨 홀 정보 추가',
+    body: '레이크사이드 동·남·서 코스와 라비에벨 올드·듄스 코스를 OUT/IN으로 나눠 PAR와 티별 거리를 연결했어요.',
+  },
+  {
     id: '2026-09-05-seowon-course-data',
     date: '2026-09-05',
     category: '골프장 정보',

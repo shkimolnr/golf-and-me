@@ -34,6 +34,11 @@ export function segmentNamesForCourse(id) {
 }
 
 function legacyHalfName(course, value, half) {
+  if (course.id === 'lakeside') {
+    const legacyName = normalize(value)
+    if (legacyName === 'out') return '동코스 OUT'
+    if (legacyName === 'in') return '동코스 IN'
+  }
   const segment = course.segments.find(item => normalize(item.name) === normalize(value))
   return segment?.holes.length >= 18 ? `${segment.name} ${half === 'front' ? 'OUT' : 'IN'}` : value
 }
@@ -53,7 +58,8 @@ export function selectKnownCourse(course, currentRound) {
 }
 
 function resolveNineHoleSegment(course, value, fallbackHalf) {
-  const direct = course.segments.find(segment => normalize(segment.name) === normalize(value))
+  const resolvedValue = legacyHalfName(course, value, fallbackHalf)
+  const direct = course.segments.find(segment => normalize(segment.name) === normalize(resolvedValue))
   if (direct) {
     if (direct.holes.length === 9) return { segment: direct, holes: direct.holes }
     if (direct.holes.length >= 18) return {
@@ -63,10 +69,10 @@ function resolveNineHoleSegment(course, value, fallbackHalf) {
   }
   const derived = course.segments.find(segment => {
     if (segment.holes.length < 18) return false
-    return normalize(`${segment.name} OUT`) === normalize(value) || normalize(`${segment.name} IN`) === normalize(value)
+    return normalize(`${segment.name} OUT`) === normalize(resolvedValue) || normalize(`${segment.name} IN`) === normalize(resolvedValue)
   })
   if (!derived) return { segment: null, holes: [] }
-  const isOut = normalize(`${derived.name} OUT`) === normalize(value)
+  const isOut = normalize(`${derived.name} OUT`) === normalize(resolvedValue)
   return { segment: derived, holes: isOut ? derived.holes.slice(0, 9) : derived.holes.slice(-9) }
 }
 

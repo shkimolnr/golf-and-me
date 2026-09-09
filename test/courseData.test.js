@@ -22,10 +22,50 @@ function emptyRound(overrides = {}) {
   }
 }
 
-test('기존 레이크사이드 데이터는 유지된다', () => {
+test('레이크사이드는 동·남·서 18홀 코스를 OUT/IN으로 제공한다', () => {
   const course = getKnownCourse('lakeside')
   assert.equal(course.name, '레이크사이드 컨트리클럽')
-  assert.deepEqual(course.segments.map(segment => segment.name), ['OUT', 'IN'])
+  assert.deepEqual(course.segments.map(segment => [segment.name, segment.holes.length]), [
+    ['동코스', 18],
+    ['남코스', 18],
+    ['서코스', 18],
+  ])
+  assert.deepEqual(segmentNamesForCourse(course.id), [
+    '동코스 OUT', '동코스 IN',
+    '남코스 OUT', '남코스 IN',
+    '서코스 OUT', '서코스 IN',
+  ])
+})
+
+test('기존 레이크사이드 OUT/IN 저장 기록은 동코스 1–18번으로 호환한다', () => {
+  const templated = applyKnownCourseTemplate(emptyRound({
+    courseId: 'lakeside',
+    courseName: '레이크사이드 컨트리클럽',
+    frontCourseName: 'OUT',
+    backCourseName: 'IN',
+  }))
+  assert.deepEqual(templated.holes.map(hole => hole.sourceOfficialHole), Array.from({ length: 18 }, (_, index) => index + 1))
+  assert.equal(templated.holes[0].distance, 300)
+  assert.equal(templated.holes[9].distance, 320)
+})
+
+test('라비에벨은 올드·듄스 코스를 OUT/IN으로 연결한다', () => {
+  const course = findKnownCourse('라비에벨')
+  assert.equal(course.id, 'laviebel')
+  assert.deepEqual(segmentNamesForCourse(course.id), [
+    '올드코스 OUT', '올드코스 IN', '듄스코스 OUT', '듄스코스 IN',
+  ])
+
+  const templated = applyKnownCourseTemplate(emptyRound({
+    courseId: 'laviebel',
+    courseName: '라비에벨 컨트리클럽',
+    frontCourseName: '올드코스 OUT',
+    backCourseName: '올드코스 IN',
+  }))
+  assert.deepEqual(templated.holes.map(hole => hole.sourceOfficialHole), Array.from({ length: 18 }, (_, index) => index + 1))
+  assert.equal(templated.holes[0].distance, 397)
+  assert.equal(templated.holes[9].distance, 240)
+  assert.equal(templated.holes[17].distance, 258)
 })
 
 test('홀 정보가 없는 수동 라운드는 추정값 없이 전반 1–9, 후반 10–18 순서로 유지된다', () => {
