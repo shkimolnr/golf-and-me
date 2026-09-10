@@ -14,6 +14,7 @@ const expectedCourseIds = [
   'seowon-hills',
   'haesley-nine-bridges',
   'laviebel',
+  'sagewood-hongcheon',
 ]
 
 function normalize(value) {
@@ -21,13 +22,13 @@ function normalize(value) {
 }
 
 test('골프장 스냅샷은 기존 골프장을 보존하고 ID와 별칭 충돌이 없다', () => {
-  assert.equal(database.version, '2026-09-09.1')
+  assert.equal(database.version, '2026-09-10.1')
   assert.equal(database.defaultUnit, 'M')
   assert.deepEqual(database.courses.map(course => course.id), expectedCourseIds)
-  assert.equal(database.courses.length, 10)
-  assert.equal(database.courses.reduce((count, course) => count + course.segments.length, 0), 24)
-  assert.equal(database.courses.reduce((count, course) => count + course.segments.reduce((sum, segment) => sum + segment.holes.length, 0), 0), 279)
-  assert.equal(database.courses.reduce((count, course) => count + course.aliases.length, 0), 31)
+  assert.equal(database.courses.length, 11)
+  assert.equal(database.courses.reduce((count, course) => count + course.segments.length, 0), 27)
+  assert.equal(database.courses.reduce((count, course) => count + course.segments.reduce((sum, segment) => sum + segment.holes.length, 0), 0), 306)
+  assert.equal(database.courses.reduce((count, course) => count + course.aliases.length, 0), 34)
 
   const ids = new Set()
   const segmentIds = new Set()
@@ -116,4 +117,17 @@ test('라비에벨 특수 티 거리를 V1 표준 티와 분리해 보존한다'
   assert.deepEqual(oldCourse.holes.find(hole => hole.number === 2).distances.additionalForward, { m: 273, yd: 299 })
   assert.deepEqual(oldCourse.holes.find(hole => hole.number === 15).distances.additionalForward, { m: 343, yd: 375 })
   assert.deepEqual(dunesCourse.holes.find(hole => hole.number === 6).distances.special, { m: 381, yd: 417 })
+})
+
+test('세이지우드 홍천은 27홀 원장과 산발적 추가 티를 보존한다', () => {
+  const sagewood = database.courses.find(course => course.id === 'sagewood-hongcheon')
+  assert.deepEqual(sagewood.segments.map(segment => [segment.name, segment.holes.length]), [
+    ['드림 코스', 9],
+    ['비전 코스', 9],
+    ['챌린지 코스', 9],
+  ])
+  assert.ok(sagewood.segments.every(segment => segment.holes.every(hole => hole.distances.gold == null)))
+  assert.deepEqual(sagewood.segments[0].holes[2].distances.additionalYellow, { m: 340, yd: 372 })
+  assert.deepEqual(sagewood.segments[0].holes[2].distances.additionalLongRed, { m: 319, yd: 349 })
+  assert.deepEqual(sagewood.segments[2].holes[7].distances.additionalYellow, { m: 187, yd: 205 })
 })
