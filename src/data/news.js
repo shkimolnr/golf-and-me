@@ -1,5 +1,12 @@
 export const newsItems = [
   {
+    id: '2026-09-10-sagewood-hongcheon-course-data',
+    date: '2026-09-10',
+    category: '골프장 정보',
+    title: '세이지우드 홍천 홀 정보가 추가됐어요',
+    body: '세이지우드 홍천의 코스별 PAR와 티별 거리를 새 라운드에 연결했어요.',
+  },
+  {
     id: '2026-09-09-lakeside-laviebel-course-data',
     date: '2026-09-09',
     category: '골프장 정보',
