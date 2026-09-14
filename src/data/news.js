@@ -1,5 +1,12 @@
 export const newsItems = [
   {
+    id: '2026-09-14-skyvalley-course-data',
+    date: '2026-09-14',
+    category: '골프장 정보',
+    title: '스카이밸리 홀 정보가 추가됐어요',
+    body: '스카이·밸리·레이크·마운틴 코스의 PAR와 제공 티별 거리를 새 라운드에 연결했어요.',
+  },
+  {
     id: '2026-09-10-sagewood-hongcheon-course-data',
     date: '2026-09-10',
     category: '골프장 정보',

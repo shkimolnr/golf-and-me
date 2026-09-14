@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-10.1",
+  "version": "2026-09-14.1",
   "defaultUnit": "M",
   "courses": [
     {
@@ -7339,7 +7339,709 @@
           ]
         }
       ]
-    }
-    ,{"id":"sagewood-hongcheon","name":"세이지우드 홍천","aliases":["세이지우드","세이지우드CC","세이지우드 홍천"],"sourceUrl":"https://www.sagewood.co.kr/hongcheon/golf/{dream,vision,challenge}","sourceUnit":"M","firstCollectedAt":"2026-09-10","lastVerifiedAt":"2026-09-10","note":"27홀 원장 기준. 골드 티는 제공되지 않아 null로 유지하고, 일부 홀의 노란색 및 레드보다 긴 티는 선택 필드로 보존.","segments":[{"id":"sagewood-hongcheon-dream","name":"드림 코스","holes":[{"number":1,"par":4,"hcp":5,"distances":{"black":{"m":436,"yd":477},"blue":{"m":389,"yd":425},"white":{"m":361,"yd":395},"gold":null,"red":{"m":311,"yd":340}}},{"number":2,"par":5,"hcp":1,"distances":{"black":{"m":541,"yd":592},"blue":{"m":526,"yd":575},"white":{"m":516,"yd":564},"gold":null,"red":{"m":471,"yd":515}}},{"number":3,"par":4,"hcp":2,"distances":{"black":{"m":444,"yd":486},"blue":{"m":423,"yd":463},"white":{"m":390,"yd":427},"gold":null,"red":{"m":277,"yd":303},"additionalYellow":{"m":340,"yd":372},"additionalLongRed":{"m":319,"yd":349}}},{"number":4,"par":3,"hcp":9,"distances":{"black":{"m":168,"yd":184},"blue":{"m":154,"yd":168},"white":{"m":139,"yd":152},"gold":null,"red":{"m":125,"yd":137}}},{"number":5,"par":5,"hcp":3,"distances":{"black":{"m":558,"yd":610},"blue":{"m":534,"yd":584},"white":{"m":518,"yd":566},"gold":null,"red":{"m":416,"yd":455}}},{"number":6,"par":4,"hcp":7,"distances":{"black":{"m":324,"yd":354},"blue":{"m":290,"yd":317},"white":{"m":267,"yd":292},"gold":null,"red":{"m":241,"yd":264}}},{"number":7,"par":4,"hcp":4,"distances":{"black":{"m":420,"yd":459},"blue":{"m":390,"yd":427},"white":{"m":355,"yd":388},"gold":null,"red":{"m":308,"yd":337}}},{"number":8,"par":3,"hcp":6,"distances":{"black":{"m":211,"yd":231},"blue":{"m":191,"yd":209},"white":{"m":168,"yd":184},"gold":null,"red":{"m":135,"yd":148},"additionalLongRed":{"m":151,"yd":165}}},{"number":9,"par":4,"hcp":8,"distances":{"black":{"m":425,"yd":465},"blue":{"m":407,"yd":445},"white":{"m":339,"yd":371},"gold":null,"red":{"m":312,"yd":341}}}]},{"id":"sagewood-hongcheon-vision","name":"비전 코스","holes":[{"number":1,"par":4,"hcp":6,"distances":{"black":{"m":399,"yd":436},"blue":{"m":384,"yd":420},"white":{"m":346,"yd":378},"gold":null,"red":{"m":279,"yd":305},"additionalYellow":{"m":311,"yd":340}}},{"number":2,"par":3,"hcp":8,"distances":{"black":{"m":199,"yd":218},"blue":{"m":160,"yd":175},"white":{"m":144,"yd":157},"gold":null,"red":{"m":106,"yd":116}}},{"number":3,"par":4,"hcp":1,"distances":{"black":{"m":416,"yd":455},"blue":{"m":400,"yd":437},"white":{"m":335,"yd":366},"gold":null,"red":{"m":318,"yd":348}}},{"number":4,"par":5,"hcp":2,"distances":{"black":{"m":513,"yd":561},"blue":{"m":505,"yd":552},"white":{"m":474,"yd":518},"gold":null,"red":{"m":366,"yd":400}}},{"number":5,"par":4,"hcp":5,"distances":{"black":{"m":313,"yd":342},"blue":{"m":302,"yd":330},"white":{"m":292,"yd":319},"gold":null,"red":{"m":201,"yd":220}}},{"number":6,"par":4,"hcp":4,"distances":{"black":{"m":362,"yd":396},"blue":{"m":336,"yd":367},"white":{"m":309,"yd":338},"gold":null,"red":{"m":289,"yd":316}}},{"number":7,"par":5,"hcp":3,"distances":{"black":{"m":496,"yd":542},"blue":{"m":479,"yd":524},"white":{"m":458,"yd":501},"gold":null,"red":{"m":392,"yd":429}}},{"number":8,"par":3,"hcp":7,"distances":{"black":{"m":174,"yd":190},"blue":{"m":156,"yd":171},"white":{"m":141,"yd":154},"gold":null,"red":{"m":113,"yd":124}}},{"number":9,"par":4,"hcp":9,"distances":{"black":{"m":310,"yd":339},"blue":{"m":273,"yd":299},"white":{"m":260,"yd":284},"gold":null,"red":{"m":200,"yd":219}}}]},{"id":"sagewood-hongcheon-challenge","name":"챌린지 코스","holes":[{"number":1,"par":5,"hcp":2,"distances":{"black":{"m":496,"yd":542},"blue":{"m":463,"yd":506},"white":{"m":425,"yd":465},"gold":null,"red":{"m":373,"yd":408}}},{"number":2,"par":3,"hcp":9,"distances":{"black":{"m":178,"yd":195},"blue":{"m":158,"yd":173},"white":{"m":136,"yd":149},"gold":null,"red":{"m":117,"yd":128}}},{"number":3,"par":4,"hcp":4,"distances":{"black":{"m":380,"yd":416},"blue":{"m":350,"yd":383},"white":{"m":336,"yd":367},"gold":null,"red":{"m":257,"yd":281}}},{"number":4,"par":3,"hcp":8,"distances":{"black":{"m":139,"yd":152},"blue":{"m":121,"yd":132},"white":{"m":113,"yd":124},"gold":null,"red":{"m":105,"yd":115}}},{"number":5,"par":4,"hcp":6,"distances":{"black":{"m":376,"yd":411},"blue":{"m":345,"yd":377},"white":{"m":323,"yd":353},"gold":null,"red":{"m":287,"yd":314}}},{"number":6,"par":4,"hcp":5,"distances":{"black":{"m":367,"yd":401},"blue":{"m":345,"yd":377},"white":{"m":328,"yd":359},"gold":null,"red":{"m":252,"yd":276}}},{"number":7,"par":5,"hcp":3,"distances":{"black":{"m":493,"yd":539},"blue":{"m":478,"yd":523},"white":{"m":469,"yd":513},"gold":null,"red":{"m":384,"yd":420}}},{"number":8,"par":3,"hcp":7,"distances":{"black":{"m":238,"yd":260},"blue":{"m":213,"yd":233},"white":{"m":192,"yd":210},"gold":null,"red":{"m":167,"yd":183},"additionalYellow":{"m":187,"yd":205}}},{"number":9,"par":5,"hcp":1,"distances":{"black":{"m":505,"yd":552},"blue":{"m":484,"yd":529},"white":{"m":472,"yd":516},"gold":null,"red":{"m":380,"yd":416}}}]}]}
+    },
+    {
+      "id": "sagewood-hongcheon",
+      "name": "세이지우드 홍천",
+      "aliases": [
+        "세이지우드",
+        "세이지우드CC",
+        "세이지우드 홍천"
+      ],
+      "sourceUrl": "https://www.sagewood.co.kr/hongcheon/golf/{dream,vision,challenge}",
+      "sourceUnit": "M",
+      "firstCollectedAt": "2026-09-10",
+      "lastVerifiedAt": "2026-09-10",
+      "note": "27홀 원장 기준. 골드 티는 제공되지 않아 null로 유지하고, 일부 홀의 노란색 및 레드보다 긴 티는 선택 필드로 보존.",
+      "segments": [
+        {
+          "id": "sagewood-hongcheon-dream",
+          "name": "드림 코스",
+          "holes": [
+            {
+              "number": 1,
+              "par": 4,
+              "hcp": 5,
+              "distances": {
+                "black": {
+                  "m": 436,
+                  "yd": 477
+                },
+                "blue": {
+                  "m": 389,
+                  "yd": 425
+                },
+                "white": {
+                  "m": 361,
+                  "yd": 395
+                },
+                "gold": null,
+                "red": {
+                  "m": 311,
+                  "yd": 340
+                }
+              }
+            },
+            {
+              "number": 2,
+              "par": 5,
+              "hcp": 1,
+              "distances": {
+                "black": {
+                  "m": 541,
+                  "yd": 592
+                },
+                "blue": {
+                  "m": 526,
+                  "yd": 575
+                },
+                "white": {
+                  "m": 516,
+                  "yd": 564
+                },
+                "gold": null,
+                "red": {
+                  "m": 471,
+                  "yd": 515
+                }
+              }
+            },
+            {
+              "number": 3,
+              "par": 4,
+              "hcp": 2,
+              "distances": {
+                "black": {
+                  "m": 444,
+                  "yd": 486
+                },
+                "blue": {
+                  "m": 423,
+                  "yd": 463
+                },
+                "white": {
+                  "m": 390,
+                  "yd": 427
+                },
+                "gold": null,
+                "red": {
+                  "m": 277,
+                  "yd": 303
+                },
+                "additionalYellow": {
+                  "m": 340,
+                  "yd": 372
+                },
+                "additionalLongRed": {
+                  "m": 319,
+                  "yd": 349
+                }
+              }
+            },
+            {
+              "number": 4,
+              "par": 3,
+              "hcp": 9,
+              "distances": {
+                "black": {
+                  "m": 168,
+                  "yd": 184
+                },
+                "blue": {
+                  "m": 154,
+                  "yd": 168
+                },
+                "white": {
+                  "m": 139,
+                  "yd": 152
+                },
+                "gold": null,
+                "red": {
+                  "m": 125,
+                  "yd": 137
+                }
+              }
+            },
+            {
+              "number": 5,
+              "par": 5,
+              "hcp": 3,
+              "distances": {
+                "black": {
+                  "m": 558,
+                  "yd": 610
+                },
+                "blue": {
+                  "m": 534,
+                  "yd": 584
+                },
+                "white": {
+                  "m": 518,
+                  "yd": 566
+                },
+                "gold": null,
+                "red": {
+                  "m": 416,
+                  "yd": 455
+                }
+              }
+            },
+            {
+              "number": 6,
+              "par": 4,
+              "hcp": 7,
+              "distances": {
+                "black": {
+                  "m": 324,
+                  "yd": 354
+                },
+                "blue": {
+                  "m": 290,
+                  "yd": 317
+                },
+                "white": {
+                  "m": 267,
+                  "yd": 292
+                },
+                "gold": null,
+                "red": {
+                  "m": 241,
+                  "yd": 264
+                }
+              }
+            },
+            {
+              "number": 7,
+              "par": 4,
+              "hcp": 4,
+              "distances": {
+                "black": {
+                  "m": 420,
+                  "yd": 459
+                },
+                "blue": {
+                  "m": 390,
+                  "yd": 427
+                },
+                "white": {
+                  "m": 355,
+                  "yd": 388
+                },
+                "gold": null,
+                "red": {
+                  "m": 308,
+                  "yd": 337
+                }
+              }
+            },
+            {
+              "number": 8,
+              "par": 3,
+              "hcp": 6,
+              "distances": {
+                "black": {
+                  "m": 211,
+                  "yd": 231
+                },
+                "blue": {
+                  "m": 191,
+                  "yd": 209
+                },
+                "white": {
+                  "m": 168,
+                  "yd": 184
+                },
+                "gold": null,
+                "red": {
+                  "m": 135,
+                  "yd": 148
+                },
+                "additionalLongRed": {
+                  "m": 151,
+                  "yd": 165
+                }
+              }
+            },
+            {
+              "number": 9,
+              "par": 4,
+              "hcp": 8,
+              "distances": {
+                "black": {
+                  "m": 425,
+                  "yd": 465
+                },
+                "blue": {
+                  "m": 407,
+                  "yd": 445
+                },
+                "white": {
+                  "m": 339,
+                  "yd": 371
+                },
+                "gold": null,
+                "red": {
+                  "m": 312,
+                  "yd": 341
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "sagewood-hongcheon-vision",
+          "name": "비전 코스",
+          "holes": [
+            {
+              "number": 1,
+              "par": 4,
+              "hcp": 6,
+              "distances": {
+                "black": {
+                  "m": 399,
+                  "yd": 436
+                },
+                "blue": {
+                  "m": 384,
+                  "yd": 420
+                },
+                "white": {
+                  "m": 346,
+                  "yd": 378
+                },
+                "gold": null,
+                "red": {
+                  "m": 279,
+                  "yd": 305
+                },
+                "additionalYellow": {
+                  "m": 311,
+                  "yd": 340
+                }
+              }
+            },
+            {
+              "number": 2,
+              "par": 3,
+              "hcp": 8,
+              "distances": {
+                "black": {
+                  "m": 199,
+                  "yd": 218
+                },
+                "blue": {
+                  "m": 160,
+                  "yd": 175
+                },
+                "white": {
+                  "m": 144,
+                  "yd": 157
+                },
+                "gold": null,
+                "red": {
+                  "m": 106,
+                  "yd": 116
+                }
+              }
+            },
+            {
+              "number": 3,
+              "par": 4,
+              "hcp": 1,
+              "distances": {
+                "black": {
+                  "m": 416,
+                  "yd": 455
+                },
+                "blue": {
+                  "m": 400,
+                  "yd": 437
+                },
+                "white": {
+                  "m": 335,
+                  "yd": 366
+                },
+                "gold": null,
+                "red": {
+                  "m": 318,
+                  "yd": 348
+                }
+              }
+            },
+            {
+              "number": 4,
+              "par": 5,
+              "hcp": 2,
+              "distances": {
+                "black": {
+                  "m": 513,
+                  "yd": 561
+                },
+                "blue": {
+                  "m": 505,
+                  "yd": 552
+                },
+                "white": {
+                  "m": 474,
+                  "yd": 518
+                },
+                "gold": null,
+                "red": {
+                  "m": 366,
+                  "yd": 400
+                }
+              }
+            },
+            {
+              "number": 5,
+              "par": 4,
+              "hcp": 5,
+              "distances": {
+                "black": {
+                  "m": 313,
+                  "yd": 342
+                },
+                "blue": {
+                  "m": 302,
+                  "yd": 330
+                },
+                "white": {
+                  "m": 292,
+                  "yd": 319
+                },
+                "gold": null,
+                "red": {
+                  "m": 201,
+                  "yd": 220
+                }
+              }
+            },
+            {
+              "number": 6,
+              "par": 4,
+              "hcp": 4,
+              "distances": {
+                "black": {
+                  "m": 362,
+                  "yd": 396
+                },
+                "blue": {
+                  "m": 336,
+                  "yd": 367
+                },
+                "white": {
+                  "m": 309,
+                  "yd": 338
+                },
+                "gold": null,
+                "red": {
+                  "m": 289,
+                  "yd": 316
+                }
+              }
+            },
+            {
+              "number": 7,
+              "par": 5,
+              "hcp": 3,
+              "distances": {
+                "black": {
+                  "m": 496,
+                  "yd": 542
+                },
+                "blue": {
+                  "m": 479,
+                  "yd": 524
+                },
+                "white": {
+                  "m": 458,
+                  "yd": 501
+                },
+                "gold": null,
+                "red": {
+                  "m": 392,
+                  "yd": 429
+                }
+              }
+            },
+            {
+              "number": 8,
+              "par": 3,
+              "hcp": 7,
+              "distances": {
+                "black": {
+                  "m": 174,
+                  "yd": 190
+                },
+                "blue": {
+                  "m": 156,
+                  "yd": 171
+                },
+                "white": {
+                  "m": 141,
+                  "yd": 154
+                },
+                "gold": null,
+                "red": {
+                  "m": 113,
+                  "yd": 124
+                }
+              }
+            },
+            {
+              "number": 9,
+              "par": 4,
+              "hcp": 9,
+              "distances": {
+                "black": {
+                  "m": 310,
+                  "yd": 339
+                },
+                "blue": {
+                  "m": 273,
+                  "yd": 299
+                },
+                "white": {
+                  "m": 260,
+                  "yd": 284
+                },
+                "gold": null,
+                "red": {
+                  "m": 200,
+                  "yd": 219
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "sagewood-hongcheon-challenge",
+          "name": "챌린지 코스",
+          "holes": [
+            {
+              "number": 1,
+              "par": 5,
+              "hcp": 2,
+              "distances": {
+                "black": {
+                  "m": 496,
+                  "yd": 542
+                },
+                "blue": {
+                  "m": 463,
+                  "yd": 506
+                },
+                "white": {
+                  "m": 425,
+                  "yd": 465
+                },
+                "gold": null,
+                "red": {
+                  "m": 373,
+                  "yd": 408
+                }
+              }
+            },
+            {
+              "number": 2,
+              "par": 3,
+              "hcp": 9,
+              "distances": {
+                "black": {
+                  "m": 178,
+                  "yd": 195
+                },
+                "blue": {
+                  "m": 158,
+                  "yd": 173
+                },
+                "white": {
+                  "m": 136,
+                  "yd": 149
+                },
+                "gold": null,
+                "red": {
+                  "m": 117,
+                  "yd": 128
+                }
+              }
+            },
+            {
+              "number": 3,
+              "par": 4,
+              "hcp": 4,
+              "distances": {
+                "black": {
+                  "m": 380,
+                  "yd": 416
+                },
+                "blue": {
+                  "m": 350,
+                  "yd": 383
+                },
+                "white": {
+                  "m": 336,
+                  "yd": 367
+                },
+                "gold": null,
+                "red": {
+                  "m": 257,
+                  "yd": 281
+                }
+              }
+            },
+            {
+              "number": 4,
+              "par": 3,
+              "hcp": 8,
+              "distances": {
+                "black": {
+                  "m": 139,
+                  "yd": 152
+                },
+                "blue": {
+                  "m": 121,
+                  "yd": 132
+                },
+                "white": {
+                  "m": 113,
+                  "yd": 124
+                },
+                "gold": null,
+                "red": {
+                  "m": 105,
+                  "yd": 115
+                }
+              }
+            },
+            {
+              "number": 5,
+              "par": 4,
+              "hcp": 6,
+              "distances": {
+                "black": {
+                  "m": 376,
+                  "yd": 411
+                },
+                "blue": {
+                  "m": 345,
+                  "yd": 377
+                },
+                "white": {
+                  "m": 323,
+                  "yd": 353
+                },
+                "gold": null,
+                "red": {
+                  "m": 287,
+                  "yd": 314
+                }
+              }
+            },
+            {
+              "number": 6,
+              "par": 4,
+              "hcp": 5,
+              "distances": {
+                "black": {
+                  "m": 367,
+                  "yd": 401
+                },
+                "blue": {
+                  "m": 345,
+                  "yd": 377
+                },
+                "white": {
+                  "m": 328,
+                  "yd": 359
+                },
+                "gold": null,
+                "red": {
+                  "m": 252,
+                  "yd": 276
+                }
+              }
+            },
+            {
+              "number": 7,
+              "par": 5,
+              "hcp": 3,
+              "distances": {
+                "black": {
+                  "m": 493,
+                  "yd": 539
+                },
+                "blue": {
+                  "m": 478,
+                  "yd": 523
+                },
+                "white": {
+                  "m": 469,
+                  "yd": 513
+                },
+                "gold": null,
+                "red": {
+                  "m": 384,
+                  "yd": 420
+                }
+              }
+            },
+            {
+              "number": 8,
+              "par": 3,
+              "hcp": 7,
+              "distances": {
+                "black": {
+                  "m": 238,
+                  "yd": 260
+                },
+                "blue": {
+                  "m": 213,
+                  "yd": 233
+                },
+                "white": {
+                  "m": 192,
+                  "yd": 210
+                },
+                "gold": null,
+                "red": {
+                  "m": 167,
+                  "yd": 183
+                },
+                "additionalYellow": {
+                  "m": 187,
+                  "yd": 205
+                }
+              }
+            },
+            {
+              "number": 9,
+              "par": 5,
+              "hcp": 1,
+              "distances": {
+                "black": {
+                  "m": 505,
+                  "yd": 552
+                },
+                "blue": {
+                  "m": 484,
+                  "yd": 529
+                },
+                "white": {
+                  "m": 472,
+                  "yd": 516
+                },
+                "gold": null,
+                "red": {
+                  "m": 380,
+                  "yd": 416
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {"id":"skyvalley","name":"스카이밸리 컨트리클럽","aliases":["스카이밸리","스카이밸리CC","스카이밸리 컨트리클럽"],"sourceUrl":"https://www.skyvalley.co.kr/skyvalley/swp/{sky,valley,lake,mountain}_course","sourceUnit":"M","firstCollectedAt":"2026-09-11","lastVerifiedAt":"2026-09-11","note":"36홀 원장 기준. 블랙·화이트·레드 티만 제공되어 블루·골드 티는 null로 유지.","segments":[{"id":"skyvalley-sky","name":"스카이 코스","holes":[{"number":1,"par":4,"hcp":1,"distances":{"black":{"m":368,"yd":402},"blue":null,"white":{"m":349,"yd":382},"gold":null,"red":{"m":326,"yd":357}}},{"number":2,"par":5,"hcp":6,"distances":{"black":{"m":502,"yd":549},"blue":null,"white":{"m":474,"yd":518},"gold":null,"red":{"m":461,"yd":504}}},{"number":3,"par":4,"hcp":7,"distances":{"black":{"m":340,"yd":372},"blue":null,"white":{"m":320,"yd":350},"gold":null,"red":{"m":299,"yd":327}}},{"number":4,"par":3,"hcp":3,"distances":{"black":{"m":177,"yd":194},"blue":null,"white":{"m":168,"yd":184},"gold":null,"red":{"m":128,"yd":140}}},{"number":5,"par":5,"hcp":4,"distances":{"black":{"m":468,"yd":512},"blue":null,"white":{"m":448,"yd":490},"gold":null,"red":{"m":396,"yd":433}}},{"number":6,"par":4,"hcp":9,"distances":{"black":{"m":317,"yd":347},"blue":null,"white":{"m":303,"yd":331},"gold":null,"red":{"m":289,"yd":316}}},{"number":7,"par":3,"hcp":8,"distances":{"black":{"m":155,"yd":170},"blue":null,"white":{"m":135,"yd":148},"gold":null,"red":{"m":120,"yd":131}}},{"number":8,"par":4,"hcp":1,"distances":{"black":{"m":404,"yd":442},"blue":null,"white":{"m":374,"yd":409},"gold":null,"red":{"m":373,"yd":408}}},{"number":9,"par":4,"hcp":2,"distances":{"black":{"m":367,"yd":401},"blue":null,"white":{"m":367,"yd":401},"gold":null,"red":{"m":350,"yd":383}}}]},{"id":"skyvalley-valley","name":"밸리 코스","holes":[{"number":1,"par":4,"hcp":8,"distances":{"black":{"m":345,"yd":377},"blue":null,"white":{"m":324,"yd":354},"gold":null,"red":{"m":303,"yd":331}}},{"number":2,"par":5,"hcp":3,"distances":{"black":{"m":506,"yd":553},"blue":null,"white":{"m":492,"yd":538},"gold":null,"red":{"m":454,"yd":497}}},{"number":3,"par":3,"hcp":7,"distances":{"black":{"m":176,"yd":192},"blue":null,"white":{"m":160,"yd":175},"gold":null,"red":{"m":141,"yd":154}}},{"number":4,"par":4,"hcp":5,"distances":{"black":{"m":370,"yd":405},"blue":null,"white":{"m":352,"yd":385},"gold":null,"red":{"m":322,"yd":352}}},{"number":5,"par":4,"hcp":1,"distances":{"black":{"m":402,"yd":440},"blue":null,"white":{"m":382,"yd":418},"gold":null,"red":{"m":356,"yd":389}}},{"number":6,"par":4,"hcp":2,"distances":{"black":{"m":361,"yd":395},"blue":null,"white":{"m":338,"yd":370},"gold":null,"red":{"m":317,"yd":347}}},{"number":7,"par":3,"hcp":9,"distances":{"black":{"m":140,"yd":153},"blue":null,"white":{"m":128,"yd":140},"gold":null,"red":{"m":109,"yd":119}}},{"number":8,"par":5,"hcp":6,"distances":{"black":{"m":470,"yd":514},"blue":null,"white":{"m":452,"yd":494},"gold":null,"red":{"m":426,"yd":466}}},{"number":9,"par":4,"hcp":4,"distances":{"black":{"m":385,"yd":421},"blue":null,"white":{"m":355,"yd":388},"gold":null,"red":{"m":329,"yd":360}}}]},{"id":"skyvalley-lake","name":"레이크 코스","holes":[{"number":1,"par":4,"hcp":3,"distances":{"black":{"m":398,"yd":435},"blue":null,"white":{"m":380,"yd":416},"gold":null,"red":{"m":341,"yd":373}}},{"number":2,"par":4,"hcp":6,"distances":{"black":{"m":378,"yd":413},"blue":null,"white":{"m":357,"yd":390},"gold":null,"red":{"m":312,"yd":341}}},{"number":3,"par":3,"hcp":4,"distances":{"black":{"m":167,"yd":183},"blue":null,"white":{"m":150,"yd":164},"gold":null,"red":{"m":108,"yd":118}}},{"number":4,"par":4,"hcp":5,"distances":{"black":{"m":394,"yd":431},"blue":null,"white":{"m":377,"yd":412},"gold":null,"red":{"m":321,"yd":351}}},{"number":5,"par":4,"hcp":2,"distances":{"black":{"m":386,"yd":422},"blue":null,"white":{"m":356,"yd":389},"gold":null,"red":{"m":308,"yd":337}}},{"number":6,"par":5,"hcp":1,"distances":{"black":{"m":526,"yd":575},"blue":null,"white":{"m":510,"yd":558},"gold":null,"red":{"m":458,"yd":501}}},{"number":7,"par":3,"hcp":7,"distances":{"black":{"m":153,"yd":167},"blue":null,"white":{"m":131,"yd":143},"gold":null,"red":{"m":131,"yd":143}}},{"number":8,"par":4,"hcp":8,"distances":{"black":{"m":350,"yd":383},"blue":null,"white":{"m":331,"yd":362},"gold":null,"red":{"m":299,"yd":327}}},{"number":9,"par":5,"hcp":9,"distances":{"black":{"m":464,"yd":507},"blue":null,"white":{"m":443,"yd":484},"gold":null,"red":{"m":407,"yd":445}}}]},{"id":"skyvalley-mountain","name":"마운틴 코스","holes":[{"number":1,"par":4,"hcp":2,"distances":{"black":{"m":372,"yd":407},"blue":null,"white":{"m":352,"yd":385},"gold":null,"red":{"m":310,"yd":339}}},{"number":2,"par":4,"hcp":8,"distances":{"black":{"m":368,"yd":402},"blue":null,"white":{"m":353,"yd":386},"gold":null,"red":{"m":315,"yd":344}}},{"number":3,"par":4,"hcp":3,"distances":{"black":{"m":325,"yd":355},"blue":null,"white":{"m":304,"yd":332},"gold":null,"red":{"m":270,"yd":295}}},{"number":4,"par":5,"hcp":5,"distances":{"black":{"m":507,"yd":554},"blue":null,"white":{"m":481,"yd":526},"gold":null,"red":{"m":411,"yd":449}}},{"number":5,"par":3,"hcp":6,"distances":{"black":{"m":171,"yd":187},"blue":null,"white":{"m":153,"yd":167},"gold":null,"red":{"m":120,"yd":131}}},{"number":6,"par":4,"hcp":7,"distances":{"black":{"m":328,"yd":359},"blue":null,"white":{"m":310,"yd":339},"gold":null,"red":{"m":280,"yd":306}}},{"number":7,"par":5,"hcp":1,"distances":{"black":{"m":506,"yd":553},"blue":null,"white":{"m":492,"yd":538},"gold":null,"red":{"m":412,"yd":451}}},{"number":8,"par":3,"hcp":9,"distances":{"black":{"m":161,"yd":176},"blue":null,"white":{"m":148,"yd":162},"gold":null,"red":{"m":120,"yd":131}}},{"number":9,"par":4,"hcp":4,"distances":{"black":{"m":349,"yd":382},"blue":null,"white":{"m":325,"yd":355},"gold":null,"red":{"m":280,"yd":306}}}]}]}
   ]
 }

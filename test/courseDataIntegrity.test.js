@@ -15,6 +15,7 @@ const expectedCourseIds = [
   'haesley-nine-bridges',
   'laviebel',
   'sagewood-hongcheon',
+  'skyvalley',
 ]
 
 function normalize(value) {
@@ -22,13 +23,13 @@ function normalize(value) {
 }
 
 test('골프장 스냅샷은 기존 골프장을 보존하고 ID와 별칭 충돌이 없다', () => {
-  assert.equal(database.version, '2026-09-10.1')
+  assert.equal(database.version, '2026-09-14.1')
   assert.equal(database.defaultUnit, 'M')
   assert.deepEqual(database.courses.map(course => course.id), expectedCourseIds)
-  assert.equal(database.courses.length, 11)
-  assert.equal(database.courses.reduce((count, course) => count + course.segments.length, 0), 27)
-  assert.equal(database.courses.reduce((count, course) => count + course.segments.reduce((sum, segment) => sum + segment.holes.length, 0), 0), 306)
-  assert.equal(database.courses.reduce((count, course) => count + course.aliases.length, 0), 34)
+  assert.equal(database.courses.length, 12)
+  assert.equal(database.courses.reduce((count, course) => count + course.segments.length, 0), 31)
+  assert.equal(database.courses.reduce((count, course) => count + course.segments.reduce((sum, segment) => sum + segment.holes.length, 0), 0), 342)
+  assert.equal(database.courses.reduce((count, course) => count + course.aliases.length, 0), 37)
 
   const ids = new Set()
   const segmentIds = new Set()
@@ -130,4 +131,17 @@ test('세이지우드 홍천은 27홀 원장과 산발적 추가 티를 보존�
   assert.deepEqual(sagewood.segments[0].holes[2].distances.additionalYellow, { m: 340, yd: 372 })
   assert.deepEqual(sagewood.segments[0].holes[2].distances.additionalLongRed, { m: 319, yd: 349 })
   assert.deepEqual(sagewood.segments[2].holes[7].distances.additionalYellow, { m: 187, yd: 205 })
+})
+
+test('스카이밸리는 4개 9홀 코스와 제공 티 범위를 보존한다', () => {
+  const skyvalley = database.courses.find(course => course.id === 'skyvalley')
+  assert.deepEqual(skyvalley.segments.map(segment => [segment.name, segment.holes.length]), [
+    ['스카이 코스', 9],
+    ['밸리 코스', 9],
+    ['레이크 코스', 9],
+    ['마운틴 코스', 9],
+  ])
+  assert.ok(skyvalley.segments.every(segment => segment.holes.every(hole => hole.distances.blue == null && hole.distances.gold == null)))
+  assert.deepEqual(skyvalley.segments[0].holes.find(hole => hole.number === 1).distances.black, { m: 368, yd: 402 })
+  assert.deepEqual(skyvalley.segments[2].holes.find(hole => hole.number === 6).distances.red, { m: 458, yd: 501 })
 })
