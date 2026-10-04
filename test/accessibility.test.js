@@ -85,7 +85,7 @@ test('로그인 화면에는 작동하지 않는 테스트 계정 승인 신청 
 test('전체 새소식은 홈과 계정 메뉴에서 같은 정적 목록으로 열린다', () => {
   assert.match(appSource, /className="news-header-button"/)
   assert.match(appSource, /function openNews\(\)/)
-  assert.match(appSource, /<MegaphoneIcon \/>/)
+  assert.match(appSource, /<AppIcon name="bell" \/>/)
   assert.match(appSource, /className="news-unseen-dot"/)
   assert.match(appSource, /screen === 'news'/)
   assert.ok(newsItems.length >= 1)

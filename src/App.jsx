@@ -148,12 +148,23 @@ function ParWarningIcon() {
   return <span className="par-warning-icon" role="img" aria-label="PAR 정보가 없는 홀은 파 대비 계산에서 제외됨">⚠️</span>
 }
 
-function MegaphoneIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11v2a2 2 0 0 0 2 2h2l2 4h3l-2-4 7 3V6L8 9H6a2 2 0 0 0-2 2Z" /><path d="M20 9v6" /></svg>
+const APP_ICON_PATHS = {
+  bell: ['M18 9a6 6 0 0 0-12 0c0 6.8-2.5 7.3-2.5 8.5h17C20.5 16.3 18 15.8 18 9Z', 'M9.7 20a2.6 2.6 0 0 0 4.6 0'],
+  chevronRight: ['m9 5 7 7-7 7'],
+  feedback: [
+    'M20 11.5a7.5 7.5 0 0 1-8 7.5 9.3 9.3 0 0 1-3.6-.7L4 20l.9-3.4A7.1 7.1 0 0 1 4 13a7.5 7.5 0 0 1 8-7.5 7.5 7.5 0 0 1 8 6Z',
+    'M8.5 12h.1M12 12h.1M15.5 12h.1',
+  ],
+  golfCart: ['M4 6h12M6 6v8M15 6v8', 'M5 14h12.5l2 3H4l1-3Z', 'M9 19a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM19 19a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z'],
+  heart: ['M20.8 8.8c0 5.6-8.8 10.5-8.8 10.5S3.2 14.4 3.2 8.8A4.8 4.8 0 0 1 12 6.1a4.8 4.8 0 0 1 8.8 2.7Z'],
 }
 
-function FeedbackIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-5 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" /><path d="M8 9h8M8 13h5" /></svg>
+function AppIcon({ name, className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      {APP_ICON_PATHS[name].map(path => <path d={path} key={path} />)}
+    </svg>
+  )
 }
 
 export default function App() {
@@ -2125,8 +2136,8 @@ export default function App() {
           <div className="brand"><img className="brand-ball-logo" src={golfBallLogo} alt="" /><span className="brand-wordmark">Golf<br />&amp; Me</span></div>
           <div className="home-header-actions">
             <button className="news-header-button" type="button" onClick={openNews} aria-label={unseenNews ? '새소식, 새 글 있음' : '새소식'}>
-              <MegaphoneIcon />
-              <span>새소식{unseenNews && <i className="news-unseen-dot" aria-hidden="true" />}</span>
+              <AppIcon name="bell" />
+              {unseenNews && <i className="news-unseen-dot" aria-hidden="true" />}
             </button>
             <button className="profile-button" type="button" onClick={() => setAccountOpen(true)} title="계정 메뉴" aria-label={`${displayName} 계정 메뉴 열기`}>
               {avatarUrl
@@ -2612,16 +2623,20 @@ export default function App() {
               </div>
             </div>
             <button className="account-menu-button" type="button" onClick={openClubBag}>
-              <span><b aria-hidden="true">♧</b><strong>내 골프백</strong></span>
-              <i aria-hidden="true">→</i>
+              <span><b aria-hidden="true"><AppIcon name="golfCart" /></b><strong>내 골프백</strong></span>
+              <AppIcon className="menu-chevron" name="chevronRight" />
             </button>
             <button className="account-menu-button" type="button" onClick={openNews} aria-label={unseenNews ? '새소식, 새 글 있음' : '새소식'}>
-              <span><b className="news-menu-icon" aria-hidden="true"><MegaphoneIcon /></b><strong className="news-menu-label">새소식{unseenNews && <i className="news-unseen-dot" aria-hidden="true" />}</strong></span>
-              <i aria-hidden="true">→</i>
+              <span><b aria-hidden="true"><AppIcon name="bell" /></b><strong className="news-menu-label">새소식{unseenNews && <i className="news-unseen-dot" aria-hidden="true" />}</strong></span>
+              <AppIcon className="menu-chevron" name="chevronRight" />
             </button>
             <button className="account-menu-button" type="button" onClick={openFeedback}>
-              <span><b className="feedback-menu-icon" aria-hidden="true"><FeedbackIcon /></b><strong>의견 보내기</strong></span>
-              <i aria-hidden="true">→</i>
+              <span><b aria-hidden="true"><AppIcon name="feedback" /></b><strong>의견 보내기</strong></span>
+              <AppIcon className="menu-chevron" name="chevronRight" />
+            </button>
+            <button className="account-menu-button" type="button" disabled>
+              <span><b aria-hidden="true"><AppIcon name="heart" /></b><strong>응원하기</strong><em className="coming-soon-chip">준비 중</em></span>
+              <AppIcon className="menu-chevron" name="chevronRight" />
             </button>
             {analyticsAvailable && (
               <label className="analytics-consent-control">
