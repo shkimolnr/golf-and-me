@@ -18,11 +18,7 @@ test('분석 동의 화면과 계정 메뉴 토글은 분석을 쓸 수 있는 �
   assert.match(appSource, /\{analyticsAvailable && \(\s*<label className="analytics-consent-control">/)
 })
 
-test('계정 삭제 전후에 Google 연결 승인이 남는다는 안내를 보여준다', () => {
-  assert.match(appSource, /GOOGLE_DISCONNECT_NOTICE = '계정과 기록을 삭제했어요\. Google 계정의 연결 승인은 삭제되지 않으니/)
-  assert.match(appSource, /setAuthNotice\(GOOGLE_DISCONNECT_NOTICE\)\s*\n\s*setSession\(null\)/)
-  assert.match(appSource, /\{authNotice && <p className="auth-notice" role="status">\{authNotice\}<\/p>\}/)
+test('계정 삭제 확인창에서만 Google 연결 승인이 남는다고 안내하고 삭제 뒤에는 추가 안내를 띄우지 않는다', () => {
   assert.match(appSource, /Google 계정의 연결 승인은 삭제되지 않으며, 삭제 후 Google 계정 설정에서 직접 해제할 수 있어요/)
-  // 새 로그인을 시작하면 이전 안내는 지운다.
-  assert.match(appSource, /setAuthError\(''\)\s*\n\s*setAuthNotice\(''\)/)
+  assert.doesNotMatch(appSource, /authNotice|GOOGLE_DISCONNECT_NOTICE|auth-notice/)
 })

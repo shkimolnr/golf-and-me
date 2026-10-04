@@ -25,7 +25,6 @@ import { clearDiagnosticQueue, enqueueDiagnosticFailure, enqueueDiagnosticRecove
 import golfBallLogo from './assets/golf-ball-logo.png'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
-const GOOGLE_DISCONNECT_NOTICE = '계정과 기록을 삭제했어요. Google 계정의 연결 승인은 삭제되지 않으니, 원하시면 Google 계정 설정의 "보안 > 타사 앱 및 서비스 연결"에서 직접 해제해주세요.'
 const previewOnboarding = isPreviewMode && new URLSearchParams(window.location.search).get('onboarding') === '1'
 // 분석이 이 배포에서 실제로 켜질 수 있을 때만 동의 화면과 계정 메뉴 토글을 보여준다(Production은 꺼져 있음).
 const analyticsAvailable = getAnalyticsConfiguration().canInitialize
@@ -171,7 +170,6 @@ export default function App() {
   const [session, setSession] = useState(isPreviewMode ? previewSession : null)
   const [authLoading, setAuthLoading] = useState(isPreviewMode ? false : isSupabaseConfigured)
   const [authError, setAuthError] = useState('')
-  const [authNotice, setAuthNotice] = useState('')
   const [lastSeenNewsId, setLastSeenNewsId] = useState(null)
   const [feedbackMessage, setFeedbackMessage] = useState('')
   const [feedbackStatus, setFeedbackStatus] = useState('idle')
@@ -955,7 +953,6 @@ export default function App() {
   async function signInWithGoogle() {
     if (!supabase) return
     setAuthError('')
-    setAuthNotice('')
     setAuthLoading(true)
     startLoginMeasurement()
     const { error } = await supabase.auth.signInWithOAuth({
@@ -1043,7 +1040,6 @@ export default function App() {
     setAccountDeletionStatus('idle')
     setRounds([])
     setActiveRound(null)
-    setAuthNotice(GOOGLE_DISCONNECT_NOTICE)
     setSession(null)
     setScreen('home')
     trackEvent('account_delete_complete', { status: 'success' })
@@ -2001,7 +1997,6 @@ export default function App() {
           <p className="legal">계속하면 <a href="/terms.html" target="_blank" rel="noopener noreferrer">서비스 이용약관</a> 및 <a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a>에 동의하게 됩니다.</p>
           {!isSupabaseConfigured && <p className="setup-notice" role="status">Google 로그인을 사용하려면 <code>.env</code>에 Supabase 연결 정보를 설정해주세요.</p>}
           {authError && <p className="error-message" role="alert">{authError}</p>}
-          {authNotice && <p className="auth-notice" role="status">{authNotice}</p>}
         </div>
       </main>
     )
