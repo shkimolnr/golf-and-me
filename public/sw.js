@@ -1,5 +1,6 @@
 const CACHE_PREFIX = 'golf-and-me-shell-'
 const CACHE_NAME = `${CACHE_PREFIX}v1`
+const STATIC_PAGE_PATHS = new Set(['/terms.html', '/privacy.html'])
 
 function sameOriginUrl(value) {
   try {
@@ -75,6 +76,8 @@ self.addEventListener('fetch', event => {
 
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
+  // 약관·방침 정적 페이지는 앱 화면(/) 캐시를 덮어쓰지 않도록 서비스워커가 다루지 않는다.
+  if (STATIC_PAGE_PATHS.has(url.pathname)) return
 
   if (request.mode === 'navigate') {
     event.respondWith((async () => {

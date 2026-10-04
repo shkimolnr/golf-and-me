@@ -598,11 +598,14 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .google-mark svg { display: block; width: 100%; height: 100%; }
 .setup-notice, .error-message { padding: 12px 14px; border-radius: 10px; font-size: 15px; line-height: 1.6; }
 .setup-notice { color: #92400e; background: #fffbeb; }
+.auth-notice { margin: 12px 0 0; padding: 12px 14px; border-radius: 10px; color: #065f46; background: #ecfdf5; font-size: 14px; line-height: 1.6; }
 .error-message { color: #991b1b; background: #fef2f2; }
 .sync-message { margin: 0 0 10px; padding: 9px 12px; border-radius: 10px; color: #92400e; background: #fffbeb; font-size: 12px; font-weight: 700; line-height: 1.45; }
 .sync-recovered-notice { position: fixed; z-index: 19; bottom: max(18px, env(safe-area-inset-bottom)); left: 50%; width: max-content; max-width: calc(100% - 32px); margin: 0; padding: 9px 13px; border: 1px solid #a7f3d0; border-radius: 999px; color: #047857; background: #ecfdf5; font-size: 12px; font-weight: 700; text-align: center; transform: translateX(-50%); }
 .resume-notice { position: fixed; z-index: 18; bottom: max(18px, env(safe-area-inset-bottom)); left: 50%; width: max-content; max-width: calc(100% - 32px); margin: 0; padding: 9px 13px; border: 1px solid #a7f3d0; border-radius: 999px; color: #047857; background: #ecfdf5; font-size: 12px; font-weight: 700; text-align: center; transform: translateX(-50%); }
 .legal { margin-top: 24px; color: #9ca3af; font-size: 13px; line-height: 1.6; }
+.legal a, .account-legal-links a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.account-legal-links { display: flex; justify-content: center; gap: 8px; margin: 10px 0 0; color: #9ca3af; font-size: 12px; }
 .spinner { width: 36px; height: 36px; margin: 0 auto 14px; border: 3px solid #d1fae5; border-top-color: #059669; border-radius: 50%; animation: spin .8s linear infinite; }
 .onboarding-shell { display: flex; flex-direction: column; }
 .onboarding-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 48px; }

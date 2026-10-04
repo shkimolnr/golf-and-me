@@ -16,7 +16,7 @@ import { compareClubOrder, createDistanceSet, distanceFromMeters, distanceToMete
 import { clubBagSyncSignature, loadRemoteClubBag, resolveClubBag, saveRemoteClubBag } from './lib/clubBagRepository.js'
 import { clearLocalUserData, deleteRemoteAccount } from './lib/accountDeletion.js'
 import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from './data/news.js'
-import { getAnalyticsConsent, measureLoginStage, recordLoginFailure, setAnalyticsConsent, startLoginMeasurement, trackEvent, trackScreen } from './lib/analytics.js'
+import { getAnalyticsConfiguration, getAnalyticsConsent, measureLoginStage, recordLoginFailure, setAnalyticsConsent, startLoginMeasurement, trackEvent, trackScreen } from './lib/analytics.js'
 import { resetNavigationForExplicitSignOut } from './lib/navigationPolicy.js'
 import { MAX_FEEDBACK_LENGTH, sendFeedback } from './lib/feedback.js'
 import { scheduleRemoteHydrationRetry, shouldScheduleRemoteHydrationRetry } from './lib/remoteHydrationRetry.js'
@@ -25,6 +25,9 @@ import { clearDiagnosticQueue, enqueueDiagnosticFailure, enqueueDiagnosticRecove
 import golfBallLogo from './assets/golf-ball-logo.png'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
+const GOOGLE_DISCONNECT_NOTICE = '계정과 기록을 삭제했어요. Google 계정의 연결 승인은 삭제되지 않으니, 원하시면 Google 계정 설정의 "보안 > 타사 앱 및 서비스 연결"에서 직접 해제해주세요.'
+// 분석이 이 배포에서 실제로 켜질 수 있을 때만 동의 화면과 계정 메뉴 토글을 보여준다(Production은 꺼져 있음).
+const analyticsAvailable = getAnalyticsConfiguration().canInitialize
 const analyticsScreenNames = Object.freeze({
   'new-round': 'new_round',
   'hole-detail': 'hole_detail',
@@ -137,6 +140,7 @@ export default function App() {
   const [session, setSession] = useState(isPreviewMode ? previewSession : null)
   const [authLoading, setAuthLoading] = useState(isPreviewMode ? false : isSupabaseConfigured)
   const [authError, setAuthError] = useState('')
+  const [authNotice, setAuthNotice] = useState('')
   const [lastSeenNewsId, setLastSeenNewsId] = useState(null)
   const [feedbackMessage, setFeedbackMessage] = useState('')
   const [feedbackStatus, setFeedbackStatus] = useState('idle')
@@ -911,6 +915,7 @@ export default function App() {
   async function signInWithGoogle() {
     if (!supabase) return
     setAuthError('')
+    setAuthNotice('')
     setAuthLoading(true)
     startLoginMeasurement()
     const { error } = await supabase.auth.signInWithOAuth({
@@ -998,6 +1003,7 @@ export default function App() {
     setAccountDeletionStatus('idle')
     setRounds([])
     setActiveRound(null)
+    setAuthNotice(GOOGLE_DISCONNECT_NOTICE)
     setSession(null)
     setScreen('home')
     trackEvent('account_delete_complete', { status: 'success' })
@@ -1951,9 +1957,10 @@ export default function App() {
             </span>
             Google로 계속하기
           </button>
-          <p className="legal">계속하면 서비스 이용약관 및 개인정보 처리방침에 동의하게 됩니다.</p>
+          <p className="legal">계속하면 <a href="/terms.html" target="_blank" rel="noopener noreferrer">서비스 이용약관</a> 및 <a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a>에 동의하게 됩니다.</p>
           {!isSupabaseConfigured && <p className="setup-notice" role="status">Google 로그인을 사용하려면 <code>.env</code>에 Supabase 연결 정보를 설정해주세요.</p>}
           {authError && <p className="error-message" role="alert">{authError}</p>}
+          {authNotice && <p className="auth-notice" role="status">{authNotice}</p>}
         </div>
       </main>
     )
@@ -1999,7 +2006,7 @@ export default function App() {
   const distanceBasisChanged = Boolean(latestDistanceSet && latestDistanceSet.basis !== clubDistanceBasis)
   const hasDistanceChanges = Object.values(clubDistanceInputs).some(value => value !== '' && value != null)
 
-  if (screen === 'onboarding' && analyticsConsent === 'unknown') {
+  if (analyticsAvailable && screen === 'onboarding' && analyticsConsent === 'unknown') {
     return (
       <main className="app-shell onboarding-shell analytics-consent-shell">
         <section className="analytics-consent-prompt" aria-labelledby="analytics-consent-title">
@@ -2579,17 +2586,24 @@ export default function App() {
               <span><b className="feedback-menu-icon" aria-hidden="true"><FeedbackIcon /></b><strong>의견 보내기</strong></span>
               <i aria-hidden="true">→</i>
             </button>
-            <label className="analytics-consent-control">
-              <span>
-                <strong>서비스 개선 분석 허용</strong>
-                <small>{analyticsConsent === 'granted'
-                  ? '이용 흐름만 분석하며, 계정·골프 기록은 보내지 않아요.'
-                  : '현재 분석을 보내지 않아요. 허용해도 서비스 이용에는 영향이 없어요.'}</small>
-              </span>
-              <input type="checkbox" checked={analyticsConsent === 'granted'} onChange={event => updateAnalyticsConsent(event.target.checked)} />
-            </label>
+            {analyticsAvailable && (
+              <label className="analytics-consent-control">
+                <span>
+                  <strong>서비스 개선 분석 허용</strong>
+                  <small>{analyticsConsent === 'granted'
+                    ? '이용 흐름만 분석하며, 계정·골프 기록은 보내지 않아요.'
+                    : '현재 분석을 보내지 않아요. 허용해도 서비스 이용에는 영향이 없어요.'}</small>
+                </span>
+                <input type="checkbox" checked={analyticsConsent === 'granted'} onChange={event => updateAnalyticsConsent(event.target.checked)} />
+              </label>
+            )}
             <button className="logout-button" onClick={signOut}>로그아웃</button>
             {!isPreviewMode && <button className="delete-account-link" type="button" onClick={openAccountDeletion}>계정 삭제</button>}
+            <p className="account-legal-links">
+              <a href="/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a>
+              <span aria-hidden="true">·</span>
+              <a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a>
+            </p>
           </section>
         </div>
       )}
@@ -2603,7 +2617,7 @@ export default function App() {
               <h2 id="delete-account-title">계정을 삭제할까요?</h2>
               <button className="close-button" type="button" onClick={() => setAccountDeletionOpen(false)} aria-label="닫기" disabled={accountDeletionStatus === 'deleting'}>×</button>
             </div>
-            <p id="delete-account-description">라운드, 홀·샷 기록, 클럽 구성과 비거리 이력을 포함한 모든 계정 데이터가 영구적으로 삭제됩니다. 삭제한 데이터는 복구할 수 없습니다.</p>
+            <p id="delete-account-description">라운드, 홀·샷 기록, 클럽 구성과 비거리 이력을 포함한 모든 계정 데이터가 영구적으로 삭제됩니다. 삭제한 데이터는 복구할 수 없습니다. Google 계정의 연결 승인은 삭제되지 않으며, 삭제 후 Google 계정 설정에서 직접 해제할 수 있어요.</p>
             {accountDeletionError && <p className="error-message" role="alert">{accountDeletionError}</p>}
             <div className="sheet-actions">
               <button className="secondary-button" type="button" onClick={() => setAccountDeletionOpen(false)} disabled={accountDeletionStatus === 'deleting'}>취소</button>
