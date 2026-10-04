@@ -19,10 +19,16 @@ source_ttf = fonts / "Griun_Cherrie-Rg.ttf"
 out_woff2 = fonts / "Griun_Cherrie-Rg.woff2"
 charset_file = fonts / "cherrie-charset.txt"
 
-sources = [root / "src/App.jsx", root / "src/data/news.js", *sorted((root / "src/lib").glob("*.js"))]
+sources = [root / "src/App.jsx", root / "src/data/news.js", *sorted((root / "src/lib").glob("*.js")), *sorted((root / "src/components").glob("*.jsx"))]
+def strip_comments(text):
+    # 주석의 한글은 화면에 나오지 않으므로 글자 목록에서 뺀다(// 한 줄 주석, /* */ 블록 주석).
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    return re.sub(r"(?m)(^|\s)//[^\n]*", "", text)
+
+
 hangul = set()
 for path in sources:
-    hangul.update(re.findall(r"[가-힣ㄱ-ㅎㅏ-ㅣ]", path.read_text(encoding="utf-8")))
+    hangul.update(re.findall(r"[가-힣ㄱ-ㅎㅏ-ㅣ]", strip_comments(path.read_text(encoding="utf-8"))))
 
 # 한글 외에 항상 포함: 기본 라틴·숫자·기호, 흔한 문장부호·화살표·체크
 fixed = set()

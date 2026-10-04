@@ -5,10 +5,12 @@ import { hasUnseenNews, latestNewsId, newsItems, newsSeenStorageKey } from '../s
 
 const appSource = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8')
 
-test('핵심 비동기 준비 상태는 스크린리더에 상태로 전달된다', () => {
-  assert.match(appSource, /로그인 상태를 확인하고 있어요.<\/p>/)
-  assert.match(appSource, /내 플레이 정보를 준비하고 있어요.<\/p>/)
-  assert.ok((appSource.match(/<p role="status">/g) || []).length >= 2)
+test('핵심 비동기 준비 상태는 스크린리더에 상태로 전달된다', async () => {
+  assert.match(appSource, /if \(authLoading\) \{\s*return <main className="app-shell auth-shell" aria-live="polite"><PuttLoader \/><\/main>/)
+  assert.match(appSource, /if \(!onboardingReady\) \{\s*return <main className="app-shell auth-shell" aria-live="polite"><PuttLoader \/><\/main>/)
+  const loaders = await readFile(new URL('../src/components/Loaders.jsx', import.meta.url), 'utf8')
+  assert.match(loaders, /className="gm-loader gm-putt" role="status"/)
+  assert.match(loaders, /label = '불러오는 중이에요'/)
 })
 
 test('원격 기록 조회 실패는 사용자 안내 뒤 자동 재시도를 예약한다', () => {
