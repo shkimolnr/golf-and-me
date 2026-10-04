@@ -22,3 +22,7 @@ test('앱 소스의 한글은 모두 채리체 글자 목록에 들어 있다', 
   }
   assert.deepEqual([...missing], [], `새 한글이 생겼어요. python3 scripts/subsetCherrieFont.py 를 다시 실행하세요: ${[...missing].join('')}`)
 })
+
+test('채리체 서체는 화면 그리기 전에 미리 내려받도록 힌트를 둔다', () => {
+  assert.match(read('index.html'), /<link rel="preload" href="\/src\/assets\/fonts\/Griun_Cherrie-Rg\.woff2" as="font" type="font\/woff2" crossorigin \/>/)
+})
