@@ -56,7 +56,7 @@ test('신규 사용자는 티 설정과 클럽 구성을 3단계로 마친다', 
   assert.match(appSource, /clubSetupReturn === 'onboarding'/)
   assert.match(appSource, /clubSetupReturn === 'new-round'/)
   assert.match(appSource, /clubSetupReturn === 'onboarding' \? '이 구성으로 시작하기'/)
-  assert.match(appSource, /id="onboarding-distance-unit-label">주로 사용하는<br \/>거리 단위<\/span>/)
+  assert.match(appSource, /id="onboarding-distance-unit-label">주로 사용하는 거리 단위<\/span>/)
   assert.match(appSource, /aria-label="기본 거리 단위"/)
   assert.match(appSource, /미터 M/)
   assert.match(appSource, /야드 YD/)
@@ -76,7 +76,7 @@ test('신규 골프백은 드라이버와 퍼터만 기본 선택한다', () => 
 
 test('로그인 화면에는 작동하지 않는 테스트 계정 승인 신청 경로를 표시하지 않는다', () => {
   assert.match(appSource, /Google로 계속하기/)
-  assert.match(appSource, /계속하면 서비스 이용약관/)
+  assert.match(appSource, /계속하면 <a href="\/terms\.html"[^>]*>이용약관<\/a>/)
   assert.doesNotMatch(appSource, /처음 오신 분만/)
   assert.doesNotMatch(appSource, /submitTestAccessRequest/)
   assert.doesNotMatch(appSource, /className="test-access/)
@@ -85,7 +85,7 @@ test('로그인 화면에는 작동하지 않는 테스트 계정 승인 신청 
 test('전체 새소식은 홈과 계정 메뉴에서 같은 정적 목록으로 열린다', () => {
   assert.match(appSource, /className="news-header-button"/)
   assert.match(appSource, /function openNews\(\)/)
-  assert.match(appSource, /<MegaphoneIcon \/>/)
+  assert.match(appSource, /<AppIcon name="bell" \/>/)
   assert.match(appSource, /className="news-unseen-dot"/)
   assert.match(appSource, /screen === 'news'/)
   assert.ok(newsItems.length >= 1)

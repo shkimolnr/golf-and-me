@@ -1,5 +1,6 @@
 const CACHE_PREFIX = 'golf-and-me-shell-'
 const CACHE_NAME = `${CACHE_PREFIX}v1`
+const STATIC_PAGE_PATHS = new Set(['/terms.html', '/privacy.html'])
 
 function sameOriginUrl(value) {
   try {
@@ -75,6 +76,10 @@ self.addEventListener('fetch', event => {
 
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
+  // 약관·방침 정적 페이지는 앱 화면(/) 캐시를 덮어쓰지 않도록 서비스워커가 다루지 않는다.
+  if (STATIC_PAGE_PATHS.has(url.pathname)) return
+  // 영상은 Range(부분) 요청으로 오며 206 응답은 Cache API에 넣을 수 없어, 서비스워커가 다루면 재생이 실패한다.
+  if (request.headers.has('range')) return
 
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
@@ -98,7 +103,7 @@ self.addEventListener('fetch', event => {
     const cached = await cache.match(request)
     if (cached) return cached
     const response = await fetch(request)
-    if (response.ok) await cache.put(request, response.clone())
+    if (response.status === 200) await cache.put(request, response.clone())
     return response
   })())
 })
