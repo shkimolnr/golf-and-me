@@ -1994,7 +1994,7 @@ export default function App() {
             </span>
             Google로 계속하기
           </button>
-          <p className="legal">계속하면 <a href="/terms.html" target="_blank" rel="noopener noreferrer">서비스 이용약관</a> 및 <a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a>에 동의하게 됩니다.</p>
+          <p className="legal">계속하면 <a href="/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a> 및 <a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a>에 동의하며, 만 14세 이상임을 확인합니다.</p>
           {!isSupabaseConfigured && <p className="setup-notice" role="status">Google 로그인을 사용하려면 <code>.env</code>에 Supabase 연결 정보를 설정해주세요.</p>}
           {authError && <p className="error-message" role="alert">{authError}</p>}
         </div>

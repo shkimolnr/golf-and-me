@@ -35,7 +35,7 @@ test('GA4를 사용하지 않는다는 방침과 앱의 분석 기본값이 어�
 
 test('로그인 화면과 계정 메뉴가 약관·방침 페이지로 연결된다', () => {
   assert.match(app, /className="legal">계속하면 <a href="\/terms\.html" target="_blank" rel="noopener noreferrer">/)
-  assert.match(app, /<a href="\/privacy\.html" target="_blank" rel="noopener noreferrer">개인정보 처리방침<\/a>에 동의하게 됩니다/)
+  assert.match(app, /<a href="\/privacy\.html" target="_blank" rel="noopener noreferrer">개인정보 처리방침<\/a>에 동의하며, 만 14세 이상임을 확인합니다\./)
   assert.match(app, /className="account-legal-links"/)
 })
 

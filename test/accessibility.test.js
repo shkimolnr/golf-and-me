@@ -76,7 +76,7 @@ test('신규 골프백은 드라이버와 퍼터만 기본 선택한다', () => 
 
 test('로그인 화면에는 작동하지 않는 테스트 계정 승인 신청 경로를 표시하지 않는다', () => {
   assert.match(appSource, /Google로 계속하기/)
-  assert.match(appSource, /계속하면 <a href="\/terms\.html"[^>]*>서비스 이용약관<\/a>/)
+  assert.match(appSource, /계속하면 <a href="\/terms\.html"[^>]*>이용약관<\/a>/)
   assert.doesNotMatch(appSource, /처음 오신 분만/)
   assert.doesNotMatch(appSource, /submitTestAccessRequest/)
   assert.doesNotMatch(appSource, /className="test-access/)
