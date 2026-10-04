@@ -604,7 +604,6 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .legal { margin-top: 24px; color: #9ca3af; font-size: 13px; line-height: 1.6; }
 .legal a, .account-legal-links a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
 .account-legal-links { display: flex; justify-content: center; gap: 8px; margin: 10px 0 0; color: #9ca3af; font-size: 12px; }
-.spinner { width: 36px; height: 36px; margin: 0 auto 14px; border: 3px solid #d1fae5; border-top-color: #059669; border-radius: 50%; animation: spin .8s linear infinite; }
 /* ===== 온보딩 (V2 디자인 이식) ===== */
 .onboarding-shell { display: flex; flex-direction: column; }
 .onboarding-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 9px; }
@@ -718,7 +717,6 @@ html.is-onboarding .app-shell { height: 100vh; height: 100dvh; min-height: 0; pa
 .delete-round-sheet p { margin: 18px 0 22px; color: #6b7280; font-size: 15px; line-height: 1.6; }
 .delete-round-sheet p strong { color: #2d3748; }
 .danger-button { width: 100%; padding: 14px; border: 1px solid #fecaca; border-radius: 14px; color: white; background: #b91c1c; font-weight: 800; }
-@keyframes spin { to { transform: rotate(360deg); } }
 @keyframes sheet-up { from { transform: translateY(24px); opacity: 0; } }
 @keyframes active-record-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .28; transform: scale(.72); } }
 @media (prefers-reduced-motion: reduce) { .shot-task-hint > span, .par-task-hint > span, .hole.is-latest-draft .hole-draft-badge i { animation: none; } }
@@ -733,3 +731,44 @@ html.is-onboarding .app-shell { height: 100vh; height: 100dvh; min-height: 0; pa
 }
 @media (max-width: 360px) { .course-pair-fields, .date-time-fields { grid-template-columns: 1fr; } }
 @media (min-width: 481px) { .app-shell { min-height: calc(100vh - 40px); margin-block: 20px; border-radius: 24px; } }
+
+/* ===== 골프와 나 로딩 모션 (퍼팅: 긴 대기 / 통통 공: 버튼 안 짧은 대기) ===== */
+.gm-loader { display: grid; justify-items: center; gap: 4px; animation: gm-in .25s ease .3s both; }
+.gm-loader-label { margin: 0; color: #6b7280; font-size: 14px; }
+@keyframes gm-in { from { opacity: 0; } to { opacity: 1; } }
+.gm-putt svg { overflow: visible; }
+.gm-putt-roll { animation: gm-putt-roll 2.4s linear infinite; }
+.gm-putt-ripple { transform-box: fill-box; transform-origin: center; animation: gm-putt-ripple 2.4s ease-out infinite; }
+.gm-putt-flag { transform-origin: 112px 22px; animation: gm-putt-flutter 2.4s ease-in-out infinite; }
+@keyframes gm-putt-roll {
+  0% { transform: translate(0,0); opacity: 0; }
+  5% { transform: translate(0,0); opacity: 1; }
+  52% { transform: translate(90px,0); opacity: 1; animation-timing-function: cubic-bezier(.45,0,1,1); }
+  62% { transform: translate(90px,11px); opacity: 1; }
+  100% { transform: translate(90px,11px); opacity: 1; }
+}
+@keyframes gm-putt-ripple { 0%,56% { transform: scale(.6); opacity: 0; } 60% { opacity: .6; } 84%,100% { transform: scale(1.7); opacity: 0; } }
+@keyframes gm-putt-flutter {
+  0%,58% { transform: scaleX(1) skewY(0); }
+  64% { transform: scaleX(.7) skewY(-5deg); }
+  70% { transform: scaleX(1.06) skewY(4deg); }
+  76% { transform: scaleX(.82) skewY(-3deg); }
+  82% { transform: scaleX(1.02) skewY(2deg); }
+  88%,100% { transform: scaleX(1) skewY(0); }
+}
+.gm-bounce { position: relative; display: inline-block; flex: 0 0 auto; margin-right: 7px; vertical-align: -2px; animation: gm-in .2s ease .3s both; }
+.gm-bounce svg { position: absolute; left: 0; overflow: visible; }
+.gm-bounce-ball { transform-box: fill-box; transform-origin: 50% 100%; animation: gm-bounce .95s linear infinite; }
+.gm-bounce-shadow { transform-box: fill-box; transform-origin: center; animation: gm-bounce-shadow .95s linear infinite; }
+@keyframes gm-bounce {
+  0% { transform: translateY(0) scale(1.14,.86); animation-timing-function: cubic-bezier(.2,.8,.4,1); }
+  12% { transform: translateY(0) scale(.97,1.04); animation-timing-function: cubic-bezier(.3,.7,.6,1); }
+  50% { transform: translateY(-9px) scale(1,1); animation-timing-function: cubic-bezier(.6,0,.8,.3); }
+  88% { transform: translateY(0) scale(1,1); }
+  100% { transform: translateY(0) scale(1.14,.86); }
+}
+@keyframes gm-bounce-shadow { 0%,100% { transform: scaleX(1.15); opacity: .38; } 50% { transform: scaleX(.6); opacity: .14; } }
+@media (prefers-reduced-motion: reduce) {
+  .gm-putt-roll, .gm-putt-ripple, .gm-putt-flag, .gm-bounce-ball, .gm-bounce-shadow { animation: none; }
+  .gm-putt-roll { opacity: 1; }
+}

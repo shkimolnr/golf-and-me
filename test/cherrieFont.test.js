@@ -13,10 +13,11 @@ test('채리체 서체는 쓰는 글자만 남긴 가벼운 woff2다', () => {
 
 test('앱 소스의 한글은 모두 채리체 글자 목록에 들어 있다', () => {
   const charset = new Set(read('src/assets/fonts/cherrie-charset.txt'))
-  const files = ['src/App.jsx', 'src/data/news.js', ...readdirSync(url('src/lib')).filter(name => name.endsWith('.js')).map(name => `src/lib/${name}`)]
+  const files = ['src/App.jsx', 'src/data/news.js', ...readdirSync(url('src/lib')).filter(name => name.endsWith('.js')).map(name => `src/lib/${name}`), ...readdirSync(url('src/components')).filter(name => name.endsWith('.jsx')).map(name => `src/components/${name}`)]
   const missing = new Set()
   for (const file of files) {
-    for (const char of read(file).match(/[가-힣ㄱ-ㅎㅏ-ㅣ]/g) || []) {
+    const withoutComments = read(file).replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '')
+    for (const char of withoutComments.match(/[가-힣ㄱ-ㅎㅏ-ㅣ]/g) || []) {
       if (!charset.has(char)) missing.add(char)
     }
   }

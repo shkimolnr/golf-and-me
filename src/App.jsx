@@ -23,8 +23,11 @@ import { scheduleRemoteHydrationRetry, shouldScheduleRemoteHydrationRetry } from
 import { recordDiagnosticFailure, resolveDiagnosticFailures } from './lib/diagnostics.js'
 import { clearDiagnosticQueue, enqueueDiagnosticFailure, enqueueDiagnosticRecovery, flushDiagnosticQueue, setDiagnosticAccessTokenProvider } from './lib/diagnosticsTransport.js'
 import golfBallLogo from './assets/golf-ball-logo.png'
+import { BounceBall, LoaderGallery, PuttLoader } from './components/Loaders.jsx'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
+// 개발 서버에서 `/?loader=putt` 또는 `/?loader=bounce`로 로딩 모션만 따로 볼 수 있다(운영 빌드에서는 항상 null).
+const devLoaderView = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('loader') : null
 const previewOnboarding = isPreviewMode && new URLSearchParams(window.location.search).get('onboarding') === '1'
 // 분석이 이 배포에서 실제로 켜질 수 있을 때만 동의 화면과 계정 메뉴 토글을 보여준다(Production은 꺼져 있음).
 const analyticsAvailable = getAnalyticsConfiguration().canInitialize
@@ -1971,8 +1974,10 @@ export default function App() {
     trackEvent('round_result_view', { completed_holes: 18 })
   }
 
+  if (devLoaderView) return <LoaderGallery view={devLoaderView} />
+
   if (authLoading) {
-    return <main className="app-shell auth-shell" aria-live="polite"><div className="spinner" aria-hidden="true" /><p role="status">로그인 상태를 확인하고 있어요.</p></main>
+    return <main className="app-shell auth-shell" aria-live="polite"><PuttLoader /></main>
   }
 
   if (!session) {
@@ -2003,7 +2008,7 @@ export default function App() {
   }
 
   if (!onboardingReady) {
-    return <main className="app-shell auth-shell" aria-live="polite"><div className="spinner" aria-hidden="true" /><p role="status">내 플레이 정보를 준비하고 있어요.</p></main>
+    return <main className="app-shell auth-shell" aria-live="polite"><PuttLoader /></main>
   }
 
   const displayName = session.user.user_metadata?.full_name || session.user.email
@@ -2197,7 +2202,7 @@ export default function App() {
                 <b>{roundProgressLabel(item)} <i aria-hidden="true">→</i></b>
               </button></div>)}
               {completedRounds.length < completedRoundCount && <button className="secondary-button round-list-more" type="button" onClick={loadMoreCompletedRounds} disabled={completedRoundsLoading}>
-                {completedRoundsLoading ? '불러오는 중…' : '이전 완료 기록 더 보기'}
+                {completedRoundsLoading ? <><BounceBall /> 불러오는 중…</> : '이전 완료 기록 더 보기'}
               </button>}
             </section>}
           </div> : (
@@ -2241,7 +2246,7 @@ export default function App() {
             <textarea id="feedback-message" rows="7" maxLength={MAX_FEEDBACK_LENGTH} value={feedbackMessage} onChange={event => setFeedbackMessage(event.target.value)} placeholder="불편했던 점이나 있으면 좋을 기능을 알려주세요." />
             <span className="feedback-count">{feedbackMessage.length}/{MAX_FEEDBACK_LENGTH}</span>
             {feedbackError && <p className="error-message" role="alert">{feedbackError}</p>}
-            <button className="primary" type="submit" disabled={!feedbackMessage.trim() || feedbackStatus === 'sending'}>{feedbackStatus === 'sending' ? '보내는 중…' : '의견 보내기'}</button>
+            <button className="primary" type="submit" disabled={!feedbackMessage.trim() || feedbackStatus === 'sending'}>{feedbackStatus === 'sending' ? <><BounceBall /> 보내는 중…</> : '의견 보내기'}</button>
           </form>}
         </section>
       )}
@@ -2668,7 +2673,7 @@ export default function App() {
             {accountDeletionError && <p className="error-message" role="alert">{accountDeletionError}</p>}
             <div className="sheet-actions">
               <button className="secondary-button" type="button" onClick={() => setAccountDeletionOpen(false)} disabled={accountDeletionStatus === 'deleting'}>취소</button>
-              <button className="danger-button" type="button" onClick={deleteAccount} disabled={accountDeletionStatus === 'deleting'}>{accountDeletionStatus === 'deleting' ? '삭제 중…' : '계정과 기록 모두 삭제'}</button>
+              <button className="danger-button" type="button" onClick={deleteAccount} disabled={accountDeletionStatus === 'deleting'}>{accountDeletionStatus === 'deleting' ? <><BounceBall /> 삭제 중…</> : '계정과 기록 모두 삭제'}</button>
             </div>
           </section>
         </div>
