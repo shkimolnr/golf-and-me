@@ -46,7 +46,10 @@ test('서비스워커는 정적 정책 페이지가 앱 화면 캐시를 덮어�
   assert.ok(bypass > 0 && bypass < navigate, '정책 페이지 예외는 navigate 처리보다 먼저 와야 한다')
 })
 
-test('이용약관 제목 아래에는 버전과 시행일만 표시한다(운영자는 본문 제1조·제15조에 있음)', () => {
-  assert.match(terms, /<p class="meta">v1\.0 · 시행일: 2026년 10월 5일<\/p>/)
-  assert.doesNotMatch(terms, /class="meta">[^<]*운영자/)
+test('이용약관·개인정보처리방침 제목 아래에는 버전과 시행일만 표시한다(운영자는 본문에 있음)', () => {
+  for (const page of [terms, privacy]) {
+    assert.match(page, /<p class="meta">v1\.0 · 시행일: 2026년 10월 5일<\/p>/)
+    assert.doesNotMatch(page, /class="meta">[^<]*(운영자|최종 수정일)/)
+    assert.match(page, /\(주\)오엘엔알/)
+  }
 })
