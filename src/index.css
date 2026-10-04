@@ -342,9 +342,6 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .distance-empty span { color: #6b7280; font-size: 12px; }
 .distance-update-button { margin-top: 13px; }
 @media (max-width: 350px) {
-  .onboarding-distance-unit { grid-template-columns: minmax(96px, 1fr) minmax(158px, 1.5fr); gap: 8px; }
-  .onboarding-distance-unit-label { font-size: 18px; }
-  .onboarding-distance-unit button { padding-inline: 7px; font-size: 16px; }
   .distance-pair-header { grid-template-columns: 66px minmax(62px, 1fr); }
   .distance-pair-header span:nth-child(n + 3) { display: none; }
   .distance-pair-row { grid-template-columns: 1fr; }
@@ -607,32 +604,67 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 .legal a, .account-legal-links a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
 .account-legal-links { display: flex; justify-content: center; gap: 8px; margin: 10px 0 0; color: #9ca3af; font-size: 12px; }
 .spinner { width: 36px; height: 36px; margin: 0 auto 14px; border: 3px solid #d1fae5; border-top-color: #059669; border-radius: 50%; animation: spin .8s linear infinite; }
+/* ===== 온보딩 (V2 디자인 이식) ===== */
 .onboarding-shell { display: flex; flex-direction: column; }
-.onboarding-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 48px; }
+.onboarding-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 9px; }
 .onboarding-progress span { height: 4px; border-radius: 999px; background: #e5e7eb; }
 .onboarding-progress .active { background: #059669; }
-.club-onboarding-progress { margin-bottom: 30px; }
-.onboarding-club-bag { display: flex; flex-direction: column; min-height: calc(100vh - 72px); }
-.onboarding-back { width: 100%; margin-bottom: 8px; padding: 8px 4px; font-weight: 800; text-align: center; }
-.onboarding-club-intro { margin-bottom: 20px; }
-.onboarding-club-intro h1 { margin-top: 8px; margin-bottom: 12px; }
+.club-onboarding-progress { margin-bottom: 9px; }
+.onboarding-club-bag { display: flex; flex-direction: column; min-height: 0; }
+.onboarding-back, .onboarding-play-criteria > .back { align-self: flex-start; width: auto; margin: 6px 0 0; padding: 4px 3px; color: #6b7280; font-size: 14px; font-weight: 400; text-align: left; }
+.onboarding-back { margin-left: 18px; }
+.onboarding-club-intro { margin-bottom: 14px; }
+.onboarding-club-intro h1 { margin-top: 12px; margin-bottom: 12px; }
 .onboarding-club-intro .description { margin-bottom: 0; }
 .onboarding-club-bag .club-composition-heading { margin-top: 2px; }
-.onboarding-club-bag .club-next-button { margin-top: 20px; }
-.onboarding-content { display: flex; flex: 1; flex-direction: column; justify-content: center; }
-.welcome-mark { display: grid; place-items: center; width: 72px; height: 72px; margin-bottom: 24px; border-radius: 24px; color: white; background: #059669; font-size: 32px; font-weight: 800; transform: rotate(-3deg); }
-.onboarding-play-criteria .description { margin-bottom: 14px; }
+.onboarding-club-bag .club-composition-heading, .onboarding-club-bag .club-selection-table { margin-inline: .875rem; }
+.onboarding-content { display: flex; flex: 1; flex-direction: column; justify-content: flex-start; padding-inline: 1.125rem; }
+.onboarding-content > .eyebrow, .onboarding-content > h1, .onboarding-content > .description { margin-inline: 0; }
+.onboarding-content > h1 { margin-top: 12px; }
+.onboarding-play-criteria .description { margin-bottom: 18px; }
 .tee-options { display: grid; gap: 10px; margin: 0; }
 .tee-option { display: grid; grid-template-columns: 28px 1fr 24px; align-items: center; width: 100%; padding: 14px 16px; border: 1px solid #dfe7e3; border-radius: 14px; color: #2d3748; background: white; text-align: left; }
 .tee-option.selected { border: 2px solid #059669; background: #ecfdf5; }
-.onboarding-distance-unit { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(170px, 230px); align-items: center; gap: 12px; margin: 26px 0 20px 18px; }
-.onboarding-distance-unit-label { color: #2d3748; font-size: 22px; font-weight: 800; line-height: 1.35; }
-.onboarding-distance-unit > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; justify-self: end; }
-.onboarding-distance-unit button { height: 58px; min-height: 0; padding: 0 12px; border: 1px solid #d1d5db; color: #6b7280; background: white; font-size: 18px; font-weight: 800; white-space: nowrap; }
+.onboarding-distance-unit { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 22px 0 8px; }
+.onboarding-distance-unit-label { color: #2d3748; font-size: 16px; font-weight: 700; line-height: 1.4; }
+.onboarding-distance-unit > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+.onboarding-distance-unit button { height: 48px; min-height: 0; padding: 0 12px; border: 1px solid #d1d5db; color: #6b7280; background: white; font-size: 16px; font-weight: 800; white-space: nowrap; }
 .onboarding-distance-unit button:first-child { border-radius: 10px 0 0 10px; }
 .onboarding-distance-unit button:last-child { margin-left: -1px; border-radius: 0 10px 10px 0; }
 .onboarding-distance-unit button.selected { position: relative; border-color: #059669; color: #047857; background: #d1fae5; }
 .onboarding-distance-complete { margin-top: 10px; }
+
+/* 온보딩 중에는 문서 스크롤을 잠그고 앱 셸 안에서만 스크롤한다(아이폰 고무줄 스크롤 방지). */
+html.is-onboarding, html.is-onboarding body { height: 100%; overflow: hidden; overscroll-behavior-y: none; background: #fff; }
+html.is-onboarding #root { height: 100%; }
+html.is-onboarding::before { position: fixed; z-index: 1000; top: 0; right: 0; left: 0; height: env(safe-area-inset-top, 0px); background: #fff; content: ''; pointer-events: none; }
+html.is-onboarding .app-shell { height: 100vh; height: 100dvh; min-height: 0; padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(6.5rem + env(safe-area-inset-bottom, 0px)); overflow-x: clip; overflow-y: auto; overscroll-behavior-y: none; -webkit-overflow-scrolling: touch; }
+
+/* 하단 고정 버튼: 홈의 주 버튼과 같은 규격(높이 3.4rem, 반경 14px)을 쓴다. */
+.onboarding-content > .primary, .onboarding-club-bag .club-next-button { position: fixed; z-index: 12; right: max(1.1rem, calc((100vw - 480px) / 2 + 1.1rem)); bottom: calc(env(safe-area-inset-bottom, 0px) + .75rem); left: max(1.1rem, calc((100vw - 480px) / 2 + 1.1rem)); width: auto; min-height: 3.4rem; margin-top: 0; border-radius: 14px; font-size: 17px; font-weight: 900; }
+
+/* 1단계(환영) — 코스 영상 배경 위에 흰 글자 */
+.onboarding-shell.is-welcome { position: relative; }
+.onboarding-shell.is-welcome .onboarding-progress { position: relative; z-index: 1; }
+.onboarding-shell.is-welcome .onboarding-progress span { background: rgb(255 255 255 / 45%); }
+.onboarding-shell.is-welcome .onboarding-progress .active { background: #fff; }
+.onboarding-welcome { justify-content: center; padding-bottom: 6.5rem; }
+.onboarding-welcome-media { position: fixed; z-index: 0; top: 0; bottom: 0; left: 0; right: 0; width: min(100%, 480px); margin-inline: auto; overflow: hidden; pointer-events: none; background: #39533e url('/onboarding-course-poster.jpg') center / cover; }
+.onboarding-welcome-media video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.onboarding-welcome-media::after { position: absolute; inset: 0; content: ''; background: linear-gradient(180deg, rgb(12 25 23 / 18%) 0%, rgb(12 25 23 / 52%) 48%, rgb(12 25 23 / 32%) 100%); }
+.onboarding-welcome > :not(.primary, .onboarding-welcome-media) { position: relative; z-index: 1; }
+.onboarding-welcome > h1, .onboarding-welcome > .onboarding-welcome-label, .onboarding-welcome > .description { color: #fff; text-shadow: 0 1px 5px rgb(0 0 0 / 35%); }
+.onboarding-welcome > .onboarding-welcome-label { margin: 4px 0 14px; font-family: var(--font-cherrie); font-size: 20px; }
+.onboarding-welcome > .description { margin-bottom: 0; }
+.onboarding-welcome > .primary { box-shadow: 0 4px 18px rgb(0 0 0 / 22%); }
+@media (prefers-reduced-motion: reduce) { .onboarding-welcome-media video { display: none; } }
+
+@media (max-height: 740px) {
+  .onboarding-content > h1 { font-size: clamp(1.55rem, 7.2vw, 1.95rem); }
+  .tee-options { gap: 5px; }
+  .tee-option { padding-block: 7px; }
+  .onboarding-distance-unit { margin-top: 14px; }
+}
 .new-round-distance-hint { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid #d1fae5; border-radius: 12px; background: #ecfdf5; }
 .new-round-distance-hint strong, .new-round-distance-hint span { display: block; }
 .new-round-distance-hint strong { color: #047857; font-size: 13px; }
@@ -692,7 +724,6 @@ button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
 @media (max-height: 700px) { .hole { min-height: 52px; padding: 5px 9px; } .hole-meta { top: 4px; left: 8px; } .hole-score { right: 9px; } .nine-section + .nine-section { margin-top: 7px; } .score-summary { margin-top: 20px; } }
 @media (max-width: 480px) { .date-time-fields { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 8px; } }
 @media (max-width: 480px) {
-  .onboarding-club-bag { min-height: 100vh; }
   .onboarding-club-intro h1 { font-size: clamp(30px, 9vw, 38px); }
   .hole-detail .compact-page-header { margin-bottom: 8px; }
   .shot-heading, .putting-heading { grid-template-columns: 18% 40% 42%; }

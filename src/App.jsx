@@ -26,6 +26,7 @@ import golfBallLogo from './assets/golf-ball-logo.png'
 
 const isPreviewMode = import.meta.env.DEV && new URLSearchParams(window.location.search).get('preview') === '1'
 const GOOGLE_DISCONNECT_NOTICE = '계정과 기록을 삭제했어요. Google 계정의 연결 승인은 삭제되지 않으니, 원하시면 Google 계정 설정의 "보안 > 타사 앱 및 서비스 연결"에서 직접 해제해주세요.'
+const previewOnboarding = isPreviewMode && new URLSearchParams(window.location.search).get('onboarding') === '1'
 // 분석이 이 배포에서 실제로 켜질 수 있을 때만 동의 화면과 계정 메뉴 토글을 보여준다(Production은 꺼져 있음).
 const analyticsAvailable = getAnalyticsConfiguration().canInitialize
 const analyticsScreenNames = Object.freeze({
@@ -45,6 +46,25 @@ setDiagnosticAccessTokenProvider(async () => {
   const { data } = await supabase.auth.getSession()
   return data.session?.access_token || ''
 })
+
+// 새로고침해도 온보딩 1·2단계에서 이어갈 수 있도록 같은 탭의 sessionStorage에만 단계를 기억한다(3단계는 2단계로 복원).
+const ONBOARDING_STEP_STORAGE_KEY = 'golf-and-me:onboarding-step'
+
+function resumedOnboardingStep() {
+  try {
+    return window.sessionStorage.getItem(ONBOARDING_STEP_STORAGE_KEY) === '2' ? 2 : 1
+  } catch {
+    return 1
+  }
+}
+
+function rememberOnboardingStep(step) {
+  try { window.sessionStorage.setItem(ONBOARDING_STEP_STORAGE_KEY, step >= 2 ? '2' : '1') } catch { /* 저장소를 못 써도 온보딩은 계속된다 */ }
+}
+
+function forgetOnboardingStep() {
+  try { window.sessionStorage.removeItem(ONBOARDING_STEP_STORAGE_KEY) } catch { /* 저장소를 못 써도 온보딩은 계속된다 */ }
+}
 
 function localDateTimeValue() {
   const now = new Date()
@@ -264,6 +284,14 @@ export default function App() {
     lastTrackedScreenRef.current = analyticsScreen
   }, [analyticsConsent, session, onboardingReady, screen])
 
+  // 온보딩 중에는 문서 자체의 스크롤·고무줄(오버스크롤) 새로고침을 막고, 앱 셸 안에서만 스크롤한다.
+  const onboardingLayoutActive = Boolean(session && onboardingReady && (screen === 'onboarding' || (screen === 'clubs' && clubSetupReturn === 'onboarding')))
+  useEffect(() => {
+    if (!onboardingLayoutActive) return undefined
+    document.documentElement.classList.add('is-onboarding')
+    return () => document.documentElement.classList.remove('is-onboarding')
+  }, [onboardingLayoutActive])
+
   useEffect(() => {
     if (analyticsConsent !== 'granted' || screen !== 'onboarding') return
     const viewKey = `${onboardingStep}`
@@ -464,8 +492,9 @@ export default function App() {
     setObservedRoundTombstones(cachedTombstones)
 
     const storageKey = `golf-and-me:onboarding:${session.user.id}`
-    let savedProfile = window.localStorage.getItem(storageKey)
-    if (isPreviewMode && !savedProfile) {
+    // 개발 미리보기에서 `?preview=1&onboarding=1`이면 저장된 프로필을 무시하고 온보딩을 처음부터 다시 볼 수 있다.
+    let savedProfile = previewOnboarding ? null : window.localStorage.getItem(storageKey)
+    if (isPreviewMode && !previewOnboarding && !savedProfile) {
       savedProfile = JSON.stringify({ defaultTee: '화이트', defaultDistanceUnit: 'M' })
       window.localStorage.setItem(storageKey, savedProfile)
     }
@@ -526,12 +555,12 @@ export default function App() {
     if (profile || isPreviewMode || !supabase) {
       if (!profile) {
         setScreen('onboarding')
-        setOnboardingStep(1)
+        setOnboardingStep(resumedOnboardingStep())
       }
       setOnboardingReady(true)
     } else {
       setScreen('onboarding')
-      setOnboardingStep(1)
+      setOnboardingStep(resumedOnboardingStep())
     }
     setNavigationReady(true)
   }, [session])
@@ -566,7 +595,7 @@ export default function App() {
           const hasLocalProfile = Boolean(window.localStorage.getItem(`golf-and-me:onboarding:${userId}`))
           if (!hasLocalProfile) {
             setScreen('onboarding')
-            setOnboardingStep(1)
+            setOnboardingStep(resumedOnboardingStep())
           }
         } else {
           try {
@@ -599,7 +628,7 @@ export default function App() {
               setScreen(current => current === 'onboarding' ? 'home' : current)
             } else {
               setScreen('onboarding')
-              setOnboardingStep(1)
+              setOnboardingStep(resumedOnboardingStep())
             }
             if (!profileSaveFailed) setRemoteProfileHydratedUserId(userId)
             reportDiagnosticRecovery('profile_load')
@@ -1011,6 +1040,7 @@ export default function App() {
 
   function completeOnboarding() {
     const storageKey = `golf-and-me:onboarding:${session.user.id}`
+    forgetOnboardingStep()
     window.localStorage.setItem(storageKey, JSON.stringify({ defaultTee, defaultDistanceUnit }))
     setRound(current => ({ ...current, tee: defaultTee, distanceUnit: defaultDistanceUnit }))
     setClubSetupReturn(null)
@@ -2025,27 +2055,33 @@ export default function App() {
 
   if (screen === 'onboarding') {
     return (
-      <main className="app-shell onboarding-shell">
+      <main className={`app-shell onboarding-shell${onboardingStep === 1 ? ' is-welcome' : ''}`}>
         <div className="onboarding-progress" aria-label={`온보딩 ${onboardingStep}/3 단계`}>
           <span className="active" /><span className={onboardingStep >= 2 ? 'active' : ''} /><span className={onboardingStep >= 3 ? 'active' : ''} />
         </div>
         {onboardingStep === 1 ? (
-          <section className="onboarding-content">
-            <div className="welcome-mark">G</div>
-            <p className="eyebrow">Welcome to Golf &amp; Me</p>
+          <section className="onboarding-content onboarding-welcome">
+            <div className="onboarding-welcome-media" aria-hidden="true">
+              <video autoPlay muted playsInline preload="metadata" poster="/onboarding-course-poster.jpg" src="/onboarding-course-preview.mp4" />
+            </div>
             <h1>골프와 나에<br />오신 것을 환영합니다.</h1>
-            <p className="description">당신의 골프 성장 여정을 시작해볼게요.<br />기록은 가볍게, 변화는 선명하게.</p>
+            <p className="onboarding-welcome-label">Listen to your game.</p>
+            <p className="description">오늘의 플레이에서<br />내일의 골프를 발견하세요.</p>
             <button className="primary" type="button" onClick={() => {
+              rememberOnboardingStep(2)
               setOnboardingStep(2)
               trackEvent('onboarding_step', { step: 1, status: 'complete' })
             }}>시작하기</button>
           </section>
         ) : (
           <section className="onboarding-content onboarding-play-criteria">
-            <button className="back" type="button" onClick={() => setOnboardingStep(1)}>← 이전</button>
+            <button className="back" type="button" onClick={() => {
+              rememberOnboardingStep(1)
+              setOnboardingStep(1)
+            }}>← 이전</button>
             <p className="eyebrow">내 플레이 기준</p>
             <h1>주로 어떤 티에서<br />플레이하시나요?</h1>
-            <p className="description">새 라운드를 만들 때 기본으로 선택해드려요. 나중에 언제든 바꿀 수 있습니다.</p>
+            <p className="description">새 라운드를 만들 때 기본으로 적용됩니다.<br />라운드 작성 시 변경할 수 있어요.</p>
             <div className="tee-options" role="radiogroup" aria-label="기본 티그라운드">
               {teeOptions.map(tee => (
                 <button
@@ -2063,7 +2099,7 @@ export default function App() {
               ))}
             </div>
             <div className="onboarding-distance-unit" role="group" aria-labelledby="onboarding-distance-unit-label">
-              <span className="onboarding-distance-unit-label" id="onboarding-distance-unit-label">주로 사용하는<br />거리 단위</span>
+              <span className="onboarding-distance-unit-label" id="onboarding-distance-unit-label">주로 사용하는 거리 단위</span>
               <div role="radiogroup" aria-label="기본 거리 단위">
                 {['M', 'YD'].map(unit => <button type="button" role="radio" aria-checked={defaultDistanceUnit === unit} className={defaultDistanceUnit === unit ? 'selected' : ''} key={unit} onClick={() => setDefaultDistanceUnit(unit)}>{unit === 'M' ? '미터 M' : '야드 YD'}</button>)}
               </div>
@@ -2212,13 +2248,14 @@ export default function App() {
           {clubSetupReturn === 'onboarding' ? <>
             <button className="back onboarding-back" type="button" onClick={() => {
               setClubSetupReturn(null)
+              rememberOnboardingStep(2)
               setOnboardingStep(2)
               setScreen('onboarding')
             }}>← 이전</button>
             <div className="onboarding-club-intro">
               <p className="eyebrow">내 골프백</p>
               <h1>사용하는 클럽을<br />알려주세요.</h1>
-              <p className="description">라운드에서 샷과 클럽별 기록을 남길 때 사용해요.<br />언제든 변경할 수 있습니다.</p>
+              <p className="description">라운드에서 샷과 클럽별 기록을 남길 때 사용해요.<br /><strong>내 골프백</strong>에서 언제든 변경할 수 있습니다.</p>
             </div>
           </> : <div className="compact-page-header">
             <button className="back" onClick={() => {
