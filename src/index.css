@@ -680,7 +680,7 @@ html.is-onboarding .app-shell { height: 100vh; height: 100dvh; min-height: 0; pa
 .tee-check { color: #059669; font-weight: 900; }
 .account-layer { position: fixed; z-index: 20; inset: 0; display: flex; align-items: flex-end; justify-content: center; }
 .account-backdrop { position: absolute; inset: 0; width: 100%; border: 0; background: #11182766; }
-.account-sheet { position: relative; width: min(100%, 480px); padding: 10px 20px 28px; border-radius: 24px 24px 0 0; background: white; animation: sheet-up .2s ease-out; }
+.account-sheet { position: relative; width: min(100%, 480px); max-height: 100vh; max-height: 100dvh; padding: 10px 20px calc(28px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; overscroll-behavior: contain; border-radius: 24px 24px 0 0; background: white; animation: sheet-up .2s ease-out; }
 .sheet-handle { width: 42px; height: 4px; margin: 0 auto 18px; border-radius: 999px; background: #d1d5db; }
 .account-heading { display: flex; align-items: center; justify-content: space-between; }
 .account-heading h2 { margin: 0; font-size: 23px; }

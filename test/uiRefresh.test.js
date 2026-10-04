@@ -37,3 +37,7 @@ test('홈 화면 바로가기 아이콘은 V2의 apple-touch-icon(180×180)을 �
   assert.equal(png.readUInt32BE(16), 180)
   assert.equal(png.readUInt32BE(20), 180)
 })
+
+test('내 계정 시트는 작은 화면에서 화면 안에서 스크롤된다', () => {
+  assert.match(css, /\.account-sheet \{[^}]*max-height: 100dvh;[^}]*overflow-y: auto;[^}]*overscroll-behavior: contain/)
+})
