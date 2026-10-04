@@ -27,3 +27,13 @@ test('내 계정 메뉴는 새 아이콘과 화살표 아이콘을 쓰고 응원
 test('새소식 안 읽음 표시는 초록 점이다', () => {
   assert.match(css, /\.news-unseen-dot \{[^}]*background: #059669/)
 })
+
+test('홈 화면 바로가기 아이콘은 V2의 apple-touch-icon(180×180)을 쓴다', () => {
+  const html = read('index.html')
+  assert.match(html, /<link rel="apple-touch-icon" sizes="180x180" href="\/apple-touch-icon\.png" \/>/)
+  // PNG 헤더의 가로·세로가 180인지 확인한다.
+  const png = readFileSync(new URL('../public/apple-touch-icon.png', import.meta.url))
+  assert.equal(png.subarray(1, 4).toString(), 'PNG')
+  assert.equal(png.readUInt32BE(16), 180)
+  assert.equal(png.readUInt32BE(20), 180)
+})
