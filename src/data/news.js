@@ -1,5 +1,12 @@
 export const newsItems = [
   {
+    id: '2026-10-22-verthill-yeongjong-course-data',
+    date: '2026-10-22',
+    category: '골프장 정보',
+    title: '베르힐CC 영종 홀 정보가 추가됐어요',
+    body: '베르힐·스카이·오션·레이크 코스의 PAR와 티별 거리를 새 라운드에 연결했어요.',
+  },
+  {
     id: '2026-09-14-skyvalley-course-data',
     date: '2026-09-14',
     category: '골프장 정보',

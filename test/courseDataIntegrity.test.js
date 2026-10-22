@@ -16,6 +16,7 @@ const expectedCourseIds = [
   'laviebel',
   'sagewood-hongcheon',
   'skyvalley',
+  'verthill-yeongjong',
 ]
 
 function normalize(value) {
@@ -23,13 +24,13 @@ function normalize(value) {
 }
 
 test('골프장 스냅샷은 기존 골프장을 보존하고 ID와 별칭 충돌이 없다', () => {
-  assert.equal(database.version, '2026-09-14.1')
+  assert.equal(database.version, '2026-10-22.1')
   assert.equal(database.defaultUnit, 'M')
   assert.deepEqual(database.courses.map(course => course.id), expectedCourseIds)
-  assert.equal(database.courses.length, 12)
-  assert.equal(database.courses.reduce((count, course) => count + course.segments.length, 0), 31)
-  assert.equal(database.courses.reduce((count, course) => count + course.segments.reduce((sum, segment) => sum + segment.holes.length, 0), 0), 342)
-  assert.equal(database.courses.reduce((count, course) => count + course.aliases.length, 0), 37)
+  assert.equal(database.courses.length, 13)
+  assert.equal(database.courses.reduce((count, course) => count + course.segments.length, 0), 35)
+  assert.equal(database.courses.reduce((count, course) => count + course.segments.reduce((sum, segment) => sum + segment.holes.length, 0), 0), 378)
+  assert.equal(database.courses.reduce((count, course) => count + course.aliases.length, 0), 40)
 
   const ids = new Set()
   const segmentIds = new Set()
@@ -144,4 +145,18 @@ test('스카이밸리는 4개 9홀 코스와 제공 티 범위를 보존한다',
   assert.ok(skyvalley.segments.every(segment => segment.holes.every(hole => hole.distances.blue == null && hole.distances.gold == null)))
   assert.deepEqual(skyvalley.segments[0].holes.find(hole => hole.number === 1).distances.black, { m: 368, yd: 402 })
   assert.deepEqual(skyvalley.segments[2].holes.find(hole => hole.number === 6).distances.red, { m: 458, yd: 501 })
+})
+
+test('베르힐 영종은 4개 9홀 코스와 좌 그린 예외 거리를 보존한다', () => {
+  const verthill = database.courses.find(course => course.id === 'verthill-yeongjong')
+  assert.deepEqual(verthill.segments.map(segment => [segment.name, segment.holes.length]), [
+    ['베르힐', 9],
+    ['스카이', 9],
+    ['오션', 9],
+    ['레이크', 9],
+  ])
+  assert.equal(verthill.segments.flatMap(segment => segment.holes).filter(hole => hole.distances.leftGreen).length, 33)
+  assert.equal(verthill.segments[3].holes.find(hole => hole.number === 2).distances.blue, null)
+  assert.deepEqual(verthill.segments[0].holes.find(hole => hole.number === 1).distances.leftGreen.black, { m: 435, yd: 476 })
+  assert.equal(verthill.segments[1].holes.find(hole => hole.number === 6).distances.leftGreen, undefined)
 })
